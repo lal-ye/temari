@@ -1,0 +1,115 @@
+@import "tailwindcss";
+
+@layer base {
+  body {
+    font-family: 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background-color: #FAF8F5;
+    color: #0F172A;
+  }
+  
+  code, pre, .font-mono {
+    font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  }
+}
+
+/* Neo-Brutalist BeautifulUI Shadow Utilities */
+.shadow-neo-sm {
+  box-shadow: 2px 2px 0px 0px #0F172A;
+}
+
+.shadow-neo {
+  box-shadow: 3px 3px 0px 0px #0F172A;
+}
+
+.shadow-neo-md {
+  box-shadow: 4px 4px 0px 0px #0F172A;
+}
+
+.shadow-neo-lg {
+  box-shadow: 6px 6px 0px 0px #0F172A;
+}
+
+.shadow-neo-xl {
+  box-shadow: 8px 8px 0px 0px #0F172A;
+}
+
+.shadow-neo-amber {
+  box-shadow: 4px 4px 0px 0px #F59E0B;
+}
+
+.shadow-neo-teal {
+  box-shadow: 4px 4px 0px 0px #0D9488;
+}
+
+.shadow-neo-rose {
+  box-shadow: 4px 4px 0px 0px #E11D48;
+}
+
+/* Neo-brutal tactile button interaction */
+.btn-neo {
+  transition: all 0.12s ease-in-out;
+}
+.btn-neo:hover {
+  transform: translate(-1.5px, -1.5px);
+  box-shadow: 4px 4px 0px 0px #0F172A;
+}
+.btn-neo:active {
+  transform: translate(1px, 1px);
+  box-shadow: 1px 1px 0px 0px #0F172A;
+}
+
+/* 3D Flashcard Flip utilities */
+.perspective-1000 {
+  perspective: 1000px;
+}
+
+.transform-style-3d {
+  transform-style: preserve-3d;
+}
+
+.backface-hidden {
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+
+.rotate-y-180 {
+  transform: rotateY(180deg);
+}
+
+/* Callout Styling */
+.callout-note {
+  border-left: 4px solid #3B82F6;
+  background-color: #EFF6FF;
+}
+
+.callout-important {
+  border-left: 4px solid #EF4444;
+  background-color: #FEF2F2;
+}
+
+.callout-tip {
+  border-left: 4px solid #10B981;
+  background-color: #F0FDF4;
+}
+
+/* Subtle dot grid pattern */
+.bg-neo-dots {
+  background-image: radial-gradient(#cbd5e1 1px, transparent 1px);
+  background-size: 20px 20px;
+}
+
+/* Print Stylesheet for Notes Export */
+@media print {
+  body {
+    background: white !important;
+    color: black !important;
+  }
+  .no-print {
+    display: none !important;
+  }
+  .print-only {
+    display: block !important;
+  }
+}
+
+
