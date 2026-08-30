@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useMemo } from 'react';
 import { StoredNote } from '../../types';
 import { Copy, Check, Printer, FileText, Maximize2, Share2, Sparkles, Tag, BookOpen, Clock } from 'lucide-react';
 
@@ -161,6 +161,9 @@ export const NoteViewer: React.FC<NoteViewerProps> = ({ note, onEdit, onHighligh
     return resultLines.join('\n');
   };
 
+  // Memoize markdown HTML conversion so expensive regex and table parsing doesn't re-run on every selection/render
+  const formattedMarkdown = useMemo(() => formatMarkdown(note.content), [note.content]);
+
   return (
     <div className="bg-white border-3 border-slate-900 rounded-2xl shadow-neo-md overflow-hidden flex flex-col">
       {/* Top Action Bar */}
@@ -254,7 +257,7 @@ export const NoteViewer: React.FC<NoteViewerProps> = ({ note, onEdit, onHighligh
         ref={contentRef}
         onMouseUp={handleMouseUp}
         className="p-6 md:p-8 text-slate-900 text-xs leading-relaxed overflow-x-auto select-text font-normal"
-        dangerouslySetInnerHTML={{ __html: formatMarkdown(note.content) }}
+        dangerouslySetInnerHTML={{ __html: formattedMarkdown }}
       />
     </div>
   );
