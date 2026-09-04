@@ -1,3 +1,6 @@
+import React, { useState } from 'react';
+import { Key, CheckCircle, AlertCircle, ExternalLink, X, ShieldCheck } from 'lucide-react';
+import { getStudyStore } from '../../services/studyStore';
 import React, { useState, useEffect } from 'react';
 import {
   Key,
