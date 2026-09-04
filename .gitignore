@@ -1,8 +1,46 @@
+# --- Dependencies ---
 node_modules/
+
+# --- Build output ---
 build/
 dist/
-coverage/
-.DS_Store
+# Legacy esbuild artifact at repo root (see the `clean` script in package.json)
+/server.js
+*.tsbuildinfo
+
+# --- Logs ---
 *.log
+
+# --- Environment / secrets (keep the tracked .env.example template) ---
 .env*
 !.env.example
+
+# --- Test coverage ---
+coverage/
+
+# --- Tool caches ---
+.vite/
+.cache/
+.eslintcache
+
+# --- OS cruft ---
+.DS_Store
+Thumbs.db
+Desktop.ini
+._*
+
+# --- Editor cruft ---
+.idea/
+.vscode/
+*.swp
+
+# --- Lockfiles from non-canonical package managers (bun.lock is the tracked one) ---
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# --- Local deploy/tooling state ---
+.netlify/
+
+# --- Locally installed agent/skill tooling ---
+.agents/
