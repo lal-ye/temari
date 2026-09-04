@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { Subject, StoredAttempt } from '../../types';
-import { StorageService } from '../../services/storage';
+import { useStudyData } from '../../hooks/useStudyData';
 import { computeAnalyticsSummary } from '../../utils/analytics';
 import { ExamResultsView } from '../exams/ExamResultsView';
 import {
@@ -39,9 +39,11 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ subjects, currentS
   const [selectedSubjectId, setSelectedSubjectId] = useState<string>(currentSubjectId || 'ALL');
   const [selectedAttempt, setSelectedAttempt] = useState<StoredAttempt | null>(null);
 
-  const attempts = StorageService.getAttempts();
+  // Use study data hook to get reactive attempts array and delete function
+  // This avoids synchronous localStorage parsing on every render and keeps attempts reference stable
+  const { attempts, deleteAttempt } = useStudyData();
 
-  // Pure domain calculation for analytics and filtered attempts
+  // Pure domain calculation for analytics and filtered attempts (properly memoized with stable attempts reference)
   const { filteredAttempts, analytics } = useMemo(() => {
     return computeAnalyticsSummary(attempts, selectedSubjectId);
   }, [attempts, selectedSubjectId]);
@@ -49,7 +51,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ subjects, currentS
   const handleDeleteAttempt = (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
     if (confirm('Delete this attempt record?')) {
-      StorageService.deleteAttempt(id);
+      deleteAttempt(id);
     }
   };
 
