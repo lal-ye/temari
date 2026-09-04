@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState, useMemo } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { StoredNote } from '../../types';
 import { Copy, Check, Printer, FileText, Maximize2, Share2, Sparkles, Tag, BookOpen, Clock } from 'lucide-react';
 
@@ -8,9 +8,9 @@ interface NoteViewerProps {
   onHighlightTerm?: (term: string, context?: string) => void;
 }
 
-// ⚡ Performance optimization: Pure markdown formatter placed outside component
-// to eliminate function re-allocation and allow memoized calls.
-const formatMarkdown = (md: string): string => {
+// Convert markdown into HTML with callouts and tables.
+// Defined outside component scope to avoid recreating function reference on every render.
+function formatMarkdown(md: string): string {
   let formatted = md;
 
   // Callouts

@@ -1,5 +1,5 @@
-## 2025-09-04 - React useMemo Invalidation from Unmemoized Storage Calls
+# Bolt's Journal - Critical Learnings
 
-**Learning:** Calling synchronous LocalStorage getters directly in component render bodies (e.g., `StorageService.getAttempts()`) creates brand-new array/object references on every single render pass. Passing these newly allocated references into `useMemo` dependency arrays completely invalidates `useMemo` caching, causing heavy pure functions to re-calculate on every render alongside redundant synchronous JSON parsing I/O.
-
-**Action:** Always consume storage data via reactive state hooks (`useStudyData()`) or memoize LocalStorage reads to preserve reference equality across renders.
+## 2025-05-20 - NoteViewer Markdown Re-parsing
+**Learning:** `formatMarkdown` in `NoteViewer` parses text line-by-line and executes multiple regexes. Triggering selection/highlighting state changes (`onMouseUp`) causes re-renders that re-parse the full document text unless `useMemo` is used.
+**Action:** Always memoize expensive document/text transformation functions when component local state updates frequently.
