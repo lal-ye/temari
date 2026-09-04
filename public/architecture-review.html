@@ -1,0 +1,244 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Architecture review for Temari</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script type="module">
+      import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
+      mermaid.initialize({ startOnLoad: true, theme: "neutral", securityLevel: "loose" });
+    </script>
+    <style>
+      .seam { stroke-dasharray: 4 4; }
+      .leak { stroke: #dc2626; }
+      .deep { background: linear-gradient(135deg, #0f172a, #1e293b); }
+    </style>
+  </head>
+  <body class="bg-stone-50 text-slate-900 font-sans p-8">
+    <main class="max-w-6xl mx-auto space-y-12">
+      <header class="border-b border-stone-200 pb-6">
+        <div class="flex items-center justify-between">
+          <div>
+            <h1 class="text-3xl font-serif font-bold text-slate-900">Architecture Review: Temari</h1>
+            <p class="text-stone-500 text-sm mt-1">Deep Module Analysis & Refactoring Candidates • 2026-08-27</p>
+          </div>
+          <div class="flex items-center space-x-4 text-xs font-mono bg-stone-100 p-3 rounded-lg border border-stone-200">
+            <span class="flex items-center gap-1"><span class="w-3 h-3 bg-white border border-slate-400 rounded-sm"></span> Module</span>
+            <span class="flex items-center gap-1"><span class="w-3 h-0.5 bg-slate-400 border-t border-dashed border-slate-600"></span> Seam</span>
+            <span class="flex items-center gap-1"><span class="w-3 h-3 bg-slate-900 rounded-sm"></span> Deep Module</span>
+            <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-red-500"></span> Leakage</span>
+          </div>
+        </div>
+      </header>
+
+      <section id="candidates" class="space-y-10">
+        <!-- CANDIDATE 1 -->
+        <article class="bg-white rounded-xl border border-stone-200 p-6 shadow-sm space-y-6">
+          <div class="flex items-start justify-between">
+            <div>
+              <span class="px-2.5 py-1 text-xs font-semibold bg-emerald-100 text-emerald-800 rounded-full">Strong</span>
+              <span class="ml-2 px-2.5 py-1 text-xs font-mono bg-stone-100 text-stone-700 rounded-md">in-process / state persistence</span>
+              <h2 class="text-xl font-bold font-serif text-slate-900 mt-2">1. Consolidate Persistence & Reactive Sync into a Deep Study Store Module</h2>
+            </div>
+            <div class="font-mono text-xs text-stone-500 text-right">
+              <div>src/services/storage.ts</div>
+              <div>src/hooks/useStudyData.ts</div>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6 bg-stone-50 p-4 rounded-lg border border-stone-200">
+            <div>
+              <div class="text-xs font-bold uppercase tracking-wider text-stone-500 mb-2">Before: Shallow Pass-through Layers</div>
+              <div class="bg-white p-3 rounded border border-stone-200 text-xs">
+                <pre class="mermaid">
+                  flowchart TD
+                    UI[React Components] -->|20+ pass-through methods| Hook[useStudyData Hook]
+                    Hook -->|Direct mirror calls| Storage[StorageService Static Methods]
+                    Storage -->|Raw JSON key reads/writes| LS[(localStorage)]
+                    classDef shallow fill:#fef2f2,stroke:#ef4444;
+                    class Hook,Storage shallow
+                </pre>
+              </div>
+            </div>
+            <div>
+              <div class="text-xs font-bold uppercase tracking-wider text-stone-500 mb-2">After: Deep Study Store Module</div>
+              <div class="bg-white p-3 rounded border border-stone-200 text-xs">
+                <pre class="mermaid">
+                  flowchart TD
+                    UI[React Components] -->|Clean Domain Operations| Store[Study Store Module]
+                    subgraph Deep Module [Internal Implementation]
+                      Store --> State[In-Memory Reactive State]
+                      Store --> Persist[Storage Adapter / Engine]
+                      Persist --> LS[(localStorage)]
+                    end
+                    classDef deep fill:#0f172a,color:#fff,stroke:#3b82f6,stroke-width:2px;
+                    class Store deep
+                </pre>
+              </div>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+            <div>
+              <h3 class="font-semibold text-slate-900">Problem</h3>
+              <p class="text-stone-600 mt-1">StorageService exposes 20+ thin CRUD functions for local storage, which useStudyData mirrors identically line-by-line, creating two shallow pass-through modules with zero leverage.</p>
+            </div>
+            <div>
+              <h3 class="font-semibold text-slate-900">Solution</h3>
+              <p class="text-stone-600 mt-1">Unify state management and persistence into a single deep Study Store module hiding storage details behind high-level domain interfaces.</p>
+            </div>
+            <div>
+              <h3 class="font-semibold text-slate-900">Wins</h3>
+              <ul class="list-disc list-inside text-stone-600 mt-1 space-y-1">
+                <li><strong>locality</strong>: state mutations and reactive sync reside in one module</li>
+                <li><strong>leverage</strong>: callers invoke domain actions without pass-through hooks</li>
+                <li><strong>testability</strong>: module tested through interface without mock storage</li>
+              </ul>
+            </div>
+          </div>
+        </article>
+
+        <!-- CANDIDATE 2 -->
+        <article class="bg-white rounded-xl border border-stone-200 p-6 shadow-sm space-y-6">
+          <div class="flex items-start justify-between">
+            <div>
+              <span class="px-2.5 py-1 text-xs font-semibold bg-emerald-100 text-emerald-800 rounded-full">Strong</span>
+              <span class="ml-2 px-2.5 py-1 text-xs font-mono bg-stone-100 text-stone-700 rounded-md">ports & adapters / AI client</span>
+              <h2 class="text-xl font-bold font-serif text-slate-900 mt-2">2. Decouple AI Service behind Provider Adapters</h2>
+            </div>
+            <div class="font-mono text-xs text-stone-500 text-right">
+              <div>src/services/aiService.ts</div>
+              <div>server.ts</div>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6 bg-stone-50 p-4 rounded-lg border border-stone-200">
+            <div>
+              <div class="text-xs font-bold uppercase tracking-wider text-stone-500 mb-2">Before: Mixed Fetch & Direct Fallback Logic</div>
+              <div class="bg-white p-3 rounded border border-stone-200 text-xs">
+                <pre class="mermaid">
+                  flowchart TD
+                    UI[Components / Hooks] --> AIService[AIService Monolith]
+                    AIService -->|Try fetch /api/ai/*| Remote[Express Server Endpoint]
+                    AIService -.->|Catch error -> Client Fallback| Fallback[Embedded Mock Generators]
+                    classDef leak stroke:#dc2626,stroke-width:2px;
+                    class AIService leak
+                </pre>
+              </div>
+            </div>
+            <div>
+              <div class="text-xs font-bold uppercase tracking-wider text-stone-500 mb-2">After: Clean Adapter Seam</div>
+              <div class="bg-white p-3 rounded border border-stone-200 text-xs">
+                <pre class="mermaid">
+                  flowchart TD
+                    UI[Components / Hooks] --> Client[Deep AI Client Module]
+                    Client -.Seam.-> Adapter[AiAdapter Interface]
+                    Adapter --> RemoteAdapter[HttpRemoteAiAdapter]
+                    Adapter --> DirectAdapter[ClientFallbackAiAdapter]
+                    classDef deep fill:#0f172a,color:#fff,stroke:#3b82f6,stroke-width:2px;
+                    class Client deep
+                </pre>
+              </div>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+            <div>
+              <h3 class="font-semibold text-slate-900">Problem</h3>
+              <p class="text-stone-600 mt-1">AIService duplicates network fetch error-handling and fallback generation across 7 methods, leaking transport details and mock logic across the entire module.</p>
+            </div>
+            <div>
+              <h3 class="font-semibold text-slate-900">Solution</h3>
+              <p class="text-stone-600 mt-1">Introduce a clean AiAdapter interface with two adapters: HttpRemoteAiAdapter and ClientFallbackAiAdapter, hiding transport and fallback mechanics behind a deep AI client module.</p>
+            </div>
+            <div>
+              <h3 class="font-semibold text-slate-900">Wins</h3>
+              <ul class="list-disc list-inside text-stone-600 mt-1 space-y-1">
+                <li><strong>locality</strong>: network handling and mock fallback isolated in adapters</li>
+                <li><strong>leverage</strong>: testable with mock adapter without global fetch overrides</li>
+                <li><strong>two adapters justify seam</strong>: HTTP in production, offline fallback in tests/offline</li>
+              </ul>
+            </div>
+          </div>
+        </article>
+
+        <!-- CANDIDATE 3 -->
+        <article class="bg-white rounded-xl border border-stone-200 p-6 shadow-sm space-y-6">
+          <div class="flex items-start justify-between">
+            <div>
+              <span class="px-2.5 py-1 text-xs font-semibold bg-amber-100 text-amber-800 rounded-full">Worth exploring</span>
+              <span class="ml-2 px-2.5 py-1 text-xs font-mono bg-stone-100 text-stone-700 rounded-md">local-substitutable / analytics</span>
+              <h2 class="text-xl font-bold font-serif text-slate-900 mt-2">3. Unify Assessment Engine & Diagnostic Analytics</h2>
+            </div>
+            <div class="font-mono text-xs text-stone-500 text-right">
+              <div>src/utils/analytics.ts</div>
+              <div>src/services/storage.ts</div>
+              <div>src/components/analytics/AnalyticsView.tsx</div>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6 bg-stone-50 p-4 rounded-lg border border-stone-200">
+            <div>
+              <div class="text-xs font-bold uppercase tracking-wider text-stone-500 mb-2">Before: Scattered Assessment Logic</div>
+              <div class="bg-white p-3 rounded border border-stone-200 text-xs">
+                <pre class="mermaid">
+                  flowchart TD
+                    View[AnalyticsView Component] -->|1. Fetch raw attempts| Storage[StorageService]
+                    View -->|2. Compute stats| Analytics[computeAnalyticsSummary Pure Util]
+                    Exam[ExamTakingView] -->|3. Calculate scores & format| Storage
+                    classDef shallow fill:#fef2f2,stroke:#ef4444;
+                    class Analytics shallow
+                </pre>
+              </div>
+            </div>
+            <div>
+              <div class="text-xs font-bold uppercase tracking-wider text-stone-500 mb-2">After: Deep Assessment & Diagnostics Module</div>
+              <div class="bg-white p-3 rounded border border-stone-200 text-xs">
+                <pre class="mermaid">
+                  flowchart TD
+                    Exam[Exam / Quiz Component] -->|Submit Completed Exam| AssessmentEngine[Deep Assessment Engine]
+                    View[Analytics Component] -->|Get Subject Diagnostics| AssessmentEngine
+                    subgraph AssessmentEngine
+                      Grade[Grading Logic]
+                      History[Attempt History Store]
+                      Stats[Diagnostic Summarizer]
+                    end
+                    classDef deep fill:#0f172a,color:#fff,stroke:#3b82f6,stroke-width:2px;
+                    class AssessmentEngine deep
+                </pre>
+              </div>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+            <div>
+              <h3 class="font-semibold text-slate-900">Problem</h3>
+              <p class="text-stone-600 mt-1">Exam result recording, grading calculations, and diagnostic aggregation are split across utility functions, storage getters, and UI view logic.</p>
+            </div>
+            <div>
+              <h3 class="font-semibold text-slate-900">Solution</h3>
+              <p class="text-stone-600 mt-1">Encapsulate attempt recording, grading evaluation, score distribution, and topic accuracy inside a deep Assessment Engine module.</p>
+            </div>
+            <div>
+              <h3 class="font-semibold text-slate-900">Wins</h3>
+              <ul class="list-disc list-inside text-stone-600 mt-1 space-y-1">
+                <li><strong>locality</strong>: diagnostic calculations and attempt history concentrate in one place</li>
+                <li><strong>leverage</strong>: UI receives ready-to-render analytics summaries</li>
+                <li><strong>testability</strong>: full assessment lifecycle verified through a single interface</li>
+              </ul>
+            </div>
+          </div>
+        </article>
+      </section>
+
+      <!-- TOP RECOMMENDATION -->
+      <section id="top-recommendation" class="bg-slate-900 text-white rounded-xl p-8 border border-slate-800 shadow-lg space-y-4">
+        <span class="px-3 py-1 text-xs font-bold uppercase tracking-wider bg-emerald-500 text-slate-950 rounded-full">Top Recommendation</span>
+        <h2 class="text-2xl font-serif font-bold text-white">Consolidate Persistence & Reactive Sync into a Deep Study Store Module</h2>
+        <p class="text-slate-300 text-sm max-w-3xl leading-relaxed">
+          The current separation between <code class="text-emerald-400">StorageService</code> (a 20+ method static CRUD wrapper) and <code class="text-emerald-400">useStudyData</code> (a React hook that mirrors every single StorageService method) represents the highest architectural friction in the codebase. Both are shallow pass-through layers. Collapsing them into a deep <strong>Study Store Module</strong> will yield maximum <strong>locality</strong> for state persistence and maximum <strong>leverage</strong> for callers and tests.
+        </p>
+      </section>
+    </main>
+  </body>
+</html>
