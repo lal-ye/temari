@@ -261,8 +261,26 @@ const SEED_TASKS: StudyTask[] = [
 type StorageListener = () => void;
 const storageListeners = new Set<StorageListener>();
 
+// In-memory caching to avoid redundant localStorage reads and JSON.parse operations on every render
+let cachedSubjects: Subject[] | null = null;
+let cachedNotes: StoredNote[] | null = null;
+let cachedQuizzes: StoredQuiz[] | null = null;
+let cachedAttempts: StoredAttempt[] | null = null;
+let cachedTasks: StudyTask[] | null = null;
+let cachedSettings: UserSettings | null = null;
+
+function clearCache(): void {
+  cachedSubjects = null;
+  cachedNotes = null;
+  cachedQuizzes = null;
+  cachedAttempts = null;
+  cachedTasks = null;
+  cachedSettings = null;
+}
+
 if (typeof window !== 'undefined') {
   window.addEventListener('storage', () => {
+    clearCache();
     storageListeners.forEach((fn) => {
       try {
         fn();
@@ -292,19 +310,24 @@ export const StorageService = {
   },
 
   getSubjects(): Subject[] {
+    if (cachedSubjects) return cachedSubjects;
     try {
       const data = localStorage.getItem(STORAGE_KEYS.SUBJECTS);
       if (!data) {
         localStorage.setItem(STORAGE_KEYS.SUBJECTS, JSON.stringify(SEED_SUBJECTS));
+        cachedSubjects = SEED_SUBJECTS;
         return SEED_SUBJECTS;
       }
-      return JSON.parse(data);
+      cachedSubjects = JSON.parse(data);
+      return cachedSubjects!;
     } catch {
+      cachedSubjects = SEED_SUBJECTS;
       return SEED_SUBJECTS;
     }
   },
 
   saveSubjects(subjects: Subject[]): void {
+    cachedSubjects = [...subjects];
     localStorage.setItem(STORAGE_KEYS.SUBJECTS, JSON.stringify(subjects));
     this.notify();
   },
@@ -348,48 +371,52 @@ export const StorageService = {
 
   // --- Tasks / Planner ---
   getTasks(subjectId?: string): StudyTask[] {
-    try {
-      const data = localStorage.getItem(STORAGE_KEYS.TASKS);
-      let tasks: StudyTask[] = data ? JSON.parse(data) : [];
-      if (!data) {
-        tasks = [
-          {
-            id: 'task-1',
-            subjectId: 'subj-cell-bio',
-            title: 'Review Citric Acid Cycle & Oxidative Phosphorylation notes',
-            dueDate: new Date().toISOString().split('T')[0],
-            estimatedMinutes: 30,
-            completed: false,
-          },
-          {
-            id: 'task-2',
-            subjectId: 'subj-cell-bio',
-            title: 'Practice 15-card Flashcard recall deck',
-            dueDate: new Date().toISOString().split('T')[0],
-            estimatedMinutes: 20,
-            completed: true,
-          },
-          {
-            id: 'task-3',
-            subjectId: 'subj-comp-sci',
-            title: 'Complete TCP 3-Way Handshake mock exam',
-            dueDate: new Date(Date.now() + 86400000).toISOString().split('T')[0],
-            estimatedMinutes: 45,
-            completed: false,
-          },
-        ];
-        localStorage.setItem(STORAGE_KEYS.TASKS, JSON.stringify(tasks));
+    if (!cachedTasks) {
+      try {
+        const data = localStorage.getItem(STORAGE_KEYS.TASKS);
+        let tasks: StudyTask[] = data ? JSON.parse(data) : [];
+        if (!data) {
+          tasks = [
+            {
+              id: 'task-1',
+              subjectId: 'subj-cell-bio',
+              title: 'Review Citric Acid Cycle & Oxidative Phosphorylation notes',
+              dueDate: new Date().toISOString().split('T')[0],
+              estimatedMinutes: 30,
+              completed: false,
+            },
+            {
+              id: 'task-2',
+              subjectId: 'subj-cell-bio',
+              title: 'Practice 15-card Flashcard recall deck',
+              dueDate: new Date().toISOString().split('T')[0],
+              estimatedMinutes: 20,
+              completed: true,
+            },
+            {
+              id: 'task-3',
+              subjectId: 'subj-comp-sci',
+              title: 'Complete TCP 3-Way Handshake mock exam',
+              dueDate: new Date(Date.now() + 86400000).toISOString().split('T')[0],
+              estimatedMinutes: 45,
+              completed: false,
+            },
+          ];
+          localStorage.setItem(STORAGE_KEYS.TASKS, JSON.stringify(tasks));
+        }
+        cachedTasks = tasks;
+      } catch {
+        cachedTasks = [];
       }
-      if (subjectId) {
-        return tasks.filter(t => t.subjectId === subjectId);
-      }
-      return tasks;
-    } catch {
-      return [];
     }
+    if (subjectId) {
+      return cachedTasks.filter(t => t.subjectId === subjectId);
+    }
+    return cachedTasks;
   },
 
   saveTasks(tasks: StudyTask[]): void {
+    cachedTasks = [...tasks];
     localStorage.setItem(STORAGE_KEYS.TASKS, JSON.stringify(tasks));
     this.notify();
   },
@@ -449,23 +476,27 @@ export const StorageService = {
 
   // --- Notes ---
   getNotes(subjectId?: string): StoredNote[] {
-    try {
-      const data = localStorage.getItem(STORAGE_KEYS.NOTES);
-      let notes: StoredNote[] = data ? JSON.parse(data) : [];
-      if (!data) {
-        notes = SEED_NOTES;
-        localStorage.setItem(STORAGE_KEYS.NOTES, JSON.stringify(SEED_NOTES));
+    if (!cachedNotes) {
+      try {
+        const data = localStorage.getItem(STORAGE_KEYS.NOTES);
+        let notes: StoredNote[] = data ? JSON.parse(data) : [];
+        if (!data) {
+          notes = SEED_NOTES;
+          localStorage.setItem(STORAGE_KEYS.NOTES, JSON.stringify(SEED_NOTES));
+        }
+        cachedNotes = notes;
+      } catch {
+        cachedNotes = SEED_NOTES;
       }
-      if (subjectId) {
-        return notes.filter(n => n.subjectId === subjectId);
-      }
-      return notes;
-    } catch {
-      return SEED_NOTES;
     }
+    if (subjectId) {
+      return cachedNotes.filter(n => n.subjectId === subjectId);
+    }
+    return cachedNotes;
   },
 
   saveNotes(notes: StoredNote[]): void {
+    cachedNotes = [...notes];
     localStorage.setItem(STORAGE_KEYS.NOTES, JSON.stringify(notes));
     this.notify();
   },
@@ -499,23 +530,27 @@ export const StorageService = {
 
   // --- Quizzes ---
   getQuizzes(subjectId?: string): StoredQuiz[] {
-    try {
-      const data = localStorage.getItem(STORAGE_KEYS.QUIZZES);
-      let quizzes: StoredQuiz[] = data ? JSON.parse(data) : [];
-      if (!data) {
-        quizzes = SEED_QUIZZES;
-        localStorage.setItem(STORAGE_KEYS.QUIZZES, JSON.stringify(SEED_QUIZZES));
+    if (!cachedQuizzes) {
+      try {
+        const data = localStorage.getItem(STORAGE_KEYS.QUIZZES);
+        let quizzes: StoredQuiz[] = data ? JSON.parse(data) : [];
+        if (!data) {
+          quizzes = SEED_QUIZZES;
+          localStorage.setItem(STORAGE_KEYS.QUIZZES, JSON.stringify(SEED_QUIZZES));
+        }
+        cachedQuizzes = quizzes;
+      } catch {
+        cachedQuizzes = SEED_QUIZZES;
       }
-      if (subjectId) {
-        return quizzes.filter(q => q.subjectId === subjectId);
-      }
-      return quizzes;
-    } catch {
-      return SEED_QUIZZES;
     }
+    if (subjectId) {
+      return cachedQuizzes.filter(q => q.subjectId === subjectId);
+    }
+    return cachedQuizzes;
   },
 
   saveQuizzes(quizzes: StoredQuiz[]): void {
+    cachedQuizzes = [...quizzes];
     localStorage.setItem(STORAGE_KEYS.QUIZZES, JSON.stringify(quizzes));
     this.notify();
   },
@@ -550,23 +585,27 @@ export const StorageService = {
 
   // --- Attempts / History ---
   getAttempts(subjectId?: string): StoredAttempt[] {
-    try {
-      const data = localStorage.getItem(STORAGE_KEYS.ATTEMPTS);
-      let attempts: StoredAttempt[] = data ? JSON.parse(data) : [];
-      if (!data) {
-        attempts = SEED_ATTEMPTS;
-        localStorage.setItem(STORAGE_KEYS.ATTEMPTS, JSON.stringify(SEED_ATTEMPTS));
+    if (!cachedAttempts) {
+      try {
+        const data = localStorage.getItem(STORAGE_KEYS.ATTEMPTS);
+        let attempts: StoredAttempt[] = data ? JSON.parse(data) : [];
+        if (!data) {
+          attempts = SEED_ATTEMPTS;
+          localStorage.setItem(STORAGE_KEYS.ATTEMPTS, JSON.stringify(SEED_ATTEMPTS));
+        }
+        cachedAttempts = attempts;
+      } catch {
+        cachedAttempts = SEED_ATTEMPTS;
       }
-      if (subjectId) {
-        return attempts.filter(a => a.subjectId === subjectId);
-      }
-      return attempts;
-    } catch {
-      return SEED_ATTEMPTS;
     }
+    if (subjectId) {
+      return cachedAttempts.filter(a => a.subjectId === subjectId);
+    }
+    return cachedAttempts;
   },
 
   saveAttempts(attempts: StoredAttempt[]): void {
+    cachedAttempts = [...attempts];
     localStorage.setItem(STORAGE_KEYS.ATTEMPTS, JSON.stringify(attempts));
     this.notify();
   },
@@ -590,17 +629,21 @@ export const StorageService = {
 
   // --- Settings ---
   getSettings(): UserSettings {
-    try {
-      const data = localStorage.getItem(STORAGE_KEYS.SETTINGS);
-      return data ? { ...DEFAULT_SETTINGS, ...JSON.parse(data) } : DEFAULT_SETTINGS;
-    } catch {
-      return DEFAULT_SETTINGS;
+    if (!cachedSettings) {
+      try {
+        const data = localStorage.getItem(STORAGE_KEYS.SETTINGS);
+        cachedSettings = data ? { ...DEFAULT_SETTINGS, ...JSON.parse(data) } : DEFAULT_SETTINGS;
+      } catch {
+        cachedSettings = DEFAULT_SETTINGS;
+      }
     }
+    return cachedSettings;
   },
 
   saveSettings(settings: Partial<UserSettings>): UserSettings {
     const current = this.getSettings();
     const updated = { ...current, ...settings };
+    cachedSettings = updated;
     localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(updated));
     this.notify();
     return updated;
@@ -639,6 +682,7 @@ export const StorageService = {
   },
 
   resetToDefaults(): void {
+    clearCache();
     localStorage.setItem(STORAGE_KEYS.SUBJECTS, JSON.stringify(SEED_SUBJECTS));
     localStorage.setItem(STORAGE_KEYS.NOTES, JSON.stringify(SEED_NOTES));
     localStorage.setItem(STORAGE_KEYS.QUIZZES, JSON.stringify(SEED_QUIZZES));
