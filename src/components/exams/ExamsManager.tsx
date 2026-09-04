@@ -86,7 +86,7 @@ export const ExamsManager: React.FC = () => {
     }
   };
 
-  const handleExamCompleted = (newAttempt: StoredAttempt) => {
+  const handleExamCompleted = (newAttempt: Omit<StoredAttempt, 'id' | 'date'>) => {
     // Single record op shared with quiz drills — the store owns id/date and
     // insertion order for every completed assessment.
     const recorded = studyStore.recordAttempt(newAttempt);
