@@ -19,7 +19,7 @@ interface ExamTakingViewProps {
   subjectId: string;
   questions: ExamQuestion[];
   timeLimitMinutes?: number;
-  onCompleted: (attempt: StoredAttempt) => void;
+  onCompleted: (attempt: Omit<StoredAttempt, 'id' | 'date'>) => void;
   onCancel: () => void;
 }
 
@@ -38,23 +38,36 @@ export const ExamTakingView: React.FC<ExamTakingViewProps> = ({
   const [timeLeft, setTimeLeft] = useState<number>(timeLimitMinutes * 60);
   const [isGrading, setIsGrading] = useState(false);
   const timerRef = useRef<any>(null);
+  // Guards so an exam is only ever submitted once — including when the
+  // countdown expires while the user has unanswered questions.
+  const submittedRef = useRef(false);
+  const submitRef = useRef<() => void>(() => {});
 
   const currentQ = questions[currentIndex];
 
+  // Keep the latest submit handler (fresh answers) available to the countdown.
+  useEffect(() => {
+    submitRef.current = () => {
+      if (submittedRef.current || isGrading) return;
+      submittedRef.current = true;
+      void handleSubmitExam();
+    };
+  });
+
   useEffect(() => {
     timerRef.current = setInterval(() => {
-      setTimeLeft((prev) => {
-        if (prev <= 1) {
-          clearInterval(timerRef.current);
-          handleSubmitExam();
-          return 0;
-        }
-        return prev - 1;
-      });
+      setTimeLeft((prev) => (prev > 0 ? prev - 1 : prev));
     }, 1000);
 
     return () => clearInterval(timerRef.current);
   }, []);
+
+  // When time expires, submit with the answers the student actually gave.
+  useEffect(() => {
+    if (timeLeft <= 0) {
+      submitRef.current();
+    }
+  }, [timeLeft]);
 
   const handleSelectAnswer = (ans: string) => {
     const updated = [...answers];
@@ -69,7 +82,8 @@ export const ExamTakingView: React.FC<ExamTakingViewProps> = ({
   };
 
   const handleSubmitExam = async () => {
-    if (isGrading) return;
+    if (submittedRef.current || isGrading) return;
+    submittedRef.current = true;
     clearInterval(timerRef.current);
     setIsGrading(true);
 
@@ -80,13 +94,11 @@ export const ExamTakingView: React.FC<ExamTakingViewProps> = ({
       });
 
       const correctCount = grading.results.filter((r) => r.isCorrect).length;
-      const attempt: StoredAttempt = {
-        id: `att-${Date.now()}`,
+      const attempt: Omit<StoredAttempt, 'id' | 'date'> = {
         subjectId,
         subjectName,
         name: examTitle,
         type: 'Exam',
-        date: new Date().toISOString(),
         timeSpentSeconds: timeLimitMinutes * 60 - timeLeft,
         overallScore: grading.overallScore,
         totalQuestions: questions.length,
@@ -118,13 +130,11 @@ export const ExamTakingView: React.FC<ExamTakingViewProps> = ({
       const correctCount = results.filter((r) => r.isCorrect).length;
       const score = Math.round((correctCount / questions.length) * 100);
 
-      const attempt: StoredAttempt = {
-        id: `att-${Date.now()}`,
+      const attempt: Omit<StoredAttempt, 'id' | 'date'> = {
         subjectId,
         subjectName,
         name: examTitle,
         type: 'Exam',
-        date: new Date().toISOString(),
         overallScore: score,
         totalQuestions: questions.length,
         correctQuestions: correctCount,

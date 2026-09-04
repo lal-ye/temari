@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useStudyData } from './hooks/useStudyData';
+import { studyStore, useActiveSubject, useActiveSubjectId, useSubjects } from './hooks/useStudyStore';
 import { NotesManager } from './components/notes/NotesManager';
 import { QuizzesManager } from './components/quizzes/QuizzesManager';
 import { ExamsManager } from './components/exams/ExamsManager';
@@ -30,11 +30,11 @@ import {
 type TabType = 'notes' | 'quizzes' | 'exams' | 'analytics' | 'planner';
 
 export default function App() {
-  const { subjects, addSubject, deleteSubject } = useStudyData();
+  const subjects = useSubjects();
+  const currentSubject = useActiveSubject();
+  const activeSubjectId = useActiveSubjectId();
+  const deleteSubject = studyStore.deleteSubject;
 
-  const [selectedSubjectId, setSelectedSubjectId] = useState<string>(() => {
-    return subjects[0]?.id || 'sub-bio';
-  });
   const [activeTab, setActiveTab] = useState<TabType>('notes');
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
@@ -50,25 +50,17 @@ export default function App() {
   const [newSubjectCode, setNewSubjectCode] = useState('');
   const [newSubjectColor, setNewSubjectColor] = useState('#2563eb');
 
-  const currentSubject = subjects.find((s) => s.id === selectedSubjectId) || subjects[0] || {
-    id: 'sub-general',
-    name: 'General Studies',
-    code: 'GEN101',
-    color: '#2563eb',
-    createdAt: new Date().toISOString(),
-  };
-
   const handleAddSubject = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newSubjectName.trim()) return;
 
-    const newSub = addSubject({
+    // The store creates the subject and makes it the active subject.
+    studyStore.addSubject({
       name: newSubjectName.trim(),
       code: newSubjectCode.trim() || undefined,
       color: newSubjectColor,
     });
 
-    setSelectedSubjectId(newSub.id);
     setNewSubjectName('');
     setNewSubjectCode('');
     setShowAddSubjectModal(false);
@@ -82,8 +74,6 @@ export default function App() {
     }
     if (confirm('Are you sure you want to delete this subject and all its related materials?')) {
       deleteSubject(id);
-      const remaining = subjects.filter((s) => s.id !== id);
-      setSelectedSubjectId(remaining[0]?.id || '');
     }
   };
 
@@ -160,8 +150,8 @@ export default function App() {
             </div>
             <div className="relative">
               <select
-                value={selectedSubjectId}
-                onChange={(e) => setSelectedSubjectId(e.target.value)}
+                value={activeSubjectId ?? ''}
+                onChange={(e) => studyStore.selectSubject(e.target.value)}
                 className="w-full bg-[#FAF8F5] text-slate-900 text-xs font-black rounded-lg px-2.5 py-2 pr-7 border-2 border-slate-900 shadow-xs focus:outline-hidden focus:ring-2 focus:ring-amber-400 appearance-none cursor-pointer"
               >
                 {subjects.map((sub) => (
@@ -294,12 +284,12 @@ export default function App() {
             <div className="flex items-center gap-2 px-3 py-1 bg-[#FAF8F5] border-2 border-slate-900 rounded-xl shadow-neo-sm">
               <span
                 className="w-3 h-3 rounded-full border border-slate-900"
-                style={{ backgroundColor: currentSubject.color || '#3B82F6' }}
+                style={{ backgroundColor: currentSubject?.color || '#3B82F6' }}
               />
               <span className="text-xs font-black text-slate-950">
-                {currentSubject.name}
+                {currentSubject?.name || 'General Studies'}
               </span>
-              {currentSubject.code && (
+              {currentSubject?.code && (
                 <span className="text-[10px] px-1.5 py-0.2 bg-slate-900 text-white font-mono font-bold rounded">
                   {currentSubject.code}
                 </span>
@@ -352,34 +342,19 @@ export default function App() {
         <main className="flex-1 overflow-y-auto p-4 sm:p-6 bg-[#FAF8F5] bg-neo-dots">
           <div className="max-w-6xl mx-auto">
             {activeTab === 'notes' && (
-              <NotesManager
-                currentSubject={currentSubject}
-                onHighlightTerm={handleHighlightExplain}
-              />
+              <NotesManager onHighlightTerm={handleHighlightExplain} />
             )}
 
             {activeTab === 'quizzes' && (
-              <QuizzesManager
-                currentSubject={currentSubject}
-                onHighlightTerm={handleHighlightExplain}
-              />
+              <QuizzesManager onHighlightTerm={handleHighlightExplain} />
             )}
 
-            {activeTab === 'exams' && <ExamsManager currentSubject={currentSubject} />}
+            {activeTab === 'exams' && <ExamsManager />}
 
-            {activeTab === 'analytics' && (
-              <AnalyticsView
-                subjects={subjects}
-                currentSubjectId={selectedSubjectId}
-              />
-            )}
+            {activeTab === 'analytics' && <AnalyticsView />}
 
             {activeTab === 'planner' && (
-              <PlannerView
-                subjects={subjects}
-                currentSubjectId={selectedSubjectId}
-                onOpenPomodoro={() => setShowPomodoro(true)}
-              />
+              <PlannerView onOpenPomodoro={() => setShowPomodoro(true)} />
             )}
           </div>
         </main>
@@ -407,7 +382,7 @@ export default function App() {
       <AITutorChat
         isOpen={showTutorChat}
         onClose={() => setShowTutorChat(false)}
-        currentSubjectName={currentSubject.name}
+        currentSubjectName={currentSubject?.name || 'General Studies'}
       />
 
       {/* Add Subject Modal */}
