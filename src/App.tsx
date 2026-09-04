@@ -8,7 +8,7 @@ import { PlannerView } from './components/planner/PlannerView';
 import { PomodoroTimer } from './components/tools/PomodoroTimer';
 import { ExplainTermModal } from './components/tools/ExplainTermModal';
 import { ApiKeySettingsModal } from './components/tools/ApiKeySettingsModal';
-import { AITutorChat } from './components/tools/AITutorChat';
+import { ModelPicker } from './components/tools/ModelPicker';
 import {
   BookOpen,
   Layers,
@@ -17,7 +17,6 @@ import {
   Calendar,
   Clock,
   Key,
-  Bot,
   Plus,
   FolderPlus,
   Trash2,
@@ -41,7 +40,6 @@ export default function App() {
   // Modals and Drawers
   const [showApiKeyModal, setShowApiKeyModal] = useState(false);
   const [showPomodoro, setShowPomodoro] = useState(false);
-  const [showTutorChat, setShowTutorChat] = useState(false);
   const [explainTermData, setExplainTermData] = useState<{ term: string; context?: string } | null>(
     null
   );
@@ -101,11 +99,11 @@ export default function App() {
 
       {/* Left Sidebar (Neo-Brutalist Canvas) */}
       <aside
-        className={`fixed lg:static inset-y-0 left-0 z-50 w-68 bg-[#FFFDF9] text-slate-900 flex flex-col justify-between p-4 border-r-3 border-slate-900 shadow-neo-lg lg:shadow-none transition-transform duration-200 ease-in-out ${
+        className={`fixed lg:static inset-y-0 left-0 z-50 w-68 bg-[#FFFDF9] text-slate-900 flex flex-col h-full max-h-screen overflow-y-auto overscroll-contain p-4 border-r-3 border-slate-900 shadow-neo-lg lg:shadow-none transition-transform duration-200 ease-in-out ${
           sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
         }`}
       >
-        <div className="space-y-4">
+        <div className="space-y-4 shrink-0">
           {/* Brand Header: Prominent TEMARI ተማሪ */}
           <div className="bg-[#FEF08A] border-3 border-slate-900 rounded-2xl p-3.5 shadow-neo relative overflow-hidden">
             <div className="flex items-center justify-between">
@@ -220,34 +218,24 @@ export default function App() {
             </button>
             <button
               onClick={() => {
-                setShowTutorChat(true);
-                setSidebarOpen(false);
-              }}
-              className="w-full flex items-center justify-between px-3 py-2 bg-white hover:bg-emerald-50 rounded-xl text-xs font-bold text-slate-900 border-2 border-slate-900 shadow-xs hover:shadow-neo-sm transition-all"
-            >
-              <span className="flex items-center gap-2">
-                <Bot className="w-4 h-4 text-emerald-600" />
-                <span>Temari AI Tutor</span>
-              </span>
-              <span className="text-[10px] px-1.5 py-0.5 bg-emerald-200 text-emerald-950 font-black rounded border border-slate-900">
-                Online
-              </span>
-            </button>
-            <button
-              onClick={() => {
                 setShowApiKeyModal(true);
                 setSidebarOpen(false);
               }}
-              className="w-full flex items-center gap-2 px-3 py-2 bg-white hover:bg-purple-50 rounded-xl text-xs font-bold text-slate-900 border-2 border-slate-900 shadow-xs hover:shadow-neo-sm transition-all"
+              className="w-full flex items-center justify-between px-3 py-2 bg-white hover:bg-yellow-50 rounded-xl text-xs font-bold text-slate-900 border-2 border-slate-900 shadow-xs hover:shadow-neo-sm transition-all"
             >
-              <Key className="w-4 h-4 text-purple-600" />
-              <span>Gemini API Key</span>
+              <div className="flex items-center gap-2">
+                <Key className="w-4 h-4 text-purple-600" />
+                <span>AI & Model Config</span>
+              </div>
+              <span className="text-[9px] font-black uppercase px-1.5 py-0.5 bg-yellow-200 border border-slate-900 rounded">
+                BYOK
+              </span>
             </button>
           </div>
         </div>
 
         {/* Bottom Sidebar: Study Streak Widget */}
-        <div className="pt-3 border-t-2 border-slate-200">
+        <div className="pt-3 mt-auto border-t-2 border-slate-200 shrink-0">
           <div className="bg-[#FEF08A] rounded-xl p-3 border-2 border-slate-900 shadow-neo-sm">
             <div className="flex items-center justify-between mb-1.5">
               <span className="text-[11px] font-black text-slate-900 flex items-center gap-1.5">
@@ -299,27 +287,17 @@ export default function App() {
 
           {/* Quick Action Controls */}
           <div className="flex items-center gap-2 sm:gap-3">
-            <button
-              onClick={() => setShowPomodoro(true)}
-              className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 bg-[#FEF08A] hover:bg-yellow-300 text-slate-950 text-xs font-black rounded-xl border-2 border-slate-900 shadow-neo-sm hover:shadow-neo transition-all active:translate-y-0.5"
-            >
-              <Clock className="w-3.5 h-3.5 text-slate-900" />
-              <span>Pomodoro</span>
-            </button>
-
-            <button
-              onClick={() => setShowTutorChat(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-[#A7F3D0] hover:bg-emerald-300 text-slate-950 text-xs font-black rounded-xl border-2 border-slate-900 shadow-neo-sm hover:shadow-neo transition-all active:translate-y-0.5"
-            >
-              <Bot className="w-3.5 h-3.5" />
-              <span>Ask ተማሪ AI</span>
-            </button>
+            {/* Dynamic Active AI Model Selector */}
+            <ModelPicker
+              variant="compact"
+              onOpenSettings={() => setShowApiKeyModal(true)}
+            />
 
             <button
               onClick={() => setShowApiKeyModal(true)}
               className="p-1.5 text-slate-900 bg-white hover:bg-slate-100 rounded-xl border-2 border-slate-900 shadow-neo-sm transition-all active:translate-y-0.5"
-              title="Gemini API Key"
-              aria-label="API Settings"
+              title="AI Providers & Model Settings"
+              aria-label="AI Providers and Models Settings"
             >
               <Key className="w-4 h-4" />
             </button>
@@ -377,12 +355,6 @@ export default function App() {
         term={explainTermData?.term || ''}
         context={explainTermData?.context}
         onClose={() => setExplainTermData(null)}
-      />
-
-      <AITutorChat
-        isOpen={showTutorChat}
-        onClose={() => setShowTutorChat(false)}
-        currentSubjectName={currentSubject?.name || 'General Studies'}
       />
 
       {/* Add Subject Modal */}

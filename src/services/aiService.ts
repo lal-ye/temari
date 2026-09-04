@@ -1,4 +1,4 @@
-import { Flashcard, ExamQuestion, ExamResult, Article } from '../types';
+import { Flashcard, ExamQuestion, ExamResult, Article, AIProvider, getActiveModelForProvider } from '../types';
 import { getStudyStore } from './studyStore';
 
 export interface GenerateNotesParams {
@@ -33,17 +33,114 @@ export interface ExplainTermParams {
 }
 
 export const AIService = {
+  getProvider(): AIProvider {
+    return (getStudyStore().settings.selectedProvider as AIProvider) || 'gemini';
+  },
+
+  getModel(): string {
+    const settings = getStudyStore().settings;
+    return getActiveModelForProvider(settings, this.getProvider());
+  },
+
   getApiKey(): string | undefined {
-    return getStudyStore().settings.apiKey;
+    const settings = getStudyStore().settings;
+    const provider = this.getProvider();
+    if (settings.providerKeys && settings.providerKeys[provider]) {
+      return settings.providerKeys[provider];
+    }
+    return settings.apiKey;
+  },
+
+  getBaseUrl(): string | undefined {
+    return getStudyStore().settings.customBaseUrl;
+  },
+
+  async testConnection(options?: {
+    provider?: string;
+    model?: string;
+    apiKey?: string;
+    baseUrl?: string;
+  }): Promise<{ success: boolean; latencyMs: number; reply?: string; error?: string; providerUsed?: string; modelUsed?: string }> {
+    const provider = options?.provider || this.getProvider();
+    const model = options?.model || this.getModel();
+    const apiKey = options?.apiKey ?? this.getApiKey();
+    const baseUrl = options?.baseUrl ?? this.getBaseUrl();
+
+    try {
+      const response = await fetch('/api/ai/test-connection', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ provider, model, apiKey, baseUrl }),
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        return {
+          success: false,
+          latencyMs: data.latencyMs || 0,
+          error: data.error || `HTTP ${response.status}: Failed to connect`,
+        };
+      }
+      return data;
+    } catch (err: any) {
+      return {
+        success: false,
+        latencyMs: 0,
+        error: err.message || 'Network error connecting to AI endpoint',
+      };
+    }
+  },
+
+  async fetchLiveModels(options?: {
+    provider?: string;
+    apiKey?: string;
+    baseUrl?: string;
+  }): Promise<{
+    success: boolean;
+    provider: string;
+    models: Array<{
+      id: string;
+      name: string;
+      description?: string;
+      contextWindow?: number;
+      isVisionCapable?: boolean;
+    }>;
+    error?: string;
+  }> {
+    const provider = options?.provider || this.getProvider();
+    const apiKey = options?.apiKey ?? this.getApiKey();
+    const baseUrl = options?.baseUrl ?? this.getBaseUrl();
+
+    try {
+      const response = await fetch('/api/ai/fetch-live-models', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ provider, apiKey, baseUrl }),
+      });
+
+      const data = await response.json();
+      return data;
+    } catch (err: any) {
+      return {
+        success: false,
+        provider,
+        models: [],
+        error: err.message || 'Network error fetching live models from provider',
+      };
+    }
   },
 
   async generateNotes(params: GenerateNotesParams): Promise<string> {
+    const provider = this.getProvider();
+    const model = this.getModel();
     const apiKey = this.getApiKey();
+    const baseUrl = this.getBaseUrl();
+
     try {
       const response = await fetch('/api/ai/generate-notes', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...params, apiKey }),
+        body: JSON.stringify({ ...params, provider, model, apiKey, baseUrl }),
         signal: params.signal,
       });
 
@@ -51,21 +148,26 @@ export const AIService = {
         const data = await response.json();
         return data.notes;
       }
-      throw new Error(`Server returned status ${response.status}`);
+      const errData = await response.json().catch(() => ({}));
+      throw new Error(errData.error || `Server returned status ${response.status}`);
     } catch (err: any) {
       if (err?.name === 'AbortError') throw err;
-      console.warn('Backend API note generation failed or offline, attempting client BYOK/fallback:', err);
+      console.warn('Backend API note generation failed or offline, attempting client fallback:', err);
       return this.clientGenerateNotes(params, apiKey);
     }
   },
 
   async generateQuiz(params: GenerateQuizParams): Promise<Flashcard[]> {
+    const provider = this.getProvider();
+    const model = this.getModel();
     const apiKey = this.getApiKey();
+    const baseUrl = this.getBaseUrl();
+
     try {
       const response = await fetch('/api/ai/generate-quiz', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...params, apiKey }),
+        body: JSON.stringify({ ...params, provider, model, apiKey, baseUrl }),
         signal: params.signal,
       });
 
@@ -73,7 +175,8 @@ export const AIService = {
         const data = await response.json();
         return data.flashcards;
       }
-      throw new Error(`Server returned status ${response.status}`);
+      const errData = await response.json().catch(() => ({}));
+      throw new Error(errData.error || `Server returned status ${response.status}`);
     } catch (err: any) {
       if (err?.name === 'AbortError') throw err;
       console.warn('Backend API quiz generation failed or offline, attempting client fallback:', err);
@@ -82,12 +185,16 @@ export const AIService = {
   },
 
   async generateExam(params: GenerateExamParams): Promise<ExamQuestion[]> {
+    const provider = this.getProvider();
+    const model = this.getModel();
     const apiKey = this.getApiKey();
+    const baseUrl = this.getBaseUrl();
+
     try {
       const response = await fetch('/api/ai/generate-exam', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...params, apiKey }),
+        body: JSON.stringify({ ...params, provider, model, apiKey, baseUrl }),
         signal: params.signal,
       });
 
@@ -95,7 +202,8 @@ export const AIService = {
         const data = await response.json();
         return data.exam;
       }
-      throw new Error(`Server returned status ${response.status}`);
+      const errData = await response.json().catch(() => ({}));
+      throw new Error(errData.error || `Server returned status ${response.status}`);
     } catch (err: any) {
       if (err?.name === 'AbortError') throw err;
       console.warn('Backend API exam generation failed or offline, attempting client fallback:', err);
@@ -109,19 +217,24 @@ export const AIService = {
     topicsToReview: string[];
     extraReadings: Article[];
   }> {
+    const provider = this.getProvider();
+    const model = this.getModel();
     const apiKey = this.getApiKey();
+    const baseUrl = this.getBaseUrl();
+
     try {
       const response = await fetch('/api/ai/grade-exam', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...params, apiKey }),
+        body: JSON.stringify({ ...params, provider, model, apiKey, baseUrl }),
         signal: params.signal,
       });
 
       if (response.ok) {
         return await response.json();
       }
-      throw new Error(`Server returned status ${response.status}`);
+      const errData = await response.json().catch(() => ({}));
+      throw new Error(errData.error || `Server returned status ${response.status}`);
     } catch (err: any) {
       if (err?.name === 'AbortError') throw err;
       console.warn('Backend grading failed or offline, calculating locally with AI heuristics:', err);
@@ -130,19 +243,24 @@ export const AIService = {
   },
 
   async explainTerm(params: ExplainTermParams): Promise<{ explanation: string; relatedLinks?: Article[] }> {
+    const provider = this.getProvider();
+    const model = this.getModel();
     const apiKey = this.getApiKey();
+    const baseUrl = this.getBaseUrl();
+
     try {
       const response = await fetch('/api/ai/explain-term', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...params, apiKey }),
+        body: JSON.stringify({ ...params, provider, model, apiKey, baseUrl }),
         signal: params.signal,
       });
 
       if (response.ok) {
         return await response.json();
       }
-      throw new Error(`Server returned status ${response.status}`);
+      const errData = await response.json().catch(() => ({}));
+      throw new Error(errData.error || `Server returned status ${response.status}`);
     } catch (err: any) {
       if (err?.name === 'AbortError') throw err;
       return this.clientExplainTerm(params);
@@ -150,12 +268,16 @@ export const AIService = {
   },
 
   async extractPdfText(pdfDataUri: string, signal?: AbortSignal): Promise<string> {
+    const provider = this.getProvider();
+    const model = this.getModel();
     const apiKey = this.getApiKey();
+    const baseUrl = this.getBaseUrl();
+
     try {
       const response = await fetch('/api/ai/extract-pdf', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ pdfDataUri, apiKey }),
+        body: JSON.stringify({ pdfDataUri, provider, model, apiKey, baseUrl }),
         signal,
       });
 
@@ -163,32 +285,19 @@ export const AIService = {
         const data = await response.json();
         return data.extractedText;
       }
-      throw new Error(`Server returned status ${response.status}`);
-    } catch (err: any) {
-      if (err?.name === 'AbortError') throw err;
-      console.error('PDF text extraction error:', err);
-      throw new Error('Could not extract PDF text. Please ensure the backend server or a valid Gemini API key is configured.');
-    }
-  },
-
-  async chatTutor(messages: { role: string; content: string }[], context?: string, signal?: AbortSignal): Promise<string> {
-    const apiKey = this.getApiKey();
-    try {
-      const response = await fetch('/api/ai/chat-tutor', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messages, context, apiKey }),
-        signal,
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        return data.reply;
+      const errData = await response.json().catch(() => ({}));
+      let errMsg = errData.error || `Server returned status ${response.status}`;
+      if (typeof errMsg === 'string' && errMsg.startsWith('{')) {
+        try {
+          const parsed = JSON.parse(errMsg);
+          if (parsed?.error?.message) errMsg = parsed.error.message;
+        } catch (_) {}
       }
-      throw new Error(`Server returned status ${response.status}`);
+      throw new Error(errMsg);
     } catch (err: any) {
       if (err?.name === 'AbortError') throw err;
-      return this.clientChatTutor(messages, context);
+      console.warn('PDF text extraction notice:', err?.message || err);
+      throw new Error(err?.message || 'Could not extract PDF text.');
     }
   },
 
@@ -389,18 +498,5 @@ mindmap
         }
       ]
     };
-  },
-
-  async clientChatTutor(messages: { role: string; content: string }[], context?: string): Promise<string> {
-    const lastMsg = messages[messages.length - 1]?.content || '';
-    return `That's an excellent question! When analyzing **"${lastMsg.slice(0, 60)}"**, consider breaking it down into three key steps:
-
-1. **Fundamental Definition**: Clearly identify the core inputs, outputs, and governing principles.
-2. **Mechanism**: Trace how energy, information, or causal variables transition through the system.
-3. **Application**: Test yourself with a counter-example (e.g., what happens if a regulatory factor is removed or mutated?).
-
-${context ? `> *Referencing current notes context:* Keep in mind how this relates to your recent notes on this subject.` : ''}
-
-Would you like me to generate a quick practice question to test your understanding on this concept?`;
   }
 };
