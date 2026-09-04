@@ -75,11 +75,48 @@ export function computeAnalyticsSummary(
     };
   }
 
-  const quizzes = filteredAttempts.filter((a) => a.type === 'Quiz');
-  const exams = filteredAttempts.filter((a) => a.type === 'Exam');
-  const sumScore = filteredAttempts.reduce((acc, a) => acc + a.overallScore, 0);
+  let quizzesCount = 0;
+  let examsCount = 0;
+  let sumScore = 0;
+  let passedCount = 0;
+
+  // Score distribution buckets
+  const distribution: ScoreDistributionBucket[] = [
+    { name: '0-59%', count: 0 },
+    { name: '60-69%', count: 0 },
+    { name: '70-79%', count: 0 },
+    { name: '80-89%', count: 0 },
+    { name: '90-100%', count: 0 },
+  ];
+
+  // Topic performance aggregation from detailed results
+  const topicMap = new Map<string, { correct: number; total: number }>();
+
+  // Single-pass iteration to aggregate counts, scores, distribution, and topic performance
+  filteredAttempts.forEach((a) => {
+    if (a.type === 'Quiz') quizzesCount++;
+    else if (a.type === 'Exam') examsCount++;
+
+    sumScore += a.overallScore;
+
+    if (a.overallScore >= 70) passedCount++;
+
+    if (a.overallScore < 60) distribution[0].count++;
+    else if (a.overallScore < 70) distribution[1].count++;
+    else if (a.overallScore < 80) distribution[2].count++;
+    else if (a.overallScore < 90) distribution[3].count++;
+    else distribution[4].count++;
+
+    a.examResults?.forEach((r) => {
+      const t = r.topic || 'General';
+      const cur = topicMap.get(t) || { correct: 0, total: 0 };
+      cur.total++;
+      if (r.isCorrect) cur.correct++;
+      topicMap.set(t, cur);
+    });
+  });
+
   const averageScore = Math.round(sumScore / total);
-  const passedCount = filteredAttempts.filter((a) => a.overallScore >= 70).length;
   const passRate = Math.round((passedCount / total) * 100);
 
   // Chronological score history
@@ -91,35 +128,6 @@ export function computeAnalyticsSummary(
       name: a.name,
       type: a.type,
     }));
-
-  // Score distribution buckets
-  const distribution: ScoreDistributionBucket[] = [
-    { name: '0-59%', count: 0 },
-    { name: '60-69%', count: 0 },
-    { name: '70-79%', count: 0 },
-    { name: '80-89%', count: 0 },
-    { name: '90-100%', count: 0 },
-  ];
-
-  filteredAttempts.forEach((a) => {
-    if (a.overallScore < 60) distribution[0].count++;
-    else if (a.overallScore < 70) distribution[1].count++;
-    else if (a.overallScore < 80) distribution[2].count++;
-    else if (a.overallScore < 90) distribution[3].count++;
-    else distribution[4].count++;
-  });
-
-  // Topic performance aggregation from detailed results
-  const topicMap = new Map<string, { correct: number; total: number }>();
-  filteredAttempts.forEach((att) => {
-    att.examResults?.forEach((r) => {
-      const t = r.topic || 'General';
-      const cur = topicMap.get(t) || { correct: 0, total: 0 };
-      cur.total++;
-      if (r.isCorrect) cur.correct++;
-      topicMap.set(t, cur);
-    });
-  });
 
   const topicStats: TopicAccuracyStat[] = Array.from(topicMap.entries()).map(([topic, stat]) => ({
     topic,
@@ -136,8 +144,8 @@ export function computeAnalyticsSummary(
     analytics: {
       totalAttempts: total,
       averageScore,
-      quizzesCount: quizzes.length,
-      examsCount: exams.length,
+        quizzesCount,
+        examsCount,
       lastActivity: filteredAttempts[0]?.date || null,
       passRate,
       scoreHistory,

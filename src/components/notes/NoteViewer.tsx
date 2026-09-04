@@ -96,7 +96,7 @@ function formatMarkdown(md: string): string {
   }
 
   return resultLines.join('\n');
-}
+};
 
 export const NoteViewer: React.FC<NoteViewerProps> = ({ note, onEdit, onHighlightTerm }) => {
   const [copied, setCopied] = useState(false);
@@ -105,6 +105,10 @@ export const NoteViewer: React.FC<NoteViewerProps> = ({ note, onEdit, onHighligh
   const [showDiagramModal, setShowDiagramModal] = useState<string | null>(null);
   const contentRef = useRef<HTMLDivElement>(null);
   const mermaidCounterRef = useRef(0);
+
+  // ⚡ Memoized parsed HTML content: prevents re-running expensive regexes & table parsing
+  // on every re-render (e.g., text selection, term tooltips, copying state updates).
+  const formattedMarkdownHtml = useMemo(() => formatMarkdown(note.content), [note.content]);
 
   // Render mermaid diagrams
   useEffect(() => {
@@ -161,10 +165,6 @@ export const NoteViewer: React.FC<NoteViewerProps> = ({ note, onEdit, onHighligh
   const handlePrint = () => {
     window.print();
   };
-
-  // Performance optimization: Memoize formatted HTML so regex and markdown table parsing
-  // only runs when `note.content` changes, avoiding expensive parsing on selection/UI state changes.
-  const formattedHtml = useMemo(() => formatMarkdown(note.content), [note.content]);
 
   return (
     <div className="bg-white border-3 border-slate-900 rounded-2xl shadow-neo-md overflow-hidden flex flex-col">
@@ -259,7 +259,7 @@ export const NoteViewer: React.FC<NoteViewerProps> = ({ note, onEdit, onHighligh
         ref={contentRef}
         onMouseUp={handleMouseUp}
         className="p-6 md:p-8 text-slate-900 text-xs leading-relaxed overflow-x-auto select-text font-normal"
-        dangerouslySetInnerHTML={{ __html: formattedHtml }}
+        dangerouslySetInnerHTML={{ __html: formattedMarkdownHtml }}
       />
     </div>
   );
