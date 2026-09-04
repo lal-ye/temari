@@ -4,6 +4,7 @@ import { AIService } from '../../services/aiService';
 import { studyStore } from '../../hooks/useStudyStore';
 import { useActiveSubject, useNotes } from '../../hooks/useStudyStore';
 import { NoteViewer } from './NoteViewer';
+import { ModelPicker } from '../tools/ModelPicker';
 import {
   FileText,
   Upload,

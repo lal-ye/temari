@@ -2,7 +2,12 @@ import express, { Request, Response } from 'express';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import dotenv from 'dotenv';
-import { GoogleGenAI } from '@google/genai';
+import {
+  executeAiRequest,
+  parseStructuredJson,
+  fetchLiveProviderModels,
+  AIProviderId,
+} from './server/aiProvider.ts';
 
 dotenv.config();
 
@@ -16,64 +21,119 @@ const PORT = 3000;
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
-// Helper to get GoogleGenAI instance
-function getAI(customApiKey?: string): GoogleGenAI | null {
-  const apiKey = customApiKey || process.env.GEMINI_API_KEY;
-  if (!apiKey) return null;
-  return new GoogleGenAI({
-    apiKey,
-    httpOptions: {
-      headers: {
-        'User-Agent': 'aistudio-build',
-      },
-    },
-  });
-}
-
-// 1. Health check
+// 1. Health check & Provider Info
 app.get('/api/health', (req: Request, res: Response) => {
   res.json({
     status: 'ok',
     appName: 'StudySmart (Temari)',
     hasServerKey: !!process.env.GEMINI_API_KEY,
+    defaultProvider: 'gemini',
+    defaultModel: 'gemini-2.5-flash',
+    supportedProviders: ['gemini', 'openai', 'anthropic', 'groq', 'deepseek', 'openrouter', 'custom'],
     timestamp: new Date().toISOString(),
   });
 });
 
-// 2. Generate Dynamic Notes
+app.get('/api/ai/providers', (req: Request, res: Response) => {
+  res.json({
+    providers: [
+      { id: 'gemini', name: 'Google Gemini', defaultModel: 'gemini-2.5-flash' },
+      { id: 'openai', name: 'OpenAI', defaultModel: 'gpt-4o-mini' },
+      { id: 'anthropic', name: 'Anthropic Claude', defaultModel: 'claude-3-5-haiku-20241022' },
+      { id: 'groq', name: 'Groq (Llama)', defaultModel: 'llama-3.3-70b-versatile' },
+      { id: 'deepseek', name: 'DeepSeek', defaultModel: 'deepseek-chat' },
+      { id: 'openrouter', name: 'OpenRouter', defaultModel: 'meta-llama/llama-3.3-70b-instruct' },
+      { id: 'custom', name: 'Custom / Local (Ollama)', defaultModel: 'llama3.2' },
+    ],
+  });
+});
+
+// Test Model Connection (Model Agnostic Ping)
+app.post('/api/ai/test-connection', async (req: Request, res: Response) => {
+  const start = Date.now();
+  try {
+    const { provider, model, apiKey, baseUrl } = req.body;
+    const result = await executeAiRequest({
+      provider: (provider as AIProviderId) || 'gemini',
+      model,
+      apiKey,
+      baseUrl,
+      prompt: 'Respond with exactly: "OK: StudySmart connection verified."',
+      maxTokens: 50,
+    });
+
+    const latencyMs = Date.now() - start;
+    res.json({
+      success: true,
+      providerUsed: result.provider,
+      modelUsed: result.model,
+      latencyMs,
+      reply: result.text.trim(),
+    });
+  } catch (error: any) {
+    const latencyMs = Date.now() - start;
+    res.status(400).json({
+      success: false,
+      error: error?.message || 'Connection test failed',
+      latencyMs,
+    });
+  }
+});
+
+// 2. Programmatically Discover Live Provider Models
+app.post('/api/ai/fetch-live-models', async (req: Request, res: Response) => {
+  try {
+    const { provider, apiKey, baseUrl } = req.body;
+    const result = await fetchLiveProviderModels({
+      provider: (provider as AIProviderId) || 'gemini',
+      apiKey,
+      baseUrl,
+    });
+    res.json(result);
+  } catch (error: any) {
+    res.status(400).json({
+      success: false,
+      models: [],
+      error: error?.message || 'Failed to fetch live models from provider',
+    });
+  }
+});
+
+// 3. Generate Dynamic Notes
 app.post('/api/ai/generate-notes', async (req: Request, res: Response) => {
   try {
-    const { material, sourceName, apiKey } = req.body;
+    const { material, sourceName, apiKey, provider, model, baseUrl } = req.body;
     if (!material || typeof material !== 'string') {
       return res.status(400).json({ error: 'Material is required' });
     }
 
-    const ai = getAI(apiKey);
-    if (!ai) {
-      return res.status(400).json({ error: 'No Gemini API key available. Please provide an API key in Settings.' });
-    }
-
-    const prompt = `You are an expert pedagogical assistant and academic note organizer.
-Generate comprehensive, visually structured study notes in Markdown format from the following course material.
+    const systemPrompt = `You are an expert pedagogical assistant and academic note organizer.
+Generate comprehensive, visually structured study notes in Markdown format from the course material provided by the student.
 
 Specifications:
 1. Header Hierarchy: Use # for main title, ## for key modules, ### for concepts.
-2. Comparison Matrix: Include Markdown tables (|...|) comparing contrasting concepts.
+2. Comparison Matrix: Include Markdown tables (|...|) comparing contrasting concepts where appropriate.
 3. Callouts: Include blockquotes with tags: > [!NOTE], > [!IMPORTANT], > [!TIP].
 4. Mindmap Diagram: Generate a VALID Mermaid.js mindmap diagram using \`\`\`mermaid \\n mindmap \\n root((Title)) ... \`\`\`. Ensure proper indentation without syntax errors.
-5. References: Include a references section at the bottom citing "${sourceName || 'Provided Course Material'}".
+5. References: Include a references section at the bottom citing "${sourceName || 'Provided Course Material'}".`;
 
-Source Material:
-${material}
-`;
+    const prompt = `Please generate rich study notes based on this source material:\n\n${material}`;
 
-    const response = await ai.models.generateContent({
-      model: 'gemini-3.7-flash',
-      contents: prompt,
+    const result = await executeAiRequest({
+      provider,
+      model,
+      apiKey,
+      baseUrl,
+      systemPrompt,
+      prompt,
     });
 
-    const notes = response.text || '# Study Notes\n\nCould not generate notes content.';
-    res.json({ notes });
+    const notes = result.text || '# Study Notes\n\nCould not generate notes content.';
+    res.json({
+      notes,
+      providerUsed: result.provider,
+      modelUsed: result.model,
+    });
   } catch (error: any) {
     console.error('Error in /api/ai/generate-notes:', error);
     res.status(500).json({ error: error?.message || 'Failed to generate notes' });
@@ -83,22 +143,24 @@ ${material}
 // 3. Generate Flashcard Quiz
 app.post('/api/ai/generate-quiz', async (req: Request, res: Response) => {
   try {
-    const { material, quizLength = 5, difficulty = 'Medium', apiKey } = req.body;
+    const {
+      material,
+      quizLength = 5,
+      difficulty = 'Medium',
+      apiKey,
+      provider,
+      model,
+      baseUrl,
+    } = req.body;
+
     if (!material) {
       return res.status(400).json({ error: 'Material is required' });
     }
 
-    const ai = getAI(apiKey);
-    if (!ai) {
-      return res.status(400).json({ error: 'No Gemini API key available' });
-    }
+    const systemPrompt = `You are an expert exam designer.
+Generate a flashcard quiz with ${quizLength} flashcards at difficulty level "${difficulty}" based on the student's material.
 
-    const prompt = `Generate a flashcard quiz with ${quizLength} flashcards at difficulty level "${difficulty}" based on the following material:
-
-Material:
-${material}
-
-You MUST respond strictly with valid JSON conforming to this schema:
+You MUST respond strictly with a valid JSON object conforming to this schema:
 {
   "flashcards": [
     {
@@ -109,20 +171,26 @@ You MUST respond strictly with valid JSON conforming to this schema:
       "tags": ["Topic1", "Topic2"]
     }
   ]
-}
-`;
+}`;
 
-    const response = await ai.models.generateContent({
-      model: 'gemini-3.7-flash',
-      contents: prompt,
-      config: {
-        responseMimeType: 'application/json',
-      },
+    const prompt = `Course Material:\n${material}\n\nGenerate ${quizLength} flashcards at "${difficulty}" difficulty in JSON.`;
+
+    const result = await executeAiRequest({
+      provider,
+      model,
+      apiKey,
+      baseUrl,
+      systemPrompt,
+      prompt,
+      jsonResponse: true,
     });
 
-    const rawText = response.text || '{}';
-    const parsed = JSON.parse(rawText);
-    res.json({ flashcards: parsed.flashcards || [] });
+    const parsed = parseStructuredJson<{ flashcards: any[] }>(result.text, { flashcards: [] });
+    res.json({
+      flashcards: parsed.flashcards || [],
+      providerUsed: result.provider,
+      modelUsed: result.model,
+    });
   } catch (error: any) {
     console.error('Error in /api/ai/generate-quiz:', error);
     res.status(500).json({ error: error?.message || 'Failed to generate quiz' });
@@ -132,25 +200,25 @@ You MUST respond strictly with valid JSON conforming to this schema:
 // 4. Generate Comprehensive Exam
 app.post('/api/ai/generate-exam', async (req: Request, res: Response) => {
   try {
-    const { material, numberOfQuestions = 15, apiKey } = req.body;
+    const {
+      material,
+      numberOfQuestions = 15,
+      apiKey,
+      provider,
+      model,
+      baseUrl,
+    } = req.body;
+
     if (!material) {
       return res.status(400).json({ error: 'Material is required' });
     }
 
-    const ai = getAI(apiKey);
-    if (!ai) {
-      return res.status(400).json({ error: 'No Gemini API key available' });
-    }
-
-    const prompt = `You are a university professor creating an exam.
+    const systemPrompt = `You are a university professor creating an exam.
 Generate an exam with ${numberOfQuestions} questions based on this course material.
 Mix question types:
 - Multiple choice (type: "multiple_choice", options: 4 distinct strings)
 - True / False (type: "true_false", options: ["true", "false"])
 - Short Answer (type: "short_answer", options omitted)
-
-Material:
-${material}
 
 You MUST respond strictly with a valid JSON object matching this schema:
 {
@@ -165,20 +233,26 @@ You MUST respond strictly with a valid JSON object matching this schema:
       "topic": "Topic Name"
     }
   ]
-}
-`;
+}`;
 
-    const response = await ai.models.generateContent({
-      model: 'gemini-3.7-flash',
-      contents: prompt,
-      config: {
-        responseMimeType: 'application/json',
-      },
+    const prompt = `Course Material:\n${material}\n\nGenerate ${numberOfQuestions} exam questions in JSON.`;
+
+    const result = await executeAiRequest({
+      provider,
+      model,
+      apiKey,
+      baseUrl,
+      systemPrompt,
+      prompt,
+      jsonResponse: true,
     });
 
-    const rawText = response.text || '{}';
-    const parsed = JSON.parse(rawText);
-    res.json({ exam: parsed.exam || [] });
+    const parsed = parseStructuredJson<{ exam: any[] }>(result.text, { exam: [] });
+    res.json({
+      exam: parsed.exam || [],
+      providerUsed: result.provider,
+      modelUsed: result.model,
+    });
   } catch (error: any) {
     console.error('Error in /api/ai/generate-exam:', error);
     res.status(500).json({ error: error?.message || 'Failed to generate exam' });
@@ -188,24 +262,13 @@ You MUST respond strictly with a valid JSON object matching this schema:
 // 5. Grade Exam & Analyze
 app.post('/api/ai/grade-exam', async (req: Request, res: Response) => {
   try {
-    const { exam, userAnswers, apiKey } = req.body;
+    const { exam, userAnswers, apiKey, provider, model, baseUrl } = req.body;
     if (!exam || !Array.isArray(exam)) {
       return res.status(400).json({ error: 'Exam questions are required' });
     }
 
-    const ai = getAI(apiKey);
-    if (!ai) {
-      return res.status(400).json({ error: 'No Gemini API key available' });
-    }
-
-    const prompt = `You are an expert exam grader.
-Grade the following student answers against the exam questions.
-
-Exam Questions:
-${JSON.stringify(exam, null, 2)}
-
-Student User Answers (in matching index order):
-${JSON.stringify(userAnswers || [], null, 2)}
+    const systemPrompt = `You are an expert exam grader.
+Grade the student answers against the exam questions.
 
 Return a strict JSON object with:
 1. results: Array of results for each question with { question, type, correctAnswer, userAnswer, isCorrect: boolean, explanation, topic }
@@ -231,20 +294,38 @@ Schema:
   "extraReadings": [
     { "title": "Understanding Topic A", "url": "https://example.com/topic-a", "snippet": "Overview description" }
   ]
-}
-`;
+}`;
 
-    const response = await ai.models.generateContent({
-      model: 'gemini-3.7-flash',
-      contents: prompt,
-      config: {
-        responseMimeType: 'application/json',
-      },
+    const prompt = `Exam Questions:
+${JSON.stringify(exam, null, 2)}
+
+Student User Answers:
+${JSON.stringify(userAnswers || [], null, 2)}
+
+Grade and return JSON evaluation.`;
+
+    const result = await executeAiRequest({
+      provider,
+      model,
+      apiKey,
+      baseUrl,
+      systemPrompt,
+      prompt,
+      jsonResponse: true,
     });
 
-    const rawText = response.text || '{}';
-    const parsed = JSON.parse(rawText);
-    res.json(parsed);
+    const parsed = parseStructuredJson(result.text, {
+      results: [],
+      overallScore: 0,
+      topicsToReview: [],
+      extraReadings: [],
+    });
+
+    res.json({
+      ...parsed,
+      providerUsed: result.provider,
+      modelUsed: result.model,
+    });
   } catch (error: any) {
     console.error('Error in /api/ai/grade-exam:', error);
     res.status(500).json({ error: error?.message || 'Failed to grade exam' });
@@ -254,16 +335,14 @@ Schema:
 // 6. Explain Term
 app.post('/api/ai/explain-term', async (req: Request, res: Response) => {
   try {
-    const { term, context, apiKey } = req.body;
+    const { term, context, apiKey, provider, model, baseUrl } = req.body;
     if (!term) return res.status(400).json({ error: 'Term is required' });
 
-    const ai = getAI(apiKey);
-    if (!ai) return res.status(400).json({ error: 'No Gemini API key available' });
+    const systemPrompt = `You are a helpful educational assistant.
+Provide a concise, easy-to-understand explanation in Markdown for the student learning term: "${term}".
+${context ? `Context: "${context}"` : ''}
 
-    const prompt = `Provide a concise, easy-to-understand explanation in Markdown for the student learning term: "${term}".
-${context ? `Context from flashcard / notes: "${context}"` : ''}
-
-Include 1-2 curated educational references or study search links.
+Include 1-2 curated educational references or search links.
 
 Respond with strict JSON:
 {
@@ -271,88 +350,133 @@ Respond with strict JSON:
   "relatedLinks": [
     { "title": "Resource title", "url": "https://...", "snippet": "Description" }
   ]
-}
-`;
+}`;
 
-    const response = await ai.models.generateContent({
-      model: 'gemini-3.7-flash',
-      contents: prompt,
-      config: { responseMimeType: 'application/json' },
+    const prompt = `Explain term "${term}" in JSON format.`;
+
+    const result = await executeAiRequest({
+      provider,
+      model,
+      apiKey,
+      baseUrl,
+      systemPrompt,
+      prompt,
+      jsonResponse: true,
     });
 
-    const parsed = JSON.parse(response.text || '{}');
-    res.json(parsed);
+    const parsed = parseStructuredJson(result.text, {
+      explanation: `**${term}**: Definition unavailable.`,
+      relatedLinks: [],
+    });
+
+    res.json({
+      ...parsed,
+      providerUsed: result.provider,
+      modelUsed: result.model,
+    });
   } catch (error: any) {
     console.error('Error in /api/ai/explain-term:', error);
     res.status(500).json({ error: error?.message || 'Failed to explain term' });
   }
 });
 
-// 7. Extract Text from PDF (Multimodal)
+// 7. Extract Text from PDF (Multimodal with local PDFParse fallback)
 app.post('/api/ai/extract-pdf', async (req: Request, res: Response) => {
   try {
-    const { pdfDataUri, apiKey } = req.body;
+    const { pdfDataUri, apiKey, provider, model, baseUrl } = req.body;
     if (!pdfDataUri || typeof pdfDataUri !== 'string') {
       return res.status(400).json({ error: 'pdfDataUri is required' });
     }
 
-    const ai = getAI(apiKey);
-    if (!ai) return res.status(400).json({ error: 'No Gemini API key available' });
+    // Helper to extract text locally from the PDF data URI
+    const extractTextLocally = async (dataUri: string): Promise<string> => {
+      try {
+        const matches = dataUri.match(/^data:(.+?);base64,(.+)$/);
+        const base64Data = matches ? matches[2] : dataUri.replace(/^data:application\/pdf;base64,/, '');
+        const buffer = Buffer.from(base64Data, 'base64');
+        const { PDFParse } = await import('pdf-parse');
+        const parser = new PDFParse({ data: buffer });
+        const textResult = await parser.getText();
+        await parser.destroy();
+        return (textResult?.text || '').trim();
+      } catch (localErr) {
+        console.warn('Local PDF parser attempt failed:', localErr);
+        return '';
+      }
+    };
 
-    // Parse base64 data
-    const matches = pdfDataUri.match(/^data:(.+?);base64,(.+)$/);
-    if (!matches) {
-      return res.status(400).json({ error: 'Invalid data URI format' });
+    let extractedText = '';
+    let providerUsed = provider || 'gemini';
+    let modelUsed = model || '';
+
+    const activeProvider: AIProviderId = (provider as AIProviderId) || 'gemini';
+    const activeModel: string = model?.trim() || '';
+
+    if (activeProvider === 'gemini') {
+      // Multimodal Gemini extraction directly with user's selected active model
+      try {
+        const result = await executeAiRequest({
+          provider: 'gemini',
+          model: activeModel || undefined,
+          apiKey,
+          baseUrl,
+          pdfDataUri,
+          prompt:
+            'Extract all textual content from this PDF document thoroughly. Output only the clean extracted text and notes without conversational introductions.',
+        });
+
+        extractedText = result.text || '';
+        providerUsed = result.provider;
+        modelUsed = result.model;
+      } catch (aiError: any) {
+        console.warn(
+          'Gemini extraction error, trying local PDF parser fallback:',
+          aiError?.message || aiError
+        );
+        const localExtracted = await extractTextLocally(pdfDataUri);
+        if (localExtracted && localExtracted.length > 20) {
+          extractedText = localExtracted;
+          providerUsed = 'local-pdf-parser';
+          modelUsed = 'pdf-parse';
+        } else {
+          throw aiError;
+        }
+      }
+    } else {
+      // For OpenAI, Anthropic, Groq, DeepSeek, Ollama: parse PDF text locally first
+      const localExtracted = await extractTextLocally(pdfDataUri);
+      if (!localExtracted || localExtracted.length < 10) {
+        throw new Error('Could not extract textual content from uploaded PDF document.');
+      }
+
+      // Format and clean up text with user's selected active model
+      try {
+        const result = await executeAiRequest({
+          provider: activeProvider,
+          model: activeModel || undefined,
+          apiKey,
+          baseUrl,
+          prompt: `You are an expert academic assistant. Here is raw extracted text from study material:\n\n${localExtracted.slice(0, 50000)}\n\nClean up and format this text into clear, readable study content without omitting key facts. Output only the structured study text.`,
+        });
+        extractedText = result.text || localExtracted;
+        providerUsed = result.provider;
+        modelUsed = result.model;
+      } catch (formatErr) {
+        console.warn('Cleanup with active model failed, using direct extracted text:', formatErr);
+        extractedText = localExtracted;
+        providerUsed = 'local-pdf-parser';
+        modelUsed = 'pdf-parse';
+      }
     }
-    const mimeType = matches[1];
-    const base64Data = matches[2];
 
-    const response = await ai.models.generateContent({
-      model: 'gemini-3.7-flash',
-      contents: [
-        {
-          inlineData: {
-            mimeType,
-            data: base64Data,
-          },
-        },
-        {
-          text: 'Extract all textual content from this PDF document thoroughly. Output only the clean extracted text without conversational introductions.',
-        },
-      ],
+    res.json({
+      extractedText,
+      providerUsed,
+      modelUsed,
     });
-
-    res.json({ extractedText: response.text || '' });
   } catch (error: any) {
     console.error('Error in /api/ai/extract-pdf:', error);
     res.status(500).json({ error: error?.message || 'Failed to extract PDF' });
-  }
-});
-
-// 8. AI Tutor Chat
-app.post('/api/ai/chat-tutor', async (req: Request, res: Response) => {
-  try {
-    const { messages, context, apiKey } = req.body;
-    const ai = getAI(apiKey);
-    if (!ai) return res.status(400).json({ error: 'No Gemini API key available' });
-
-    const systemPrompt = `You are Temari / StudySmart AI, an encouraging, brilliant personal tutor for students.
-Your goal is to help students understand concepts deeply, solve problems step by step, and retain information through active recall.
-${context ? `Current student study context:\n${context}` : ''}
-Use clean markdown, bold terms, bullet points, and code/math formatting where helpful.`;
-
-    const chatHistory = (messages || []).map((m: any) => `${m.role.toUpperCase()}: ${m.content}`).join('\n\n');
-    const prompt = `${systemPrompt}\n\nConversation:\n${chatHistory}\n\nASSISTANT:`;
-
-    const response = await ai.models.generateContent({
-      model: 'gemini-3.7-flash',
-      contents: prompt,
-    });
-
-    res.json({ reply: response.text || 'I am here to help you study!' });
-  } catch (error: any) {
-    console.error('Error in /api/ai/chat-tutor:', error);
-    res.status(500).json({ error: error?.message || 'Failed to generate tutor response' });
   }
 });
 
@@ -379,3 +503,4 @@ async function setupViteOrStatic() {
 }
 
 setupViteOrStatic();
+

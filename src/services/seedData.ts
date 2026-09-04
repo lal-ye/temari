@@ -18,6 +18,11 @@ export const STORAGE_KEYS = {
 };
 
 export const DEFAULT_SETTINGS: UserSettings = {
+  selectedProvider: 'gemini',
+  selectedModel: 'gemini-2.5-flash',
+  providerKeys: {},
+  customBaseUrl: 'http://localhost:11434/v1',
+  customModelName: 'llama3.2:3b',
   theme: 'neobrutalist',
   pomodoroWorkMinutes: 25,
   pomodoroBreakMinutes: 5,
