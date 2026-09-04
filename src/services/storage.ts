@@ -261,8 +261,19 @@ const SEED_TASKS: StudyTask[] = [
 type StorageListener = () => void;
 const storageListeners = new Set<StorageListener>();
 
+// Bolt Optimization: In-memory cache for localStorage reads to avoid redundant
+// synchronous `localStorage.getItem` & `JSON.parse` operations on every react re-render / refreshData().
+const memoryCache: Record<string, unknown> = {};
+
+const clearCache = () => {
+  for (const key in memoryCache) {
+    delete memoryCache[key];
+  }
+};
+
 if (typeof window !== 'undefined') {
   window.addEventListener('storage', () => {
+    clearCache();
     storageListeners.forEach((fn) => {
       try {
         fn();
@@ -291,20 +302,32 @@ export const StorageService = {
     });
   },
 
+  clearCache(): void {
+    clearCache();
+  },
+
   getSubjects(): Subject[] {
+    if (STORAGE_KEYS.SUBJECTS in memoryCache) {
+      return [...(memoryCache[STORAGE_KEYS.SUBJECTS] as Subject[])];
+    }
     try {
       const data = localStorage.getItem(STORAGE_KEYS.SUBJECTS);
       if (!data) {
         localStorage.setItem(STORAGE_KEYS.SUBJECTS, JSON.stringify(SEED_SUBJECTS));
-        return SEED_SUBJECTS;
+        memoryCache[STORAGE_KEYS.SUBJECTS] = SEED_SUBJECTS;
+        return [...SEED_SUBJECTS];
       }
-      return JSON.parse(data);
+      const parsed: Subject[] = JSON.parse(data);
+      memoryCache[STORAGE_KEYS.SUBJECTS] = parsed;
+      return [...parsed];
     } catch {
-      return SEED_SUBJECTS;
+      memoryCache[STORAGE_KEYS.SUBJECTS] = SEED_SUBJECTS;
+      return [...SEED_SUBJECTS];
     }
   },
 
   saveSubjects(subjects: Subject[]): void {
+    memoryCache[STORAGE_KEYS.SUBJECTS] = subjects;
     localStorage.setItem(STORAGE_KEYS.SUBJECTS, JSON.stringify(subjects));
     this.notify();
   },
@@ -348,48 +371,54 @@ export const StorageService = {
 
   // --- Tasks / Planner ---
   getTasks(subjectId?: string): StudyTask[] {
-    try {
-      const data = localStorage.getItem(STORAGE_KEYS.TASKS);
-      let tasks: StudyTask[] = data ? JSON.parse(data) : [];
-      if (!data) {
-        tasks = [
-          {
-            id: 'task-1',
-            subjectId: 'subj-cell-bio',
-            title: 'Review Citric Acid Cycle & Oxidative Phosphorylation notes',
-            dueDate: new Date().toISOString().split('T')[0],
-            estimatedMinutes: 30,
-            completed: false,
-          },
-          {
-            id: 'task-2',
-            subjectId: 'subj-cell-bio',
-            title: 'Practice 15-card Flashcard recall deck',
-            dueDate: new Date().toISOString().split('T')[0],
-            estimatedMinutes: 20,
-            completed: true,
-          },
-          {
-            id: 'task-3',
-            subjectId: 'subj-comp-sci',
-            title: 'Complete TCP 3-Way Handshake mock exam',
-            dueDate: new Date(Date.now() + 86400000).toISOString().split('T')[0],
-            estimatedMinutes: 45,
-            completed: false,
-          },
-        ];
-        localStorage.setItem(STORAGE_KEYS.TASKS, JSON.stringify(tasks));
+    let tasks: StudyTask[];
+    if (STORAGE_KEYS.TASKS in memoryCache) {
+      tasks = memoryCache[STORAGE_KEYS.TASKS] as StudyTask[];
+    } else {
+      try {
+        const data = localStorage.getItem(STORAGE_KEYS.TASKS);
+        tasks = data ? JSON.parse(data) : [];
+        if (!data) {
+          tasks = [
+            {
+              id: 'task-1',
+              subjectId: 'subj-cell-bio',
+              title: 'Review Citric Acid Cycle & Oxidative Phosphorylation notes',
+              dueDate: new Date().toISOString().split('T')[0],
+              estimatedMinutes: 30,
+              completed: false,
+            },
+            {
+              id: 'task-2',
+              subjectId: 'subj-cell-bio',
+              title: 'Practice 15-card Flashcard recall deck',
+              dueDate: new Date().toISOString().split('T')[0],
+              estimatedMinutes: 20,
+              completed: true,
+            },
+            {
+              id: 'task-3',
+              subjectId: 'subj-comp-sci',
+              title: 'Complete TCP 3-Way Handshake mock exam',
+              dueDate: new Date(Date.now() + 86400000).toISOString().split('T')[0],
+              estimatedMinutes: 45,
+              completed: false,
+            },
+          ];
+          localStorage.setItem(STORAGE_KEYS.TASKS, JSON.stringify(tasks));
+        }
+        memoryCache[STORAGE_KEYS.TASKS] = tasks;
+      } catch {
+        tasks = [];
+        memoryCache[STORAGE_KEYS.TASKS] = tasks;
       }
-      if (subjectId) {
-        return tasks.filter(t => t.subjectId === subjectId);
-      }
-      return tasks;
-    } catch {
-      return [];
     }
+    const result = subjectId ? tasks.filter(t => t.subjectId === subjectId) : tasks;
+    return [...result];
   },
 
   saveTasks(tasks: StudyTask[]): void {
+    memoryCache[STORAGE_KEYS.TASKS] = tasks;
     localStorage.setItem(STORAGE_KEYS.TASKS, JSON.stringify(tasks));
     this.notify();
   },
@@ -449,23 +478,28 @@ export const StorageService = {
 
   // --- Notes ---
   getNotes(subjectId?: string): StoredNote[] {
-    try {
-      const data = localStorage.getItem(STORAGE_KEYS.NOTES);
-      let notes: StoredNote[] = data ? JSON.parse(data) : [];
-      if (!data) {
+    let notes: StoredNote[];
+    if (STORAGE_KEYS.NOTES in memoryCache) {
+      notes = memoryCache[STORAGE_KEYS.NOTES] as StoredNote[];
+    } else {
+      try {
+        const data = localStorage.getItem(STORAGE_KEYS.NOTES);
+        notes = data ? JSON.parse(data) : SEED_NOTES;
+        if (!data) {
+          localStorage.setItem(STORAGE_KEYS.NOTES, JSON.stringify(SEED_NOTES));
+        }
+        memoryCache[STORAGE_KEYS.NOTES] = notes;
+      } catch {
         notes = SEED_NOTES;
-        localStorage.setItem(STORAGE_KEYS.NOTES, JSON.stringify(SEED_NOTES));
+        memoryCache[STORAGE_KEYS.NOTES] = notes;
       }
-      if (subjectId) {
-        return notes.filter(n => n.subjectId === subjectId);
-      }
-      return notes;
-    } catch {
-      return SEED_NOTES;
     }
+    const result = subjectId ? notes.filter(n => n.subjectId === subjectId) : notes;
+    return [...result];
   },
 
   saveNotes(notes: StoredNote[]): void {
+    memoryCache[STORAGE_KEYS.NOTES] = notes;
     localStorage.setItem(STORAGE_KEYS.NOTES, JSON.stringify(notes));
     this.notify();
   },
@@ -499,23 +533,28 @@ export const StorageService = {
 
   // --- Quizzes ---
   getQuizzes(subjectId?: string): StoredQuiz[] {
-    try {
-      const data = localStorage.getItem(STORAGE_KEYS.QUIZZES);
-      let quizzes: StoredQuiz[] = data ? JSON.parse(data) : [];
-      if (!data) {
+    let quizzes: StoredQuiz[];
+    if (STORAGE_KEYS.QUIZZES in memoryCache) {
+      quizzes = memoryCache[STORAGE_KEYS.QUIZZES] as StoredQuiz[];
+    } else {
+      try {
+        const data = localStorage.getItem(STORAGE_KEYS.QUIZZES);
+        quizzes = data ? JSON.parse(data) : SEED_QUIZZES;
+        if (!data) {
+          localStorage.setItem(STORAGE_KEYS.QUIZZES, JSON.stringify(SEED_QUIZZES));
+        }
+        memoryCache[STORAGE_KEYS.QUIZZES] = quizzes;
+      } catch {
         quizzes = SEED_QUIZZES;
-        localStorage.setItem(STORAGE_KEYS.QUIZZES, JSON.stringify(SEED_QUIZZES));
+        memoryCache[STORAGE_KEYS.QUIZZES] = quizzes;
       }
-      if (subjectId) {
-        return quizzes.filter(q => q.subjectId === subjectId);
-      }
-      return quizzes;
-    } catch {
-      return SEED_QUIZZES;
     }
+    const result = subjectId ? quizzes.filter(q => q.subjectId === subjectId) : quizzes;
+    return [...result];
   },
 
   saveQuizzes(quizzes: StoredQuiz[]): void {
+    memoryCache[STORAGE_KEYS.QUIZZES] = quizzes;
     localStorage.setItem(STORAGE_KEYS.QUIZZES, JSON.stringify(quizzes));
     this.notify();
   },
@@ -550,23 +589,28 @@ export const StorageService = {
 
   // --- Attempts / History ---
   getAttempts(subjectId?: string): StoredAttempt[] {
-    try {
-      const data = localStorage.getItem(STORAGE_KEYS.ATTEMPTS);
-      let attempts: StoredAttempt[] = data ? JSON.parse(data) : [];
-      if (!data) {
+    let attempts: StoredAttempt[];
+    if (STORAGE_KEYS.ATTEMPTS in memoryCache) {
+      attempts = memoryCache[STORAGE_KEYS.ATTEMPTS] as StoredAttempt[];
+    } else {
+      try {
+        const data = localStorage.getItem(STORAGE_KEYS.ATTEMPTS);
+        attempts = data ? JSON.parse(data) : SEED_ATTEMPTS;
+        if (!data) {
+          localStorage.setItem(STORAGE_KEYS.ATTEMPTS, JSON.stringify(SEED_ATTEMPTS));
+        }
+        memoryCache[STORAGE_KEYS.ATTEMPTS] = attempts;
+      } catch {
         attempts = SEED_ATTEMPTS;
-        localStorage.setItem(STORAGE_KEYS.ATTEMPTS, JSON.stringify(SEED_ATTEMPTS));
+        memoryCache[STORAGE_KEYS.ATTEMPTS] = attempts;
       }
-      if (subjectId) {
-        return attempts.filter(a => a.subjectId === subjectId);
-      }
-      return attempts;
-    } catch {
-      return SEED_ATTEMPTS;
     }
+    const result = subjectId ? attempts.filter(a => a.subjectId === subjectId) : attempts;
+    return [...result];
   },
 
   saveAttempts(attempts: StoredAttempt[]): void {
+    memoryCache[STORAGE_KEYS.ATTEMPTS] = attempts;
     localStorage.setItem(STORAGE_KEYS.ATTEMPTS, JSON.stringify(attempts));
     this.notify();
   },
@@ -590,17 +634,25 @@ export const StorageService = {
 
   // --- Settings ---
   getSettings(): UserSettings {
+    if (STORAGE_KEYS.SETTINGS in memoryCache) {
+      return { ...(memoryCache[STORAGE_KEYS.SETTINGS] as UserSettings) };
+    }
     try {
       const data = localStorage.getItem(STORAGE_KEYS.SETTINGS);
-      return data ? { ...DEFAULT_SETTINGS, ...JSON.parse(data) } : DEFAULT_SETTINGS;
+      const settings = data ? { ...DEFAULT_SETTINGS, ...JSON.parse(data) } : DEFAULT_SETTINGS;
+      memoryCache[STORAGE_KEYS.SETTINGS] = settings;
+      return { ...settings };
     } catch {
-      return DEFAULT_SETTINGS;
+      memoryCache[STORAGE_KEYS.SETTINGS] = DEFAULT_SETTINGS;
+      return { ...DEFAULT_SETTINGS };
     }
+    return cachedSettings;
   },
 
   saveSettings(settings: Partial<UserSettings>): UserSettings {
     const current = this.getSettings();
     const updated = { ...current, ...settings };
+    memoryCache[STORAGE_KEYS.SETTINGS] = updated;
     localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(updated));
     this.notify();
     return updated;
@@ -639,6 +691,7 @@ export const StorageService = {
   },
 
   resetToDefaults(): void {
+    clearCache();
     localStorage.setItem(STORAGE_KEYS.SUBJECTS, JSON.stringify(SEED_SUBJECTS));
     localStorage.setItem(STORAGE_KEYS.NOTES, JSON.stringify(SEED_NOTES));
     localStorage.setItem(STORAGE_KEYS.QUIZZES, JSON.stringify(SEED_QUIZZES));

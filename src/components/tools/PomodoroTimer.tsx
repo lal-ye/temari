@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Play, Pause, RotateCcw, Flame, X, Coffee, Brain } from 'lucide-react';
-import { StorageService } from '../../services/storage';
+import { useStudyData } from '../../hooks/useStudyData';
 import { usePomodoro } from '../../hooks/usePomodoro';
 
 interface PomodoroTimerProps {
@@ -9,7 +9,7 @@ interface PomodoroTimerProps {
 }
 
 export const PomodoroTimer: React.FC<PomodoroTimerProps> = ({ isOpen, onClose }) => {
-  const settings = StorageService.getSettings();
+  const { settings } = useStudyData();
   const {
     mode,
     isRunning,
