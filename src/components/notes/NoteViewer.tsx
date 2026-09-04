@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState, useMemo } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { StoredNote } from '../../types';
 import { Copy, Check, Printer, FileText, Maximize2, Share2, Sparkles, Tag, BookOpen, Clock } from 'lucide-react';
 
@@ -8,9 +8,11 @@ interface NoteViewerProps {
   onHighlightTerm?: (term: string, context?: string) => void;
 }
 
-// Convert markdown into HTML with callouts and tables.
-// Defined outside component scope to avoid recreating function reference on every render.
-function formatMarkdown(md: string): string {
+/**
+ * Pure function to convert markdown into HTML with callouts and tables.
+ * Extracted outside component to avoid re-creation on every render.
+ */
+const formatMarkdown = (md: string): string => {
   let formatted = md;
 
   // Callouts
@@ -106,9 +108,10 @@ export const NoteViewer: React.FC<NoteViewerProps> = ({ note, onEdit, onHighligh
   const contentRef = useRef<HTMLDivElement>(null);
   const mermaidCounterRef = useRef(0);
 
-  // ⚡ Memoized parsed HTML content: prevents re-running expensive regexes & table parsing
-  // on every re-render (e.g., text selection, term tooltips, copying state updates).
-  const formattedMarkdownHtml = useMemo(() => formatMarkdown(note.content), [note.content]);
+  // Performance Optimization: Memoize markdown parsing so line-by-line table parsing &
+  // expensive regex replacements only run when `note.content` changes, not on every re-render
+  // (e.g. text selection, copying state toggles).
+  const formattedHtml = useMemo(() => formatMarkdown(note.content), [note.content]);
 
   // Render mermaid diagrams
   useEffect(() => {
@@ -165,98 +168,6 @@ export const NoteViewer: React.FC<NoteViewerProps> = ({ note, onEdit, onHighligh
   const handlePrint = () => {
     window.print();
   };
-
-  // Convert markdown into HTML with callouts and tables
-  const formatMarkdown = (md: string) => {
-    let formatted = md;
-
-    // Callouts
-    formatted = formatted.replace(
-      />\s*\[!NOTE\]\s*([\s\S]*?)(?=\n\n|$)/g,
-      '<div class="p-4 my-4 rounded-xl border-2 border-slate-900 bg-[#DBEAFE] text-slate-950 font-medium text-xs shadow-neo-sm"><strong class="text-blue-900 block mb-1 text-[11px] font-black uppercase tracking-wider">Note</strong>$1</div>'
-    );
-    formatted = formatted.replace(
-      />\s*\[!IMPORTANT\]\s*([\s\S]*?)(?=\n\n|$)/g,
-      '<div class="p-4 my-4 rounded-xl border-2 border-slate-900 bg-[#FFE4E6] text-slate-950 font-medium text-xs shadow-neo-sm"><strong class="text-rose-900 block mb-1 text-[11px] font-black uppercase tracking-wider">Important</strong>$1</div>'
-    );
-    formatted = formatted.replace(
-      />\s*\[!TIP\]\s*([\s\S]*?)(?=\n\n|$)/g,
-      '<div class="p-4 my-4 rounded-xl border-2 border-slate-900 bg-[#DCFCE7] text-slate-950 font-medium text-xs shadow-neo-sm"><strong class="text-emerald-900 block mb-1 text-[11px] font-black uppercase tracking-wider">Helpful Tip</strong>$1</div>'
-    );
-
-    // Citations
-    formatted = formatted.replace(
-      /<span class="citation">\[\[(\d+)\]\]<\/span>/g,
-      '<sup class="px-1.5 py-0.5 ml-1 bg-yellow-200 border border-slate-900 rounded font-mono text-[9px] font-black text-slate-950 shadow-xs">[$1]</sup>'
-    );
-
-    // Mermaid code blocks
-    formatted = formatted.replace(
-      /```mermaid([\s\S]*?)```/g,
-      '<div class="mermaid-code-target my-4">$1</div>'
-    );
-
-    // Basic headers
-    formatted = formatted.replace(/^# (.*$)/gim, '<h1 class="text-xl font-black text-slate-950 mt-6 mb-3 pb-2 border-b-2 border-slate-900">$1</h1>');
-    formatted = formatted.replace(/^## (.*$)/gim, '<h2 class="text-base font-black text-slate-900 mt-5 mb-2.5 flex items-center gap-2"><span class="w-2.5 h-2.5 bg-yellow-400 border border-slate-900 rounded-sm"></span>$1</h2>');
-    formatted = formatted.replace(/^### (.*$)/gim, '<h3 class="text-sm font-black text-slate-800 mt-4 mb-1.5">$1</h3>');
-
-    // Bold / italic
-    formatted = formatted.replace(/\*\*(.*?)\*\*/g, '<strong class="font-black text-slate-950 bg-yellow-100 px-0.5 rounded">$1</strong>');
-    formatted = formatted.replace(/\*(.*?)\*/g, '<em class="italic font-semibold">$1</em>');
-
-    // Lists
-    formatted = formatted.replace(/^\s*-\s+(.*$)/gim, '<li class="ml-4 list-disc pl-1 text-slate-800 my-1 text-xs font-medium">$1</li>');
-    formatted = formatted.replace(/^\s*\d+\.\s+(.*$)/gim, '<li class="ml-4 list-decimal pl-1 text-slate-800 my-1 text-xs font-medium">$1</li>');
-
-    // Basic Markdown Table Parser
-    const lines = formatted.split('\n');
-    let inTable = false;
-    let tableHtml = '';
-    const resultLines: string[] = [];
-
-    for (let i = 0; i < lines.length; i++) {
-      const line = lines[i].trim();
-      if (line.startsWith('|') && line.endsWith('|')) {
-        if (!inTable) {
-          inTable = true;
-          tableHtml = '<div class="my-5 overflow-x-auto border-2 border-slate-900 rounded-xl shadow-neo-sm bg-white"><table class="w-full text-left text-xs border-collapse">';
-          // Header row
-          const cells = line.split('|').filter((_, idx, arr) => idx > 0 && idx < arr.length - 1);
-          tableHtml += '<thead class="bg-[#FEF08A] text-slate-950 font-black border-b-2 border-slate-900"><tr>';
-          cells.forEach((c) => (tableHtml += `<th class="p-3 font-black text-slate-950 border-r border-slate-900/20 last:border-r-0">${c.trim()}</th>`));
-          tableHtml += '</tr></thead><tbody>';
-          // Skip divider row if next is |---|
-          if (lines[i + 1] && lines[i + 1].includes('---')) {
-            i++;
-          }
-        } else {
-          // Body row
-          const cells = line.split('|').filter((_, idx, arr) => idx > 0 && idx < arr.length - 1);
-          tableHtml += '<tr class="border-b border-slate-200 hover:bg-slate-50 transition-colors">';
-          cells.forEach((c) => (tableHtml += `<td class="p-3 font-medium text-slate-800 border-r border-slate-200 last:border-r-0">${c.trim()}</td>`));
-          tableHtml += '</tr>';
-        }
-      } else {
-        if (inTable) {
-          tableHtml += '</tbody></table></div>';
-          resultLines.push(tableHtml);
-          inTable = false;
-          tableHtml = '';
-        }
-        resultLines.push(lines[i]);
-      }
-    }
-    if (inTable) {
-      tableHtml += '</tbody></table></div>';
-      resultLines.push(tableHtml);
-    }
-
-    return resultLines.join('\n');
-  };
-
-  // Memoize markdown HTML conversion so expensive regex and table parsing doesn't re-run on every selection/render
-  const formattedMarkdown = useMemo(() => formatMarkdown(note.content), [note.content]);
 
   return (
     <div className="bg-white border-3 border-slate-900 rounded-2xl shadow-neo-md overflow-hidden flex flex-col">
@@ -351,7 +262,7 @@ export const NoteViewer: React.FC<NoteViewerProps> = ({ note, onEdit, onHighligh
         ref={contentRef}
         onMouseUp={handleMouseUp}
         className="p-6 md:p-8 text-slate-900 text-xs leading-relaxed overflow-x-auto select-text font-normal"
-        dangerouslySetInnerHTML={{ __html: formattedMarkdown }}
+        dangerouslySetInnerHTML={{ __html: formattedHtml }}
       />
     </div>
   );
