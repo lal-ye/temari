@@ -67,6 +67,30 @@ export function useStudyData(): StudyDataState {
     return unsubscribe;
   }, [refreshData]);
 
+  const addSubject = useCallback((subj: Parameters<typeof StorageService.addSubject>[0]) => StorageService.addSubject(subj), []);
+  const updateSubject = useCallback((id: string, updates: Partial<Subject>) => StorageService.updateSubject(id, updates), []);
+  const deleteSubject = useCallback((id: string) => StorageService.deleteSubject(id), []);
+
+  const addNote = useCallback((note: Omit<StoredNote, 'id' | 'createdAt' | 'updatedAt'>) => StorageService.addNote(note), []);
+  const updateNote = useCallback((id: string, updates: Partial<StoredNote>) => StorageService.updateNote(id, updates), []);
+  const deleteNote = useCallback((id: string) => StorageService.deleteNote(id), []);
+
+  const addQuiz = useCallback((quiz: Omit<StoredQuiz, 'id' | 'createdAt' | 'updatedAt'>) => StorageService.addQuiz(quiz), []);
+  const updateQuiz = useCallback((id: string, updates: Partial<StoredQuiz>) => StorageService.updateQuiz(id, updates), []);
+  const deleteQuiz = useCallback((id: string) => StorageService.deleteQuiz(id), []);
+
+  const recordAttempt = useCallback((attempt: Omit<StoredAttempt, 'id' | 'date'>) => StorageService.recordAttempt(attempt), []);
+  const deleteAttempt = useCallback((id: string) => StorageService.deleteAttempt(id), []);
+
+  const addTask = useCallback((task: Omit<StudyTask, 'id' | 'createdAt'>) => StorageService.addTask(task), []);
+  const updateTask = useCallback((id: string, updates: Partial<StudyTask>) => StorageService.updateTask(id, updates), []);
+  const deleteTask = useCallback((id: string) => StorageService.deleteTask(id), []);
+
+  const saveSettings = useCallback((s: Partial<UserSettings>) => StorageService.saveSettings(s), []);
+  const exportAllData = useCallback(() => StorageService.exportAllData(), []);
+  const importAllData = useCallback((json: string) => StorageService.importAllData(json), []);
+  const resetToDefaults = useCallback(() => StorageService.resetToDefaults(), []);
+
   return {
     subjects,
     notes,
@@ -76,23 +100,23 @@ export function useStudyData(): StudyDataState {
     settings,
     isLoading,
     refreshData,
-    addSubject: (subj) => StorageService.addSubject(subj),
-    updateSubject: (id, updates) => StorageService.updateSubject(id, updates),
-    deleteSubject: (id) => StorageService.deleteSubject(id),
-    addNote: (note) => StorageService.addNote(note),
-    updateNote: (id, updates) => StorageService.updateNote(id, updates),
-    deleteNote: (id) => StorageService.deleteNote(id),
-    addQuiz: (quiz) => StorageService.addQuiz(quiz),
-    updateQuiz: (id, updates) => StorageService.updateQuiz(id, updates),
-    deleteQuiz: (id) => StorageService.deleteQuiz(id),
-    recordAttempt: (attempt) => StorageService.recordAttempt(attempt),
-    deleteAttempt: (id) => StorageService.deleteAttempt(id),
-    addTask: (task) => StorageService.addTask(task),
-    updateTask: (id, updates) => StorageService.updateTask(id, updates),
-    deleteTask: (id) => StorageService.deleteTask(id),
-    saveSettings: (s) => StorageService.saveSettings(s),
-    exportAllData: () => StorageService.exportAllData(),
-    importAllData: (json) => StorageService.importAllData(json),
-    resetToDefaults: () => StorageService.resetToDefaults(),
+    addSubject,
+    updateSubject,
+    deleteSubject,
+    addNote,
+    updateNote,
+    deleteNote,
+    addQuiz,
+    updateQuiz,
+    deleteQuiz,
+    recordAttempt,
+    deleteAttempt,
+    addTask,
+    updateTask,
+    deleteTask,
+    saveSettings,
+    exportAllData,
+    importAllData,
+    resetToDefaults,
   };
 }

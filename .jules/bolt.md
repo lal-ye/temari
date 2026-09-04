@@ -1,3 +1,5 @@
-## 2025-05-18 - Storage Caching and React Reference Stability
-**Learning:** Returning freshly parsed `JSON.parse()` arrays from storage getters on every render causes React `useMemo` dependencies to fail reference equality check (`prev !== next`), forcing expensive re-computations on every render. In-memory caching must maintain stable references when data is unchanged, and create fresh array copies (`[...array]`) upon mutation so React state listeners detect updates.
-**Action:** Always wrap localStorage getters with an in-memory cache and assign shallow copies on setters to preserve both render memoization and reactive update detection.
+## 2025-09-04 - React useMemo Invalidation from Unmemoized Storage Calls
+
+**Learning:** Calling synchronous LocalStorage getters directly in component render bodies (e.g., `StorageService.getAttempts()`) creates brand-new array/object references on every single render pass. Passing these newly allocated references into `useMemo` dependency arrays completely invalidates `useMemo` caching, causing heavy pure functions to re-calculate on every render alongside redundant synchronous JSON parsing I/O.
+
+**Action:** Always consume storage data via reactive state hooks (`useStudyData()`) or memoize LocalStorage reads to preserve reference equality across renders.
