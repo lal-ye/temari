@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Subject, StoredAttempt, ExamQuestion } from '../../types';
 import { StorageService } from '../../services/storage';
+import { useStudyData } from '../../hooks/useStudyData';
 import { AIService } from '../../services/aiService';
 import { ExamTakingView } from './ExamTakingView';
 import { ExamResultsView } from './ExamResultsView';
@@ -46,7 +47,11 @@ export const ExamsManager: React.FC<ExamsManagerProps> = ({ currentSubject }) =>
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const subjectNotes = StorageService.getNotes(currentSubject.id);
+  const { notes } = useStudyData();
+  const subjectNotes = useMemo(
+    () => notes.filter((n) => n.subjectId === currentSubject.id),
+    [notes, currentSubject.id]
+  );
 
   const refreshAttempts = () => {
     setAttempts(StorageService.getAttempts(currentSubject.id).filter((a) => a.type === 'Exam'));
