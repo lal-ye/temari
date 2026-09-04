@@ -39,9 +39,11 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ subjects, currentS
   const [selectedSubjectId, setSelectedSubjectId] = useState<string>(currentSubjectId || 'ALL');
   const [selectedAttempt, setSelectedAttempt] = useState<StoredAttempt | null>(null);
 
+  // Use study data hook to get reactive attempts array and delete function
+  // This avoids synchronous localStorage parsing on every render and keeps attempts reference stable
   const { attempts, deleteAttempt } = useStudyData();
 
-  // Pure domain calculation for analytics and filtered attempts cached until attempts or subject filter changes
+  // Pure domain calculation for analytics and filtered attempts (properly memoized with stable attempts reference)
   const { filteredAttempts, analytics } = useMemo(() => {
     return computeAnalyticsSummary(attempts, selectedSubjectId);
   }, [attempts, selectedSubjectId]);
