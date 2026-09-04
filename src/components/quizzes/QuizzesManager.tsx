@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { StoredQuiz, Subject, Flashcard } from '../../types';
 import { StorageService } from '../../services/storage';
+import { useStudyData } from '../../hooks/useStudyData';
 import { AIService } from '../../services/aiService';
 import { FlashcardView } from './FlashcardView';
 import {
@@ -38,7 +39,11 @@ export const QuizzesManager: React.FC<QuizzesManagerProps> = ({ currentSubject, 
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const subjectNotes = StorageService.getNotes(currentSubject.id);
+  const { notes } = useStudyData();
+  const subjectNotes = useMemo(
+    () => notes.filter((n) => n.subjectId === currentSubject.id),
+    [notes, currentSubject.id]
+  );
 
   const refreshQuizzes = () => {
     setQuizzes(StorageService.getQuizzes(currentSubject.id));

@@ -646,6 +646,7 @@ export const StorageService = {
       memoryCache[STORAGE_KEYS.SETTINGS] = DEFAULT_SETTINGS;
       return { ...DEFAULT_SETTINGS };
     }
+    return cachedSettings;
   },
 
   saveSettings(settings: Partial<UserSettings>): UserSettings {
