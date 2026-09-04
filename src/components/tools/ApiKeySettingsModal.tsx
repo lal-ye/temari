@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Key, CheckCircle, AlertCircle, ExternalLink, X, ShieldCheck } from 'lucide-react';
-import { StorageService } from '../../services/storage';
+import { getStudyStore } from '../../services/studyStore';
 
 interface ApiKeySettingsModalProps {
   isOpen: boolean;
@@ -9,21 +9,21 @@ interface ApiKeySettingsModalProps {
 }
 
 export const ApiKeySettingsModal: React.FC<ApiKeySettingsModalProps> = ({ isOpen, onClose, onSaved }) => {
-  const [apiKey, setApiKey] = useState(() => StorageService.getSettings().apiKey || '');
+  const [apiKey, setApiKey] = useState(() => getStudyStore().settings.apiKey || '');
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
 
   if (!isOpen) return null;
 
   const handleSave = () => {
-    StorageService.saveSettings({ apiKey: apiKey.trim() });
+    getStudyStore().saveSettings({ apiKey: apiKey.trim() });
     onSaved();
     onClose();
   };
 
   const handleClear = () => {
     setApiKey('');
-    StorageService.saveSettings({ apiKey: undefined });
+    getStudyStore().saveSettings({ apiKey: undefined });
     onSaved();
     setTestResult({ success: true, message: 'Custom API Key removed. Using default server configuration.' });
   };

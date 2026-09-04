@@ -1,32 +1,31 @@
-import React, { useState, useMemo } from 'react';
-import { StoredQuiz, Subject, Flashcard } from '../../types';
-import { StorageService } from '../../services/storage';
-import { useStudyData } from '../../hooks/useStudyData';
+import React, { useState } from 'react';
+import { Flashcard } from '../../types';
 import { AIService } from '../../services/aiService';
+import { studyStore } from '../../hooks/useStudyStore';
+import { useActiveSubject, useNotes, useQuizzes } from '../../hooks/useStudyStore';
 import { FlashcardView } from './FlashcardView';
 import {
   Layers,
   Sparkles,
-  Plus,
   Play,
   Trash2,
-  BookOpen,
   Loader2,
-  X,
-  RotateCw,
-  Award,
-  CheckCircle,
-  HelpCircle,
+  X
 } from 'lucide-react';
 
 interface QuizzesManagerProps {
-  currentSubject: Subject;
   onHighlightTerm?: (term: string, context?: string) => void;
 }
 
-export const QuizzesManager: React.FC<QuizzesManagerProps> = ({ currentSubject, onHighlightTerm }) => {
-  const [quizzes, setQuizzes] = useState<StoredQuiz[]>(() => StorageService.getQuizzes(currentSubject.id));
-  const [activeQuiz, setActiveQuiz] = useState<StoredQuiz | null>(null);
+export const QuizzesManager: React.FC<QuizzesManagerProps> = ({ onHighlightTerm }) => {
+  const quizzes = useQuizzes();
+  const notes = useNotes();
+  const activeSubject = useActiveSubject();
+
+  // Derive the active deck from the (subject-scoped) quizzes collection so the
+  // deck stays fresh across store updates and subject switches.
+  const [activeQuizId, setActiveQuizId] = useState<string | null>(null);
+  const activeQuiz = quizzes.find((q) => q.id === activeQuizId) || null;
   const [showGenerateModal, setShowGenerateModal] = useState(false);
 
   // Form state
@@ -39,15 +38,10 @@ export const QuizzesManager: React.FC<QuizzesManagerProps> = ({ currentSubject, 
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const { notes } = useStudyData();
-  const subjectNotes = useMemo(
-    () => notes.filter((n) => n.subjectId === currentSubject.id),
-    [notes, currentSubject.id]
-  );
+  // Notes from useNotes() are already scoped to the active subject.
+  const subjectNotes = notes;
 
-  const refreshQuizzes = () => {
-    setQuizzes(StorageService.getQuizzes(currentSubject.id));
-  };
+  if (!activeSubject) return null;
 
   const handleGenerateQuiz = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -80,18 +74,16 @@ export const QuizzesManager: React.FC<QuizzesManagerProps> = ({ currentSubject, 
         difficulty,
       });
 
-      const newQuiz = StorageService.addQuiz({
-        subjectId: currentSubject.id,
-        name: quizName.trim() || `${currentSubject.name} Flashcard Drill`,
+      const newQuiz = studyStore.addQuiz({
+        name: quizName.trim() || `${activeSubject.name} Flashcard Drill`,
         flashcards,
         quizLengthUsed: flashcards.length,
         difficulty,
         courseMaterialExtract: textToUse.slice(0, 500),
       });
 
-      refreshQuizzes();
       setShowGenerateModal(false);
-      setActiveQuiz(newQuiz);
+      setActiveQuizId(newQuiz.id);
       // Reset form
       setQuizName('');
       setCustomMaterial('');
@@ -105,22 +97,21 @@ export const QuizzesManager: React.FC<QuizzesManagerProps> = ({ currentSubject, 
   const handleDeleteQuiz = (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
     if (confirm('Delete this flashcard quiz?')) {
-      StorageService.deleteQuiz(id);
-      refreshQuizzes();
+      studyStore.deleteQuiz(id);
     }
   };
 
   const handleFinishDrill = (score: number, masteredCount: number) => {
     if (!activeQuiz) return;
-    StorageService.updateQuiz(activeQuiz.id, {
+    studyStore.updateQuiz(activeQuiz.id, {
       lastScore: score,
       timesPracticed: (activeQuiz.timesPracticed || 0) + 1,
     });
 
-    // Also record in attempts history
-    StorageService.recordAttempt({
-      subjectId: currentSubject.id,
-      subjectName: currentSubject.name,
+    // Also record in attempts history (single record op, shared with exams)
+    studyStore.recordAttempt({
+      subjectId: activeSubject.id,
+      subjectName: activeSubject.name,
       name: activeQuiz.name,
       type: 'Quiz',
       overallScore: score,
@@ -128,8 +119,6 @@ export const QuizzesManager: React.FC<QuizzesManagerProps> = ({ currentSubject, 
       correctQuestions: masteredCount,
       topicsToReview: [],
     });
-
-    refreshQuizzes();
   };
 
   if (activeQuiz) {
@@ -139,7 +128,7 @@ export const QuizzesManager: React.FC<QuizzesManagerProps> = ({ currentSubject, 
         flashcards={activeQuiz.flashcards}
         onFinish={handleFinishDrill}
         onHighlightTerm={onHighlightTerm}
-        onClose={() => setActiveQuiz(null)}
+        onClose={() => setActiveQuizId(null)}
       />
     );
   }
@@ -153,7 +142,7 @@ export const QuizzesManager: React.FC<QuizzesManagerProps> = ({ currentSubject, 
             <span className="px-2 py-0.5 bg-yellow-300 text-slate-900 border-2 border-slate-900 rounded-md text-[10px] font-black uppercase tracking-wider shadow-neo-sm">
               ተማሪ Active Recall
             </span>
-            <span className="text-xs font-black text-slate-600">{currentSubject.name}</span>
+            <span className="text-xs font-black text-slate-600">{activeSubject.name}</span>
           </div>
           <h2 className="text-xl font-black text-slate-950 flex items-center gap-2">
             <Layers className="w-5 h-5 text-emerald-600" /> Flashcard Quizzes & Active Recall
@@ -241,7 +230,7 @@ export const QuizzesManager: React.FC<QuizzesManagerProps> = ({ currentSubject, 
                 </span>
 
                 <button
-                  onClick={() => setActiveQuiz(quiz)}
+                  onClick={() => setActiveQuizId(quiz.id)}
                   className="flex items-center gap-1.5 px-4 py-1.5 bg-emerald-300 hover:bg-emerald-200 text-slate-950 font-black text-xs rounded-xl border-2 border-slate-900 shadow-neo-sm transition-all active:translate-y-0.5"
                 >
                   <Play className="w-3.5 h-3.5 fill-current" /> Practice
@@ -270,7 +259,7 @@ export const QuizzesManager: React.FC<QuizzesManagerProps> = ({ currentSubject, 
               <div>
                 <h3 className="text-base font-black text-slate-950">Generate AI Flashcard Deck</h3>
                 <p className="text-xs font-bold text-slate-600">
-                  Subject: <strong className="text-cyan-700">{currentSubject.name}</strong>
+                  Subject: <strong className="text-cyan-700">{activeSubject.name}</strong>
                 </p>
               </div>
             </div>
@@ -290,7 +279,7 @@ export const QuizzesManager: React.FC<QuizzesManagerProps> = ({ currentSubject, 
                   type="text"
                   value={quizName}
                   onChange={(e) => setQuizName(e.target.value)}
-                  placeholder={`e.g. ${currentSubject.name} Key Mechanisms Quiz`}
+                  placeholder={`e.g. ${activeSubject.name} Key Mechanisms Quiz`}
                   className="w-full px-3.5 py-2 text-xs bg-[#FAF8F5] border-2 border-slate-900 rounded-xl font-bold focus:outline-hidden focus:ring-2 focus:ring-amber-400 shadow-neo-sm"
                   disabled={isGenerating}
                 />
@@ -365,7 +354,7 @@ export const QuizzesManager: React.FC<QuizzesManagerProps> = ({ currentSubject, 
                       className="w-full px-3.5 py-2 text-xs bg-[#FAF8F5] border-2 border-slate-900 rounded-xl font-bold focus:outline-hidden focus:ring-2 focus:ring-amber-400 shadow-neo-sm"
                       disabled={isGenerating}
                     >
-                      <option value="">All Notes Combined in {currentSubject.name}</option>
+                      <option value="">All Notes Combined in {activeSubject.name}</option>
                       {subjectNotes.map((n) => (
                         <option key={n.id} value={n.id}>
                           {n.title}

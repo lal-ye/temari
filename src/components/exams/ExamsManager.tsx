@@ -1,34 +1,26 @@
-import React, { useState, useMemo } from 'react';
-import { Subject, StoredAttempt, ExamQuestion } from '../../types';
-import { StorageService } from '../../services/storage';
-import { useStudyData } from '../../hooks/useStudyData';
+import React, { useState } from 'react';
+import { StoredAttempt, ExamQuestion } from '../../types';
+import { studyStore } from '../../hooks/useStudyStore';
+import { useActiveSubject, useAttempts, useNotes } from '../../hooks/useStudyStore';
 import { AIService } from '../../services/aiService';
 import { ExamTakingView } from './ExamTakingView';
 import { ExamResultsView } from './ExamResultsView';
 import {
   GraduationCap,
   Sparkles,
-  Plus,
   Play,
-  RotateCcw,
-  Clock,
-  Award,
   Trash2,
-  BookOpen,
   Loader2,
   X,
-  FileCheck,
-  AlertTriangle,
+  FileCheck
 } from 'lucide-react';
 
-interface ExamsManagerProps {
-  currentSubject: Subject;
-}
+export const ExamsManager: React.FC = () => {
+  const activeAttempts = useAttempts();
+  const attempts = activeAttempts.filter((a) => a.type === 'Exam');
+  const subjectNotes = useNotes();
+  const activeSubject = useActiveSubject();
 
-export const ExamsManager: React.FC<ExamsManagerProps> = ({ currentSubject }) => {
-  const [attempts, setAttempts] = useState<StoredAttempt[]>(() =>
-    StorageService.getAttempts(currentSubject.id).filter((a) => a.type === 'Exam')
-  );
   const [viewingAttempt, setViewingAttempt] = useState<StoredAttempt | null>(null);
   const [takingExam, setTakingExam] = useState<{
     title: string;
@@ -47,15 +39,7 @@ export const ExamsManager: React.FC<ExamsManagerProps> = ({ currentSubject }) =>
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const { notes } = useStudyData();
-  const subjectNotes = useMemo(
-    () => notes.filter((n) => n.subjectId === currentSubject.id),
-    [notes, currentSubject.id]
-  );
-
-  const refreshAttempts = () => {
-    setAttempts(StorageService.getAttempts(currentSubject.id).filter((a) => a.type === 'Exam'));
-  };
+  if (!activeSubject) return null;
 
   const handleGenerateAndStartExam = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -88,7 +72,7 @@ export const ExamsManager: React.FC<ExamsManagerProps> = ({ currentSubject }) =>
 
       setShowGenerateModal(false);
       setTakingExam({
-        title: examTitle.trim() || `${currentSubject.name} Comprehensive Mock Exam`,
+        title: examTitle.trim() || `${activeSubject.name} Comprehensive Mock Exam`,
         questions: generatedQuestions,
         timeLimitMinutes: timeLimit,
       });
@@ -103,17 +87,17 @@ export const ExamsManager: React.FC<ExamsManagerProps> = ({ currentSubject }) =>
   };
 
   const handleExamCompleted = (newAttempt: StoredAttempt) => {
-    StorageService.saveAttempts([newAttempt, ...StorageService.getAttempts()]);
-    refreshAttempts();
+    // Single record op shared with quiz drills — the store owns id/date and
+    // insertion order for every completed assessment.
+    const recorded = studyStore.recordAttempt(newAttempt);
     setTakingExam(null);
-    setViewingAttempt(newAttempt);
+    setViewingAttempt(recorded);
   };
 
   const handleDeleteAttempt = (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
     if (confirm('Delete this exam attempt record?')) {
-      StorageService.deleteAttempt(id);
-      refreshAttempts();
+      studyStore.deleteAttempt(id);
     }
   };
 
@@ -121,8 +105,8 @@ export const ExamsManager: React.FC<ExamsManagerProps> = ({ currentSubject }) =>
     return (
       <ExamTakingView
         examTitle={takingExam.title}
-        subjectName={currentSubject.name}
-        subjectId={currentSubject.id}
+        subjectName={activeSubject.name}
+        subjectId={activeSubject.id}
         questions={takingExam.questions}
         timeLimitMinutes={takingExam.timeLimitMinutes}
         onCompleted={handleExamCompleted}
@@ -159,7 +143,7 @@ export const ExamsManager: React.FC<ExamsManagerProps> = ({ currentSubject }) =>
             <span className="px-2 py-0.5 bg-yellow-300 text-slate-900 border-2 border-slate-900 rounded-md text-[10px] font-black uppercase tracking-wider shadow-neo-sm">
               ተማሪ Exam Simulator
             </span>
-            <span className="text-xs font-black text-slate-600">{currentSubject.name}</span>
+            <span className="text-xs font-black text-slate-600">{activeSubject.name}</span>
           </div>
           <h2 className="text-xl font-black text-slate-950 flex items-center gap-2">
             <GraduationCap className="w-5 h-5 text-indigo-600" /> Comprehensive Mock Exams & Diagnostics
@@ -271,7 +255,7 @@ export const ExamsManager: React.FC<ExamsManagerProps> = ({ currentSubject }) =>
               <div>
                 <h3 className="text-base font-black text-slate-950">Generate Practice Mock Exam</h3>
                 <p className="text-xs font-bold text-slate-600">
-                  Subject: <strong className="text-cyan-700">{currentSubject.name}</strong>
+                  Subject: <strong className="text-cyan-700">{activeSubject.name}</strong>
                 </p>
               </div>
             </div>
@@ -291,7 +275,7 @@ export const ExamsManager: React.FC<ExamsManagerProps> = ({ currentSubject }) =>
                   type="text"
                   value={examTitle}
                   onChange={(e) => setExamTitle(e.target.value)}
-                  placeholder={`e.g. ${currentSubject.name} Midterm Mock Simulator`}
+                  placeholder={`e.g. ${activeSubject.name} Midterm Mock Simulator`}
                   className="w-full px-3.5 py-2 text-xs bg-[#FAF8F5] border-2 border-slate-900 rounded-xl font-bold focus:outline-hidden focus:ring-2 focus:ring-amber-400 shadow-neo-sm"
                   disabled={isGenerating}
                 />
@@ -369,7 +353,7 @@ export const ExamsManager: React.FC<ExamsManagerProps> = ({ currentSubject }) =>
                       className="w-full px-3.5 py-2 text-xs bg-[#FAF8F5] border-2 border-slate-900 rounded-xl font-bold focus:outline-hidden focus:ring-2 focus:ring-amber-400 shadow-neo-sm"
                       disabled={isGenerating}
                     >
-                      <option value="">All Notes Combined in {currentSubject.name}</option>
+                      <option value="">All Notes Combined in {activeSubject.name}</option>
                       {subjectNotes.map((n) => (
                         <option key={n.id} value={n.id}>
                           {n.title}

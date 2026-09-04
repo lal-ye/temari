@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
-import { StoredNote, Subject } from '../../types';
-import { StorageService } from '../../services/storage';
+import { StoredNote } from '../../types';
 import { AIService } from '../../services/aiService';
+import { studyStore } from '../../hooks/useStudyStore';
+import { useActiveSubject, useNotes } from '../../hooks/useStudyStore';
 import { NoteViewer } from './NoteViewer';
 import {
   FileText,
-  Plus,
   Upload,
   Sparkles,
   Trash2,
@@ -13,20 +13,23 @@ import {
   Search,
   BookOpen,
   Loader2,
-  FileUp,
   X,
-  CheckCircle,
-  FileCode,
+  CheckCircle
 } from 'lucide-react';
 
 interface NotesManagerProps {
-  currentSubject: Subject;
   onHighlightTerm: (term: string, context?: string) => void;
 }
 
-export const NotesManager: React.FC<NotesManagerProps> = ({ currentSubject, onHighlightTerm }) => {
-  const [notes, setNotes] = useState<StoredNote[]>(() => StorageService.getNotes(currentSubject.id));
-  const [selectedNote, setSelectedNote] = useState<StoredNote | null>(() => notes[0] || null);
+export const NotesManager: React.FC<NotesManagerProps> = ({ onHighlightTerm }) => {
+  const notes = useNotes();
+  const activeSubject = useActiveSubject();
+
+  // Selection derives from the (subject-scoped) notes collection, so switching
+  // the active subject or deleting a note never leaves a stale note on screen.
+  const [selectedNoteId, setSelectedNoteId] = useState<string | null>(null);
+  const selectedNote = notes.find((n) => n.id === selectedNoteId) || notes[0] || null;
+
   const [searchQuery, setSearchQuery] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [showGenerateModal, setShowGenerateModal] = useState(false);
@@ -40,16 +43,7 @@ export const NotesManager: React.FC<NotesManagerProps> = ({ currentSubject, onHi
   const [isExtractingPdf, setIsExtractingPdf] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const refreshNotes = () => {
-    const updated = StorageService.getNotes(currentSubject.id);
-    setNotes(updated);
-    if (selectedNote) {
-      const stillExists = updated.find((n) => n.id === selectedNote.id);
-      setSelectedNote(stillExists || updated[0] || null);
-    } else {
-      setSelectedNote(updated[0] || null);
-    }
-  };
+  if (!activeSubject) return null;
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -103,18 +97,16 @@ export const NotesManager: React.FC<NotesManagerProps> = ({ currentSubject, onHi
 
       const tagsArray = customTags
         ? customTags.split(',').map((t) => t.trim()).filter(Boolean)
-        : [currentSubject.name, 'AI Generated'];
+        : [activeSubject.name, 'AI Generated'];
 
-      const newNote = StorageService.addNote({
-        subjectId: currentSubject.id,
+      const newNote = studyStore.addNote({
         title: customTitle.trim() || sourceFileName.replace(/\.[^/.]+$/, '') || 'Interactive Study Notes',
         content: generatedMarkdown,
         sourceName: sourceFileName || 'Uploaded Material',
         tags: tagsArray,
       });
 
-      refreshNotes();
-      setSelectedNote(newNote);
+      setSelectedNoteId(newNote.id);
       setShowGenerateModal(false);
       // Reset form
       setMaterialText('');
@@ -131,8 +123,7 @@ export const NotesManager: React.FC<NotesManagerProps> = ({ currentSubject, onHi
   const handleDeleteNote = (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
     if (confirm('Are you sure you want to delete this study note?')) {
-      StorageService.deleteNote(id);
-      refreshNotes();
+      studyStore.deleteNote(id);
     }
   };
 
@@ -140,13 +131,12 @@ export const NotesManager: React.FC<NotesManagerProps> = ({ currentSubject, onHi
     e.preventDefault();
     if (!editingNote) return;
 
-    StorageService.updateNote(editingNote.id, {
+    studyStore.updateNote(editingNote.id, {
       title: editingNote.title,
       content: editingNote.content,
       tags: editingNote.tags,
     });
     setEditingNote(null);
-    refreshNotes();
   };
 
   const filteredNotes = notes.filter(
@@ -166,7 +156,7 @@ export const NotesManager: React.FC<NotesManagerProps> = ({ currentSubject, onHi
               ተማሪ Smart Notes
             </span>
             <span className="text-xs font-black text-slate-600">
-              {currentSubject.name}
+              {activeSubject.name}
             </span>
           </div>
           <h2 className="text-xl font-black text-slate-950 flex items-center gap-2">
@@ -216,7 +206,7 @@ export const NotesManager: React.FC<NotesManagerProps> = ({ currentSubject, onHi
                   return (
                     <div
                       key={note.id}
-                      onClick={() => setSelectedNote(note)}
+                      onClick={() => setSelectedNoteId(note.id)}
                       className={`p-3.5 rounded-xl border-2 cursor-pointer transition-all ${
                         isSelected
                           ? 'bg-[#A7F3D0] border-slate-900 text-slate-950 shadow-neo translate-x-1'
@@ -354,7 +344,7 @@ export const NotesManager: React.FC<NotesManagerProps> = ({ currentSubject, onHi
               <div>
                 <h3 className="text-base font-black text-slate-950">Generate Dynamic Interactive Notes</h3>
                 <p className="text-xs font-bold text-slate-600">
-                  Target Subject: <strong className="text-cyan-700">{currentSubject.name}</strong>
+                  Target Subject: <strong className="text-cyan-700">{activeSubject.name}</strong>
                 </p>
               </div>
             </div>

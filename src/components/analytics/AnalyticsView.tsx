@@ -1,6 +1,7 @@
-import React, { useState, useMemo } from 'react';
-import { Subject, StoredAttempt } from '../../types';
-import { useStudyData } from '../../hooks/useStudyData';
+import React, { useEffect, useRef, useState, useMemo } from 'react';
+import { StoredAttempt } from '../../types';
+import { studyStore } from '../../hooks/useStudyStore';
+import { useActiveSubjectId, useAllAttempts, useSubjects } from '../../hooks/useStudyStore';
 import { computeAnalyticsSummary } from '../../utils/analytics';
 import { ExamResultsView } from '../exams/ExamResultsView';
 import {
@@ -30,23 +31,34 @@ import {
   Cell,
 } from 'recharts';
 
-interface AnalyticsViewProps {
-  subjects: Subject[];
-  currentSubjectId?: string;
-}
+export const AnalyticsView: React.FC = () => {
+  // Attempts across all subjects (this screen has its own subject filter).
+  const attempts = useAllAttempts();
+  const subjects = useSubjects();
+  const activeSubjectId = useActiveSubjectId();
+  const deleteAttempt = studyStore.deleteAttempt;
 
-export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ subjects, currentSubjectId }) => {
-  const [selectedSubjectId, setSelectedSubjectId] = useState<string>(currentSubjectId || 'ALL');
   const [selectedAttempt, setSelectedAttempt] = useState<StoredAttempt | null>(null);
+  // null = follow the store's active subject; any string = explicit override.
+  const [filterOverride, setFilterOverride] = useState<string | null>(null);
+  const lastActiveRef = useRef<string | null>(activeSubjectId);
+  const effectiveSubjectId = filterOverride ?? activeSubjectId ?? 'ALL';
 
-  // Use study data hook to get reactive attempts array and delete function
-  // This avoids synchronous localStorage parsing on every render and keeps attempts reference stable
-  const { attempts, deleteAttempt } = useStudyData();
+  // Guarded follow: while the user has not pinned an override, the filter
+  // follows the store's active subject (sidebar switches update analytics).
+  useEffect(() => {
+    const prev = lastActiveRef.current;
+    lastActiveRef.current = activeSubjectId;
+    if (filterOverride !== null && filterOverride === prev) {
+      setFilterOverride(null);
+    }
+  }, [activeSubjectId, filterOverride]);
 
-  // Pure domain calculation for analytics and filtered attempts (properly memoized with stable attempts reference)
+  // Pure domain calculation for analytics and filtered attempts (memoized on
+  // the stable attempts reference from the store)
   const { filteredAttempts, analytics } = useMemo(() => {
-    return computeAnalyticsSummary(attempts, selectedSubjectId);
-  }, [attempts, selectedSubjectId]);
+    return computeAnalyticsSummary(attempts, effectiveSubjectId);
+  }, [attempts, effectiveSubjectId]);
 
   const handleDeleteAttempt = (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -85,8 +97,8 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ subjects, currentS
         <div className="flex items-center gap-2">
           <Filter className="w-4 h-4 text-slate-700" />
           <select
-            value={selectedSubjectId}
-            onChange={(e) => setSelectedSubjectId(e.target.value)}
+            value={effectiveSubjectId}
+            onChange={(e) => setFilterOverride(e.target.value === 'ALL' ? 'ALL' : e.target.value)}
             className="px-3.5 py-2 text-xs bg-[#FAF8F5] border-2 border-slate-900 rounded-xl font-black text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-amber-400 shadow-neo-sm"
           >
             <option value="ALL">All Subjects Combined</option>

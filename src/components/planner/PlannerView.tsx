@@ -1,49 +1,50 @@
-import React, { useState } from 'react';
-import { Subject, StudyTask } from '../../types';
-import { StorageService } from '../../services/storage';
+import React, { useEffect, useRef, useState } from 'react';
+import { StudyTask } from '../../types';
+import { studyStore } from '../../hooks/useStudyStore';
+import { useActiveSubjectId, useSubjects, useTasks } from '../../hooks/useStudyStore';
 import {
-  Calendar as CalendarIcon,
   CheckCircle,
   Circle,
   Plus,
   Trash2,
   Clock,
-  Sparkles,
   Flame,
-  CheckSquare,
-  AlertCircle,
+  CheckSquare
 } from 'lucide-react';
 
 interface PlannerViewProps {
-  subjects: Subject[];
-  currentSubjectId?: string;
   onOpenPomodoro?: () => void;
 }
 
-export const PlannerView: React.FC<PlannerViewProps> = ({
-  subjects,
-  currentSubjectId,
-  onOpenPomodoro,
-}) => {
-  const [tasks, setTasks] = useState<StudyTask[]>(() => StorageService.getTasks());
+export const PlannerView: React.FC<PlannerViewProps> = ({ onOpenPomodoro }) => {
+  const tasks = useTasks();
+  const subjects = useSubjects();
+  const activeSubjectId = useActiveSubjectId();
+
   const [newTaskTitle, setNewTaskTitle] = useState('');
-  const [selectedSubjectId, setSelectedSubjectId] = useState<string>(
-    currentSubjectId || subjects[0]?.id || ''
-  );
+  // Subject for the NEW task form. Follows the store's active subject until the
+  // user explicitly overrides it (guarded follow).
+  const [taskSubjectId, setTaskSubjectId] = useState<string>('');
+  const lastActiveRef = useRef<string | null>(activeSubjectId);
+
+  useEffect(() => {
+    const prev = lastActiveRef.current;
+    lastActiveRef.current = activeSubjectId;
+    if (activeSubjectId && (taskSubjectId === '' || taskSubjectId === prev)) {
+      setTaskSubjectId(activeSubjectId);
+    }
+  }, [activeSubjectId, taskSubjectId]);
+
   const [taskDueDate, setTaskDueDate] = useState<string>(new Date().toISOString().split('T')[0]);
   const [taskDuration, setTaskDuration] = useState<number>(30);
   const [filter, setFilter] = useState<'ALL' | 'PENDING' | 'COMPLETED'>('ALL');
-
-  const refreshTasks = () => {
-    setTasks(StorageService.getTasks());
-  };
 
   const handleAddTask = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newTaskTitle.trim()) return;
 
-    StorageService.addTask({
-      subjectId: selectedSubjectId || subjects[0]?.id || 'general',
+    studyStore.addTask({
+      subjectId: taskSubjectId || subjects[0]?.id || 'general',
       title: newTaskTitle.trim(),
       dueDate: taskDueDate,
       estimatedMinutes: taskDuration,
@@ -51,18 +52,15 @@ export const PlannerView: React.FC<PlannerViewProps> = ({
     });
 
     setNewTaskTitle('');
-    refreshTasks();
   };
 
   const toggleTask = (task: StudyTask) => {
-    StorageService.updateTask(task.id, { completed: !task.completed });
-    refreshTasks();
+    studyStore.updateTask(task.id, { completed: !task.completed });
   };
 
   const deleteTask = (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    StorageService.deleteTask(id);
-    refreshTasks();
+    studyStore.deleteTask(id);
   };
 
   const completedCount = tasks.filter((t) => t.completed).length;
@@ -139,8 +137,8 @@ export const PlannerView: React.FC<PlannerViewProps> = ({
                 Target Subject
               </label>
               <select
-                value={selectedSubjectId}
-                onChange={(e) => setSelectedSubjectId(e.target.value)}
+                value={taskSubjectId}
+                onChange={(e) => setTaskSubjectId(e.target.value)}
                 className="w-full px-3.5 py-2.5 text-xs bg-[#FAF8F5] border-2 border-slate-900 rounded-xl font-bold text-slate-950 focus:outline-hidden focus:ring-2 focus:ring-amber-400 shadow-neo-sm"
               >
                 {subjects.map((s) => (

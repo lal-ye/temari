@@ -1,5 +1,5 @@
 import { Flashcard, ExamQuestion, ExamResult, Article } from '../types';
-import { StorageService } from './storage';
+import { getStudyStore } from './studyStore';
 
 export interface GenerateNotesParams {
   material: string;
@@ -34,7 +34,7 @@ export interface ExplainTermParams {
 
 export const AIService = {
   getApiKey(): string | undefined {
-    return StorageService.getSettings().apiKey;
+    return getStudyStore().settings.apiKey;
   },
 
   async generateNotes(params: GenerateNotesParams): Promise<string> {
