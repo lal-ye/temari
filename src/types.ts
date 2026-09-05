@@ -3,6 +3,7 @@ import type { AIProviderId } from '../shared/aiCatalog';
 export interface Subject {
   id: string;
   name: string;
+  amharicName?: string;
   code?: string;
   description?: string;
   color?: string;
@@ -15,7 +16,7 @@ export interface StoredNote {
   id: string;
   subjectId: string;
   title: string;
-  content: string; // Markdown content with headings, tables, mermaid diagrams, etc.
+  content: string; // Markdown content with headings, tables, editorial vector diagrams, etc.
   sourceName?: string; // Original source filename or "Pasted Material"
   tags?: string[];
   createdAt: string;

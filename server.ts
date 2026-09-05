@@ -108,7 +108,7 @@ Specifications:
 1. Header Hierarchy: Use # for main title, ## for key modules, ### for concepts.
 2. Comparison Matrix: Include Markdown tables (|...|) comparing contrasting concepts where appropriate.
 3. Callouts: Include blockquotes with tags: > [!NOTE], > [!IMPORTANT], > [!TIP].
-4. Mindmap Diagram: Generate a VALID Mermaid.js mindmap diagram using \`\`\`mermaid \\n mindmap \\n root((Title)) ... \`\`\`. Ensure proper indentation without syntax errors.
+4. Concept Diagram: Generate an editorial concept map or process diagram using \`\`\`diagram \\n root((Core Subject)) \\n   Branch Name \\n     Sub-concept 1 \\n     Sub-concept 2 \\n \`\`\`. Do NOT use Mermaid syntax or external library tags; use clean indented structure for Temari's native editorial vector diagram system.
 5. References: Include a references section at the bottom citing "${sourceName || 'Provided Course Material'}".`;
 
     const prompt = `Please generate rich study notes based on this source material:\n\n${material}`;
@@ -374,6 +374,23 @@ Respond with strict JSON:
   }
 });
 
+// Helper to extract text locally from the PDF data URI using pdf-parse
+async function extractTextLocally(dataUri: string): Promise<string> {
+  try {
+    const matches = dataUri.match(/^data:(.+?);base64,(.+)$/);
+    const base64Data = matches ? matches[2] : dataUri.replace(/^data:application\/pdf;base64,/, '');
+    const buffer = Buffer.from(base64Data, 'base64');
+    const { PDFParse } = await import('pdf-parse');
+    const parser = new PDFParse({ data: buffer });
+    const textResult = await parser.getText();
+    await parser.destroy();
+    return (textResult?.text || '').trim();
+  } catch (localErr) {
+    console.warn('Local PDF parser attempt failed:', localErr);
+    return '';
+  }
+}
+
 // 7. Extract Text from PDF (Multimodal with local PDFParse fallback)
 app.post('/api/ai/extract-pdf', async (req: Request, res: Response) => {
   try {
@@ -381,23 +398,6 @@ app.post('/api/ai/extract-pdf', async (req: Request, res: Response) => {
     if (!pdfDataUri || typeof pdfDataUri !== 'string') {
       return res.status(400).json({ error: 'pdfDataUri is required' });
     }
-
-    // Helper to extract text locally from the PDF data URI
-    const extractTextLocally = async (dataUri: string): Promise<string> => {
-      try {
-        const matches = dataUri.match(/^data:(.+?);base64,(.+)$/);
-        const base64Data = matches ? matches[2] : dataUri.replace(/^data:application\/pdf;base64,/, '');
-        const buffer = Buffer.from(base64Data, 'base64');
-        const { PDFParse } = await import('pdf-parse');
-        const parser = new PDFParse({ data: buffer });
-        const textResult = await parser.getText();
-        await parser.destroy();
-        return (textResult?.text || '').trim();
-      } catch (localErr) {
-        console.warn('Local PDF parser attempt failed:', localErr);
-        return '';
-      }
-    };
 
     let extractedText = '';
     let providerUsed = provider || 'gemini';

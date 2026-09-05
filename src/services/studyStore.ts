@@ -44,7 +44,7 @@ export interface StudyStore {
 
   selectSubject: (id: string) => void;
   addSubject: (
-    nameOrObj: string | { name: string; description?: string; code?: string; color?: string }
+    nameOrObj: string | { name: string; amharicName?: string; description?: string; code?: string; color?: string }
   ) => Subject;
   updateSubject: (id: string, updates: Partial<Subject>) => Subject | null;
   deleteSubject: (id: string) => void;
@@ -179,11 +179,13 @@ export function createStudyStore(adapter: StorageAdapter): StudyStore {
 
     addSubject: (nameOrObj) => {
       let name = '';
+      let amharicName: string | undefined;
       let description: string | undefined;
       let code: string | undefined;
       let color = '#0d9488';
       if (typeof nameOrObj === 'object') {
         name = nameOrObj.name;
+        amharicName = nameOrObj.amharicName;
         description = nameOrObj.description;
         code = nameOrObj.code;
         color = nameOrObj.color || '#0d9488';
@@ -193,6 +195,7 @@ export function createStudyStore(adapter: StorageAdapter): StudyStore {
       const subj: Subject = {
         id: `subj-${Date.now()}`,
         name: name.trim(),
+        amharicName: amharicName?.trim(),
         description: description?.trim(),
         code: code?.trim(),
         color,

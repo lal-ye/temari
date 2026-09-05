@@ -83,11 +83,12 @@ export const AnalyticsView: React.FC = () => {
       {/* Top Filter Bar */}
       <div className="bg-white border-3 border-slate-900 rounded-2xl p-5 md:p-6 shadow-neo-md flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <span className="px-2.5 py-0.5 bg-yellow-300 text-slate-950 border border-slate-900 rounded-md text-[10px] font-black uppercase tracking-wider shadow-xs">
-            ተማሪ Intelligence
+          <span className="badge-chip px-2.5 py-1 bg-yellow-300 text-slate-950 border-2 border-slate-900 rounded-md shadow-neo-sm inline-flex items-center gap-1.5">
+            <span className="font-ethiopic font-bold text-xs normal-case">ተማሪ</span>
+            <span>Intelligence</span>
           </span>
-          <h2 className="text-xl font-black text-slate-950 flex items-center gap-2 mt-1">
-            <TrendingUp className="w-5 h-5 text-cyan-800" /> Academic Progress & Mastery Analytics
+          <h2 className="section-heading text-slate-950 flex items-center gap-2 mt-2">
+            <TrendingUp className="w-5 h-5 text-cyan-800 shrink-0" /> Academic Progress & Mastery Analytics
           </h2>
           <p className="text-xs font-bold text-slate-600 mt-1">
             Diagnostic breakdown of scores, topic mastery retention, and exam readiness.

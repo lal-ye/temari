@@ -1,4 +1,4 @@
-import React, { lazy, Suspense, useState } from 'react';
+import React, { lazy, Suspense, useState, useEffect, useRef } from 'react';
 import { studyStore, useActiveSubject, useActiveSubjectId, useSubjects } from './hooks/useStudyStore';
 import { NotesManager } from './components/notes/NotesManager';
 import { QuizzesManager } from './components/quizzes/QuizzesManager';
@@ -53,6 +53,7 @@ export default function App() {
     null
   );
   const [newSubjectName, setNewSubjectName] = useState('');
+  const [newSubjectAmharicName, setNewSubjectAmharicName] = useState('');
   const [newSubjectCode, setNewSubjectCode] = useState('');
   const [newSubjectColor, setNewSubjectColor] = useState('#2563eb');
 
@@ -63,11 +64,13 @@ export default function App() {
     // The store creates the subject and makes it the active subject.
     studyStore.addSubject({
       name: newSubjectName.trim(),
+      amharicName: newSubjectAmharicName.trim() || undefined,
       code: newSubjectCode.trim() || undefined,
       color: newSubjectColor,
     });
 
     setNewSubjectName('');
+    setNewSubjectAmharicName('');
     setNewSubjectCode('');
     setOpenModal(null);
   };
@@ -97,47 +100,159 @@ export default function App() {
     { id: 'planner', label: 'Study Planner', icon: Calendar },
   ];
 
+  // Mobile swipe-to-dismiss gesture state for sidebar drawer
+  const [asideDragOffset, setAsideDragOffset] = useState(0);
+  const [isDraggingAside, setIsDraggingAside] = useState(false);
+  const asideTouchStartRef = useRef<{ x: number; y: number } | null>(null);
+
+  const handleAsideTouchStart = (e: React.TouchEvent) => {
+    if (!sidebarOpen) return;
+    asideTouchStartRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+    setIsDraggingAside(true);
+    setAsideDragOffset(0);
+  };
+
+  const handleAsideTouchMove = (e: React.TouchEvent) => {
+    if (!asideTouchStartRef.current || !isDraggingAside) return;
+    const dx = e.touches[0].clientX - asideTouchStartRef.current.x;
+    const dy = e.touches[0].clientY - asideTouchStartRef.current.y;
+
+    if (Math.abs(dx) > Math.abs(dy)) {
+      if (dx < 0) {
+        // Swiping left (closing drawer)
+        setAsideDragOffset(dx);
+      } else {
+        // Rubber-band resistance when dragging right
+        setAsideDragOffset(dx * 0.15);
+      }
+    }
+  };
+
+  const handleAsideTouchEnd = () => {
+    if (asideDragOffset < -55) {
+      setSidebarOpen(false);
+    }
+    setAsideDragOffset(0);
+    setIsDraggingAside(false);
+    asideTouchStartRef.current = null;
+  };
+
+  const handleAsideTouchCancel = () => {
+    setAsideDragOffset(0);
+    setIsDraggingAside(false);
+    asideTouchStartRef.current = null;
+  };
+
+  // Desktop keyboard navigation (1-5 for study hubs, Escape to close drawer/modals)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (
+        target &&
+        (target.tagName === 'INPUT' ||
+          target.tagName === 'TEXTAREA' ||
+          target.tagName === 'SELECT' ||
+          target.isContentEditable)
+      ) {
+        return;
+      }
+
+      if (openModal || confirmDeleteSubjectId || explainTermData) {
+        if (e.key === 'Escape') {
+          setOpenModal(null);
+          setConfirmDeleteSubjectId(null);
+          setExplainTermData(null);
+        }
+        return;
+      }
+
+      if (e.key === '1') {
+        handleTabChange('notes');
+        setSidebarOpen(false);
+      } else if (e.key === '2') {
+        handleTabChange('quizzes');
+        setSidebarOpen(false);
+      } else if (e.key === '3') {
+        handleTabChange('exams');
+        setSidebarOpen(false);
+      } else if (e.key === '4') {
+        handleTabChange('analytics');
+        setSidebarOpen(false);
+      } else if (e.key === '5') {
+        handleTabChange('planner');
+        setSidebarOpen(false);
+      } else if (e.key === 'Escape' && sidebarOpen) {
+        setSidebarOpen(false);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [openModal, confirmDeleteSubjectId, explainTermData, sidebarOpen, activeTab]);
+
   return (
     <div className="flex h-screen w-full bg-[#F1F5F9] text-slate-800 font-sans overflow-hidden">
-      {/* Mobile Sidebar Overlay */}
+      {/* Mobile Sidebar Overlay with backdrop blur */}
       {sidebarOpen && (
         <div
-          className="fixed inset-0 bg-slate-900/50 z-40 lg:hidden"
+          className="fixed inset-0 bg-slate-950/60 backdrop-blur-xs z-40 lg:hidden transition-opacity duration-200"
           onClick={() => setSidebarOpen(false)}
+          aria-hidden="true"
         />
       )}
 
       {/* Left Sidebar (Neo-Brutalist Canvas) */}
       <aside
-        className={`app-sidebar fixed lg:static inset-y-0 left-0 z-50 w-68 bg-[#FFFDF9] text-slate-900 flex flex-col h-full max-h-screen overflow-y-auto overscroll-contain p-4 border-r-3 border-slate-900 shadow-neo-lg lg:shadow-none transition-transform duration-200 ease-in-out ${
+        onTouchStart={handleAsideTouchStart}
+        onTouchMove={handleAsideTouchMove}
+        onTouchEnd={handleAsideTouchEnd}
+        onTouchCancel={handleAsideTouchCancel}
+        style={{
+          transform:
+            sidebarOpen && asideDragOffset !== 0
+              ? `translateX(${Math.min(0, asideDragOffset)}px)`
+              : undefined,
+          transition: isDraggingAside ? 'none' : undefined,
+        }}
+        className={`app-sidebar fixed lg:static inset-y-0 left-0 z-50 w-72 sm:w-76 xl:w-76 bg-[#FFFDF9] text-slate-950 flex flex-col h-full max-h-screen overflow-y-auto overscroll-contain p-4 border-r-3 border-slate-900 shadow-neo-lg lg:shadow-none select-none transition-transform duration-200 ease-out ${
           sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
         }`}
       >
         <div className="space-y-4 shrink-0">
-          {/* Brand Header: Prominent TEMARI ተማሪ */}
-          <div className="bg-[#FEF08A] border-3 border-slate-900 rounded-2xl p-3.5 shadow-neo relative overflow-hidden">
-            <div className="flex items-center justify-between">
+          {/* Brand Header: Prominent TEMARI ተማሪ with Ethiopic Identity Layer */}
+          <div className="bg-[#FEF08A] border-3 border-slate-900 rounded-2xl p-3.5 shadow-neo relative overflow-hidden group">
+            {/* Mobile Drag Indicator Handle */}
+            <div
+              className="lg:hidden absolute top-1.5 left-1/2 -translate-x-1/2 w-8 h-1 bg-slate-900/35 rounded-full"
+              aria-hidden="true"
+            />
+            <div className="flex items-center justify-between mt-0.5">
               <div className="flex items-center gap-2.5">
-                <div className="w-10 h-10 rounded-xl bg-slate-900 text-yellow-300 flex items-center justify-center font-black text-base shadow-neo-sm shrink-0 border-2 border-yellow-300">
+                <div className="w-11 h-11 rounded-xl bg-slate-900 text-yellow-300 flex items-center justify-center font-bold text-2xl shadow-neo-sm shrink-0 border-2 border-yellow-300 font-ethiopic leading-none transition-transform group-hover:scale-105">
                   ተ
                 </div>
                 <div>
                   <div className="flex items-center gap-1.5">
-                    <h1 className="text-base font-black text-slate-950 tracking-tight leading-none">
+                    <h1 className="font-editorial text-lg font-bold text-slate-950 tracking-tight leading-none">
                       TEMARI
                     </h1>
-                    <span className="text-xs font-black px-1.5 py-0.5 bg-slate-900 text-yellow-300 rounded border border-slate-900">
+                    <span className="app-wordmark px-2 py-0.5 bg-slate-900 text-yellow-300 rounded-lg border border-slate-900 inline-flex items-center shadow-neo-xs leading-none">
                       ተማሪ
                     </span>
                   </div>
-                  <p className="text-[10px] font-bold text-slate-700 tracking-wide mt-0.5 uppercase">
-                    AI Study Companion
-                  </p>
+                  <div className="flex items-center gap-1.5 mt-1">
+                    <p className="text-[10px] font-bold text-slate-700 tracking-wider uppercase font-mono">
+                      AI Study Companion
+                    </p>
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 border border-slate-900" title="Offline Ready" />
+                  </div>
                 </div>
               </div>
               <button
                 onClick={() => setSidebarOpen(false)}
-                className="lg:hidden p-1 text-slate-900 hover:bg-yellow-300/80 rounded-lg border-2 border-slate-900"
+                className="lg:hidden min-w-[44px] min-h-[44px] flex items-center justify-center p-2 text-slate-950 bg-white hover:bg-rose-100 rounded-xl border-2 border-slate-900 shadow-neo-xs btn-kinetic active:translate-x-0.5 active:translate-y-0.5"
+                title="Close Navigation"
+                aria-label="Close navigation sidebar"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -145,39 +260,64 @@ export default function App() {
           </div>
 
           {/* Active Course Card in Sidebar */}
-          <div className="bg-white rounded-xl p-3 border-2 border-slate-900 shadow-neo-sm">
-            <div className="flex items-center justify-between text-[11px] font-black uppercase tracking-wider text-slate-600 mb-1.5">
-              <span>Active Subject</span>
+          <div className="bg-white rounded-2xl p-3 border-2 border-slate-900 shadow-neo-sm">
+            <div className="flex items-center justify-between text-[11px] font-black uppercase tracking-wider text-slate-800 mb-2">
+              <span className="flex items-center gap-1.5">
+                <BookOpen className="w-3.5 h-3.5 text-slate-900" />
+                <span>Active Subject</span>
+              </span>
               <button
                 onClick={() => setOpenModal('add-subject')}
-                className="px-2 py-0.5 bg-cyan-300 hover:bg-cyan-200 text-slate-900 rounded-md border border-slate-900 flex items-center gap-1 text-[10px] font-black shadow-xs transition-all active:translate-y-0.5"
-                title="Add Subject"
+                className="btn-kinetic px-2.5 py-1 bg-cyan-300 hover:bg-cyan-200 text-slate-950 rounded-lg border-2 border-slate-900 flex items-center gap-1 text-[10px] font-black shadow-neo-xs transition-all active:translate-x-0.5 active:translate-y-0.5 min-h-[32px]"
+                title="Add New Subject"
               >
-                <Plus className="w-3 h-3" /> New
+                <Plus className="w-3 h-3 stroke-[2.5]" /> New
               </button>
             </div>
             <div className="relative">
               <select
                 value={activeSubjectId ?? ''}
                 onChange={(e) => studyStore.selectSubject(e.target.value)}
-                className="w-full bg-[#FAF8F5] text-slate-900 text-xs font-black rounded-lg px-2.5 py-2 pr-7 border-2 border-slate-900 shadow-xs focus:outline-hidden focus:ring-2 focus:ring-amber-400 appearance-none cursor-pointer"
+                className="w-full bg-[#FAF8F5] text-slate-950 text-xs font-black rounded-xl px-3 py-2.5 pr-8 border-2 border-slate-900 shadow-xs focus:outline-hidden focus:ring-2 focus:ring-amber-400 appearance-none cursor-pointer"
               >
                 {subjects.map((sub) => (
                   <option key={sub.id} value={sub.id}>
-                    {sub.name} {sub.code ? `(${sub.code})` : ''}
+                    {sub.name} {sub.amharicName ? `• ${sub.amharicName}` : ''} {sub.code ? `(${sub.code})` : ''}
                   </option>
                 ))}
               </select>
-              <ChevronDown className="w-4 h-4 text-slate-900 absolute right-2.5 top-2.5 pointer-events-none stroke-[2.5]" />
+              <div className="absolute right-2.5 top-1/2 -translate-y-1/2 flex items-center gap-1.5 pointer-events-none">
+                <span
+                  className="w-2.5 h-2.5 rounded-full border border-slate-900 shadow-xs"
+                  style={{ backgroundColor: currentSubject?.color || '#3B82F6' }}
+                />
+                <ChevronDown className="w-4 h-4 text-slate-900 stroke-[2.5]" />
+              </div>
             </div>
+            {currentSubject && (
+              <div className="mt-2 pt-2 border-t border-slate-200 flex items-center justify-between text-[10px] font-mono font-bold text-slate-600">
+                <span className="flex items-center gap-1">
+                  <span className="w-2 h-2 rounded-full" style={{ backgroundColor: currentSubject.color }} />
+                  <span className="text-slate-900">{currentSubject.code || 'CORE'}</span>
+                </span>
+                {currentSubject.amharicName && (
+                  <span className="font-ethiopic font-black text-slate-800">
+                    {currentSubject.amharicName}
+                  </span>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Navigation Menu */}
           <nav className="space-y-1.5">
-            <div className="px-2 pb-1 text-[10px] font-black uppercase tracking-wider text-slate-500">
-              Study Hub
+            <div className="flex items-center justify-between px-2 pb-1 text-[10px] font-black uppercase tracking-wider text-slate-500">
+              <span>Study Hub</span>
+              <span className="hidden lg:inline text-[9px] font-mono text-slate-400 font-bold">
+                Keys 1–5
+              </span>
             </div>
-            {navItems.map((item) => {
+            {navItems.map((item, index) => {
               const Icon = item.icon;
               const isActive = activeTab === item.id;
               return (
@@ -187,20 +327,23 @@ export default function App() {
                     handleTabChange(item.id as TabType);
                     setSidebarOpen(false);
                   }}
-                  className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-black transition-all border-2 text-left ${
+                  className={`btn-kinetic min-h-[44px] w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-black transition-all border-2 text-left active:translate-x-0.5 active:translate-y-0.5 ${
                     isActive
                       ? 'bg-[#67E8F9] text-slate-950 border-slate-900 shadow-neo translate-x-1'
-                      : 'bg-white text-slate-800 border-slate-900/40 hover:border-slate-900 hover:bg-slate-50 shadow-xs'
+                      : 'bg-white text-slate-800 border-slate-900/60 hover:border-slate-900 hover:bg-slate-50 shadow-neo-xs hover:shadow-neo-sm'
                   }`}
                 >
                   <div
-                    className={`p-1 rounded-md border border-slate-900 shrink-0 ${
-                      isActive ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-800'
+                    className={`p-1.5 rounded-lg border border-slate-900 shrink-0 ${
+                      isActive ? 'bg-slate-900 text-yellow-300' : 'bg-slate-100 text-slate-900'
                     }`}
                   >
                     <Icon className="w-3.5 h-3.5" />
                   </div>
-                  <span className="flex-1">{item.label}</span>
+                  <span className="flex-1 font-bold">{item.label}</span>
+                  <kbd className="hidden lg:inline-flex items-center justify-center w-5 h-5 bg-slate-900 text-yellow-300 font-mono text-[10px] font-black rounded border border-slate-900 shadow-neo-xs">
+                    {index + 1}
+                  </kbd>
                 </button>
               );
             })}
@@ -216,13 +359,13 @@ export default function App() {
                 setOpenModal('pomodoro');
                 setSidebarOpen(false);
               }}
-              className="w-full flex items-center justify-between px-3 py-2 bg-white hover:bg-amber-50 rounded-xl text-xs font-bold text-slate-900 border-2 border-slate-900 shadow-xs hover:shadow-neo-sm transition-all"
+              className="btn-kinetic min-h-[44px] w-full flex items-center justify-between px-3 py-2 bg-white hover:bg-amber-50 rounded-xl text-xs font-bold text-slate-900 border-2 border-slate-900 shadow-neo-xs hover:shadow-neo-sm transition-all active:translate-x-0.5 active:translate-y-0.5"
             >
               <span className="flex items-center gap-2">
                 <Clock className="w-4 h-4 text-amber-600" />
                 <span>Focus Pomodoro</span>
               </span>
-              <span className="text-[10px] px-1.5 py-0.5 bg-amber-200 text-amber-950 font-mono font-black rounded border border-slate-900">
+              <span className="text-[10px] px-1.5 py-0.5 bg-amber-200 text-amber-950 font-mono font-black rounded border border-slate-900 shadow-neo-xs">
                 25m
               </span>
             </button>
@@ -231,13 +374,13 @@ export default function App() {
                 setOpenModal('api-key');
                 setSidebarOpen(false);
               }}
-              className="w-full flex items-center justify-between px-3 py-2 bg-white hover:bg-yellow-50 rounded-xl text-xs font-bold text-slate-900 border-2 border-slate-900 shadow-xs hover:shadow-neo-sm transition-all"
+              className="btn-kinetic min-h-[44px] w-full flex items-center justify-between px-3 py-2 bg-white hover:bg-yellow-50 rounded-xl text-xs font-bold text-slate-900 border-2 border-slate-900 shadow-neo-xs hover:shadow-neo-sm transition-all active:translate-x-0.5 active:translate-y-0.5"
             >
               <div className="flex items-center gap-2">
                 <Key className="w-4 h-4 text-purple-600" />
                 <span>AI & Model Config</span>
               </div>
-              <span className="text-[9px] font-black uppercase px-1.5 py-0.5 bg-yellow-200 border border-slate-900 rounded">
+              <span className="text-[9px] font-black uppercase px-1.5 py-0.5 bg-yellow-200 border border-slate-900 rounded shadow-neo-xs">
                 BYOK
               </span>
             </button>
@@ -246,19 +389,19 @@ export default function App() {
 
         {/* Bottom Sidebar: Study Streak Widget */}
         <div className="pt-3 mt-auto border-t-2 border-slate-200 shrink-0">
-          <div className="bg-[#FEF08A] rounded-xl p-3 border-2 border-slate-900 shadow-neo-sm">
+          <div className="bg-[#FEF08A] rounded-xl p-3 border-2 border-slate-900 shadow-neo-sm hover:shadow-neo transition-shadow">
             <div className="flex items-center justify-between mb-1.5">
-              <span className="text-[11px] font-black text-slate-900 flex items-center gap-1.5">
+              <span className="text-[11px] font-black text-slate-950 flex items-center gap-1.5">
                 <Flame className="w-4 h-4 text-amber-600 fill-amber-600" /> 5-Day Streak
               </span>
-              <span className="text-[10px] font-black px-1.5 py-0.2 bg-white text-slate-900 rounded border border-slate-900">
+              <span className="text-[10px] font-black px-1.5 py-0.5 bg-white text-slate-950 rounded border border-slate-900 shadow-neo-xs">
                 85%
               </span>
             </div>
-            <div className="w-full bg-white h-2.5 rounded-full border-2 border-slate-900 overflow-hidden mb-1.5">
-              <div className="bg-emerald-400 h-full w-[85%]" />
+            <div className="w-full bg-white h-3 rounded-full border-2 border-slate-900 overflow-hidden mb-1.5 p-0.5">
+              <div className="bg-emerald-400 h-full w-[85%] rounded-full border border-slate-900/20" />
             </div>
-            <p className="text-[10px] font-bold text-slate-700 leading-tight">
+            <p className="text-[10px] font-bold text-slate-800 leading-tight">
               3 more sessions to reach weekly mastery goal.
             </p>
           </div>
@@ -287,6 +430,11 @@ export default function App() {
               <span className="text-xs font-black text-slate-950">
                 {currentSubject?.name || 'General Studies'}
               </span>
+              {currentSubject?.amharicName && (
+                <span className="text-xs font-bold text-slate-600 font-ethiopic border-l-2 border-slate-300 pl-2 hidden sm:inline">
+                  {currentSubject.amharicName}
+                </span>
+              )}
               {currentSubject?.code && (
                 <span className="text-[10px] px-1.5 py-0.2 bg-slate-900 text-white font-mono font-bold rounded">
                   {currentSubject.code}
@@ -316,7 +464,7 @@ export default function App() {
 
             {/* User Profile Avatar with Ethiopian scholar badge */}
             <div className="flex items-center gap-2 pl-1">
-              <div className="w-8 h-8 rounded-xl bg-slate-900 text-yellow-300 border-2 border-slate-900 flex items-center justify-center font-black text-xs shadow-neo-sm">
+              <div className="h-8 px-2 rounded-xl bg-slate-900 text-yellow-300 border-2 border-slate-900 flex items-center justify-center font-bold text-xs shadow-neo-sm font-ethiopic tracking-wide">
                 ተማሪ
               </div>
               <span className="text-xs font-black text-slate-900 hidden md:block">
@@ -408,6 +556,19 @@ export default function App() {
 
           <div>
             <label className="block text-xs font-black uppercase tracking-wider text-slate-800 mb-1">
+              Amharic / Ethiopic Title (Optional)
+            </label>
+            <input
+              type="text"
+              value={newSubjectAmharicName}
+              onChange={(e) => setNewSubjectAmharicName(e.target.value)}
+              placeholder="e.g. ኦርጋኒክ ኬሚስትሪ"
+              className="w-full px-3.5 py-2 text-xs bg-[#FAF8F5] border-2 border-slate-900 rounded-xl font-bold font-ethiopic focus:outline-hidden focus:ring-2 focus:ring-cyan-400 shadow-neo-sm"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-black uppercase tracking-wider text-slate-800 mb-1">
               Course Code (Optional)
             </label>
             <input
@@ -448,9 +609,16 @@ export default function App() {
                   key={s.id}
                   className="p-2.5 bg-slate-50 border-2 border-slate-900 rounded-xl flex items-center justify-between text-xs shadow-xs"
                 >
-                  <span className="font-bold text-slate-900">
-                    {s.name} {s.code && `(${s.code})`}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className="font-bold text-slate-900">
+                      {s.name} {s.code && `(${s.code})`}
+                    </span>
+                    {s.amharicName && (
+                      <span className="text-xs font-bold text-slate-600 font-ethiopic border-l-2 border-slate-300 pl-2">
+                        {s.amharicName}
+                      </span>
+                    )}
+                  </div>
                   {subjects.length > 1 && (
                     <button
                       onClick={(e) => handleDeleteSubject(s.id, e)}

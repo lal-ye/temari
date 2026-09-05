@@ -34,6 +34,8 @@ export const SEED_SUBJECTS: Subject[] = [
   {
     id: 'subj-cell-bio',
     name: 'Cellular Biology & Genetics',
+    amharicName: 'የህዋስ ባዮሎጂ እና ጄኔቲክስ',
+    code: 'BIO-201',
     description: 'Structure of cells, cellular respiration, DNA replication, and Mendelian inheritance.',
     color: '#10B981',
     createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 7).toISOString(),
@@ -41,6 +43,8 @@ export const SEED_SUBJECTS: Subject[] = [
   {
     id: 'subj-comp-sci',
     name: 'Computer Systems & Networks',
+    amharicName: 'የኮምፒውተር ሲስተሞች እና መረቦች',
+    code: 'CS-301',
     description: 'Operating systems, concurrency, TCP/IP protocols, distributed systems, and caching.',
     color: '#3B82F6',
     createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 5).toISOString(),
@@ -48,6 +52,8 @@ export const SEED_SUBJECTS: Subject[] = [
   {
     id: 'subj-macro-econ',
     name: 'Macroeconomics & Fiscal Policy',
+    amharicName: 'ማክሮ ኢኮኖሚክስ እና የፊስካል ፖሊሲ',
+    code: 'ECON-102',
     description: 'GDP, monetary policy, inflation indices, aggregate supply/demand, and international trade.',
     color: '#F59E0B',
     createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 3).toISOString(),
@@ -82,26 +88,25 @@ Cellular respiration is a set of metabolic reactions and processes that take pla
 | **Citric Acid (Krebs) Cycle** | Mitochondrial Matrix | 2 Acetyl-CoA, 6 NAD+, 2 FAD | 4 CO2, 6 NADH, 2 FADH2, 2 ATP |
 | **Oxidative Phosphorylation** | Inner Mitochondrial Membrane | 10 NADH, 2 FADH2, 6 O2 | ~26-28 ATP, 6 H2O |
 
-## 2. Interactive Mindmap
+## 2. Concept Graph (Editorial Vector Diagram)
 
-\`\`\`mermaid
-mindmap
-  root((Cellular Respiration))
-    Glycolysis
-      Occurs in Cytosol
-      Anaerobic Pathway
-      Net 2 ATP + 2 NADH
-    Pyruvate Oxidation
-      Translocates into Matrix
-      Forms Acetyl-CoA
-      Releases Carbon Dioxide
-    Citric Acid Cycle
-      Oxaloacetate Regeneration
-      High Yield of NADH and FADH2
-    Oxidative Phosphorylation
-      Electron Transport Chain
-      Proton Gradient Formation
-      ATP Synthase Chemiosmosis
+\`\`\`diagram
+root((Cellular Respiration))
+  Glycolysis
+    Occurs in Cytosol
+    Anaerobic Pathway
+    Net 2 ATP + 2 NADH
+  Pyruvate Oxidation
+    Translocates into Matrix
+    Forms Acetyl-CoA
+    Releases Carbon Dioxide
+  Citric Acid Cycle
+    Oxaloacetate Regeneration
+    High Yield of NADH and FADH2
+  Oxidative Phosphorylation
+    Electron Transport Chain
+    Proton Gradient Formation
+    ATP Synthase Chemiosmosis
 \`\`\`
 
 ## 3. Critical Concepts for Exams

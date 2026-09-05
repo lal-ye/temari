@@ -11,7 +11,7 @@ import {
   Loader2,
   HelpCircle,
 } from 'lucide-react';
-import confetti from 'canvas-confetti';
+import { fireConfetti } from '../../utils/confetti';
 
 interface ExamTakingViewProps {
   examTitle: string;
@@ -113,7 +113,7 @@ export const ExamTakingView: React.FC<ExamTakingViewProps> = ({
       };
 
       if (grading.overallScore >= 70) {
-        confetti({ particleCount: 75, spread: 80, origin: { y: 0.6 } });
+        fireConfetti({ particleCount: 75 });
       }
 
       onCompleted(attempt);
@@ -161,7 +161,9 @@ export const ExamTakingView: React.FC<ExamTakingViewProps> = ({
     return (
       <div className="bg-white border-3 border-slate-900 rounded-2xl p-10 shadow-neo-xl text-center max-w-lg mx-auto space-y-4">
         <Loader2 className="w-12 h-12 text-slate-900 animate-spin mx-auto" />
-        <h3 className="text-xl font-black text-slate-950">ተማሪ AI is Grading Your Exam...</h3>
+        <h3 className="section-heading text-slate-950">
+          <span className="font-ethiopic font-bold text-yellow-600">ተማሪ</span> AI is Grading Your Exam...
+        </h3>
         <p className="text-xs font-bold text-slate-600 leading-relaxed">
           Evaluating your responses, calculating concept mastery, diagnosing weak areas, and generating recommended study materials.
         </p>

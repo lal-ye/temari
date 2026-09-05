@@ -83,14 +83,15 @@ export const PlannerView: React.FC<PlannerViewProps> = ({ onOpenPomodoro }) => {
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <span className="px-2.5 py-0.5 bg-emerald-300 text-slate-950 border border-slate-900 rounded-md text-[10px] font-black uppercase tracking-wider shadow-xs">
-                ተማሪ Routine
+              <span className="badge-chip px-2.5 py-1 bg-emerald-300 text-slate-950 border-2 border-slate-900 rounded-md shadow-neo-sm inline-flex items-center gap-1.5">
+                <span className="font-ethiopic font-bold text-xs normal-case">ተማሪ</span>
+                <span>Routine</span>
               </span>
               <span className="text-xs font-bold text-slate-600">
                 {completedCount} of {tasks.length} tasks finished
               </span>
             </div>
-            <h2 className="text-lg font-black text-slate-950 mt-1">Study Goal & Milestone Planner</h2>
+            <h2 className="section-heading text-slate-950 mt-1">Study Goal & Milestone Planner</h2>
             <p className="text-xs font-bold text-slate-600 mt-0.5">
               Organize syllabus deadlines, active recall checkpoints, and Pomodoro focus intervals.
             </p>

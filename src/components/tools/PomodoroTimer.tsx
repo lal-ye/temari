@@ -31,8 +31,8 @@ export const PomodoroTimer: React.FC<PomodoroTimerProps> = ({ isOpen, onClose })
             <Flame className="w-4 h-4 fill-current" />
           </div>
           <div>
-            <h4 className="text-xs font-black text-slate-950 uppercase tracking-wider leading-tight">
-              ተማሪ Focus Timer
+            <h4 className="text-xs font-black text-slate-950 uppercase tracking-wider leading-tight flex items-center gap-1">
+              <span className="font-ethiopic font-bold normal-case text-sm">ተማሪ</span> Focus Timer
             </h4>
             <span className="text-[10px] font-bold text-slate-600">Streak: {sessionsCompleted} sessions</span>
           </div>

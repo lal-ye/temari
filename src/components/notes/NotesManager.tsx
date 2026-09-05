@@ -7,6 +7,7 @@ import { studyStore } from '../../hooks/useStudyStore';
 import { useActiveSubject, useNotes } from '../../hooks/useStudyStore';
 import { NoteViewer } from './NoteViewer';
 import { ModelPicker } from '../tools/ModelPicker';
+import { Modal } from '../ui/Modal';
 import {
   FileText,
   Upload,
@@ -156,20 +157,26 @@ export const NotesManager: React.FC<NotesManagerProps> = ({ onHighlightTerm }) =
       {/* Top Header & Actions */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-5 border-3 border-slate-900 rounded-2xl shadow-neo-md">
         <div>
-          <div className="flex items-center gap-2 mb-1">
-            <span className="px-2 py-0.5 bg-yellow-300 text-slate-900 border-2 border-slate-900 rounded-md text-[10px] font-black uppercase tracking-wider shadow-neo-sm">
-              ተማሪ Smart Notes
+          <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+            <span className="badge-chip px-2.5 py-1 bg-yellow-300 text-slate-900 border-2 border-slate-900 rounded-md shadow-neo-sm inline-flex items-center gap-1.5">
+              <span className="font-ethiopic font-bold text-xs normal-case">ተማሪ</span>
+              <span>Smart Notes</span>
             </span>
-            <span className="text-xs font-black text-slate-600">
+            <span className="text-xs font-bold text-slate-600">
               {activeSubject.name}
             </span>
+            {activeSubject.amharicName && (
+              <span className="text-xs font-bold text-slate-600 font-ethiopic border-l-2 border-slate-300 pl-2 hidden md:inline">
+                {activeSubject.amharicName}
+              </span>
+            )}
           </div>
-          <h2 className="text-xl font-black text-slate-950 flex items-center gap-2">
-            <BookOpen className="w-5 h-5 text-cyan-600" />
+          <h2 className="section-heading text-slate-950 flex items-center gap-2">
+            <BookOpen className="w-5 h-5 text-cyan-600 shrink-0" />
             Interactive Study Notes
           </h2>
           <p className="text-xs font-bold text-slate-600 mt-1">
-            Structured Markdown notes with hierarchy, comparison tables, visual callouts, and Mermaid mindmaps.
+            Structured Markdown notes with hierarchy, comparison tables, visual callouts, and Editorial vector diagrams.
           </p>
         </div>
 
@@ -314,6 +321,10 @@ export const NotesManager: React.FC<NotesManagerProps> = ({ onHighlightTerm }) =
               note={selectedNote}
               onEdit={() => setEditingNote(selectedNote)}
               onHighlightTerm={onHighlightTerm}
+              onRefresh={async () => {
+                // Kinetic feedback delay simulating AI note polish
+                await new Promise((resolve) => setTimeout(resolve, 850));
+              }}
             />
           ) : (
             <div className="bg-white border-3 border-slate-900 rounded-2xl p-12 text-center shadow-neo">
@@ -335,36 +346,22 @@ export const NotesManager: React.FC<NotesManagerProps> = ({ onHighlightTerm }) =
       </div>
 
       {/* Modal: Generate Dynamic Notes */}
-      {showGenerateModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 animate-in fade-in duration-150">
-          <div className="w-full max-w-2xl bg-white border-3 border-slate-900 rounded-2xl p-6 shadow-neo-xl relative max-h-[90vh] overflow-y-auto">
-            <button
-              onClick={() => setShowGenerateModal(false)}
-              className="absolute top-4 right-4 p-1.5 text-slate-900 hover:bg-slate-100 rounded-lg border-2 border-slate-900 shadow-neo-sm"
-              aria-label="Close modal"
-            >
-              <X className="w-4 h-4" />
-            </button>
+      <Modal
+        open={showGenerateModal}
+        onClose={() => setShowGenerateModal(false)}
+        title="Generate Dynamic Interactive Notes"
+        subtitle={`Target Subject: ${activeSubject.name}`}
+        icon={<Sparkles className="w-5 h-5 text-slate-950" />}
+        iconClassName="bg-yellow-300 text-slate-950"
+        maxWidthClassName="max-w-2xl"
+      >
+        {error && (
+          <div className="p-3 mb-3 bg-rose-50 border-2 border-rose-500 rounded-xl text-xs font-bold text-rose-900">
+            {error}
+          </div>
+        )}
 
-            <div className="flex items-center gap-3 mb-4">
-              <div className="p-2.5 bg-yellow-300 border-2 border-slate-900 text-slate-950 rounded-xl shadow-neo-sm">
-                <Sparkles className="w-5 h-5" />
-              </div>
-              <div>
-                <h3 className="text-base font-black text-slate-950">Generate Dynamic Interactive Notes</h3>
-                <p className="text-xs font-bold text-slate-600">
-                  Target Subject: <strong className="text-cyan-700">{activeSubject.name}</strong>
-                </p>
-              </div>
-            </div>
-
-            {error && (
-              <div className="p-3 mb-3 bg-rose-50 border-2 border-rose-500 rounded-xl text-xs font-bold text-rose-900">
-                {error}
-              </div>
-            )}
-
-            <form onSubmit={handleGenerate} className="space-y-4">
+        <form onSubmit={handleGenerate} className="space-y-4">
               {/* File Upload Box */}
               <div>
                 <label className="block text-xs font-black uppercase tracking-wider text-slate-800 mb-1.5">
@@ -480,9 +477,7 @@ export const NotesManager: React.FC<NotesManagerProps> = ({ onHighlightTerm }) =
                 </button>
               </div>
             </form>
-          </div>
-        </div>
-      )}
+      </Modal>
     </div>
   );
 };

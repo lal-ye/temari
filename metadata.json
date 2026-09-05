@@ -1,6 +1,6 @@
 {
   "name": "Temari (ተማሪ)",
-  "description": "Temari (ተማሪ) is an intelligent neo-brutalist AI study companion featuring smart interactive notes, Mermaid mindmaps, flashcard active-recall quizzes, 30-question diagnostic mock exams, and analytics.",
+  "description": "Temari (ተማሪ) is an intelligent neo-brutalist AI study companion with an Ethiopic typography layer, interactive notes, editorial vector diagrams, flashcard active-recall quizzes, diagnostic mock exams, and analytics.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

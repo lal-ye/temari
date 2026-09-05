@@ -5,13 +5,14 @@ import { useActiveSubject, useAttempts, useNotes } from '../../hooks/useStudySto
 import { ai } from '../../services/ai';
 import { ExamTakingView } from './ExamTakingView';
 import { ExamResultsView } from './ExamResultsView';
+import { Modal } from '../ui/Modal';
+import { SourceMaterialSelector } from '../ui/SourceMaterialSelector';
 import {
   GraduationCap,
   Sparkles,
   Play,
   Trash2,
   Loader2,
-  X,
   FileCheck
 } from 'lucide-react';
 
@@ -142,14 +143,20 @@ export const ExamsManager: React.FC = () => {
       {/* Top Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-5 border-3 border-slate-900 rounded-2xl shadow-neo-md">
         <div>
-          <div className="flex items-center gap-2 mb-1">
-            <span className="px-2 py-0.5 bg-yellow-300 text-slate-900 border-2 border-slate-900 rounded-md text-[10px] font-black uppercase tracking-wider shadow-neo-sm">
-              ተማሪ Exam Simulator
+          <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+            <span className="badge-chip px-2.5 py-1 bg-yellow-300 text-slate-900 border-2 border-slate-900 rounded-md shadow-neo-sm inline-flex items-center gap-1.5">
+              <span className="font-ethiopic font-bold text-xs normal-case">ተማሪ</span>
+              <span>Exam Simulator</span>
             </span>
-            <span className="text-xs font-black text-slate-600">{activeSubject.name}</span>
+            <span className="text-xs font-bold text-slate-600">{activeSubject.name}</span>
+            {activeSubject.amharicName && (
+              <span className="text-xs font-bold text-slate-600 font-ethiopic border-l-2 border-slate-300 pl-2 hidden md:inline">
+                {activeSubject.amharicName}
+              </span>
+            )}
           </div>
-          <h2 className="text-xl font-black text-slate-950 flex items-center gap-2">
-            <GraduationCap className="w-5 h-5 text-indigo-600" /> Comprehensive Mock Exams & Diagnostics
+          <h2 className="section-heading text-slate-950 flex items-center gap-2">
+            <GraduationCap className="w-5 h-5 text-indigo-600 shrink-0" /> Comprehensive Mock Exams & Diagnostics
           </h2>
           <p className="text-xs font-bold text-slate-600 mt-1">
             Test yourself with timed mock exams featuring multiple-choice, true/false, and short answer questions with automated AI grading.
@@ -241,35 +248,22 @@ export const ExamsManager: React.FC = () => {
       )}
 
       {/* Generate Exam Modal */}
-      {showGenerateModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 animate-in fade-in duration-150">
-          <div className="w-full max-w-xl bg-white border-3 border-slate-900 rounded-2xl p-6 shadow-neo-xl relative max-h-[90vh] overflow-y-auto">
-            <button
-              onClick={() => setShowGenerateModal(false)}
-              className="absolute top-4 right-4 p-1.5 text-slate-900 hover:bg-slate-100 rounded-lg border-2 border-slate-900 shadow-neo-sm"
-            >
-              <X className="w-4 h-4" />
-            </button>
+      <Modal
+        open={showGenerateModal}
+        onClose={() => setShowGenerateModal(false)}
+        title="Generate Practice Mock Exam"
+        subtitle={`Subject: ${activeSubject.name}`}
+        icon={<Sparkles className="w-5 h-5 text-slate-950" />}
+        iconClassName="bg-yellow-300 text-slate-950"
+        maxWidthClassName="max-w-xl"
+      >
+        {error && (
+          <div className="p-3 mb-3 bg-rose-50 border-2 border-rose-500 rounded-xl text-xs font-bold text-rose-900">
+            {error}
+          </div>
+        )}
 
-            <div className="flex items-center gap-3 mb-4">
-              <div className="p-2.5 bg-yellow-300 border-2 border-slate-900 text-slate-950 rounded-xl shadow-neo-sm">
-                <Sparkles className="w-5 h-5" />
-              </div>
-              <div>
-                <h3 className="text-base font-black text-slate-950">Generate Practice Mock Exam</h3>
-                <p className="text-xs font-bold text-slate-600">
-                  Subject: <strong className="text-cyan-700">{activeSubject.name}</strong>
-                </p>
-              </div>
-            </div>
-
-            {error && (
-              <div className="p-3 mb-3 bg-rose-50 border-2 border-rose-500 rounded-xl text-xs font-bold text-rose-900">
-                {error}
-              </div>
-            )}
-
-            <form onSubmit={handleGenerateAndStartExam} className="space-y-4">
+        <form onSubmit={handleGenerateAndStartExam} className="space-y-4">
               <div>
                 <label className="block text-xs font-black uppercase tracking-wider text-slate-800 mb-1">
                   Exam Title
@@ -320,65 +314,20 @@ export const ExamsManager: React.FC = () => {
                 </div>
               </div>
 
-              {/* Source Material */}
-              <div>
-                <label className="block text-xs font-black uppercase tracking-wider text-slate-800 mb-1">
-                  Source Material
-                </label>
-                <div className="flex gap-4 mb-2">
-                  <label className="flex items-center gap-2 text-xs font-bold text-slate-800 cursor-pointer">
-                    <input
-                      type="radio"
-                      name="examSourceOption"
-                      checked={sourceOption === 'subjectNotes'}
-                      onChange={() => setSourceOption('subjectNotes')}
-                      className="accent-slate-900"
-                    />
-                    Use Saved Notes ({subjectNotes.length} available)
-                  </label>
-                  <label className="flex items-center gap-2 text-xs font-bold text-slate-800 cursor-pointer">
-                    <input
-                      type="radio"
-                      name="examSourceOption"
-                      checked={sourceOption === 'customText'}
-                      onChange={() => setSourceOption('customText')}
-                      className="accent-slate-900"
-                    />
-                    Paste Custom Material
-                  </label>
-                </div>
-
-                {sourceOption === 'subjectNotes' ? (
-                  subjectNotes.length > 0 ? (
-                    <select
-                      value={selectedNoteId}
-                      onChange={(e) => setSelectedNoteId(e.target.value)}
-                      className="w-full px-3.5 py-2 text-xs bg-[#FAF8F5] border-2 border-slate-900 rounded-xl font-bold focus:outline-hidden focus:ring-2 focus:ring-amber-400 shadow-neo-sm"
-                      disabled={isGenerating}
-                    >
-                      <option value="">All Notes Combined in {activeSubject.name}</option>
-                      {subjectNotes.map((n) => (
-                        <option key={n.id} value={n.id}>
-                          {n.title}
-                        </option>
-                      ))}
-                    </select>
-                  ) : (
-                    <div className="p-3 bg-amber-50 border-2 border-slate-900 rounded-xl text-xs font-bold text-slate-900">
-                      No notes created yet for this subject. Switch to &ldquo;Paste Custom Material&rdquo; or generate notes first.
-                    </div>
-                  )
-                ) : (
-                  <textarea
-                    rows={4}
-                    value={customMaterial}
-                    onChange={(e) => setCustomMaterial(e.target.value)}
-                    placeholder="Paste textbook or syllabus content to generate exam from..."
-                    className="w-full p-3 text-xs bg-[#FAF8F5] border-2 border-slate-900 rounded-xl font-mono focus:outline-hidden focus:ring-2 focus:ring-amber-400 shadow-neo-sm"
-                    disabled={isGenerating}
-                  />
-                )}
-              </div>
+              <SourceMaterialSelector
+                sourceOption={sourceOption}
+                onSourceOptionChange={setSourceOption}
+                subjectNotes={subjectNotes}
+                selectedNoteId={selectedNoteId}
+                onSelectedNoteIdChange={setSelectedNoteId}
+                customMaterial={customMaterial}
+                onCustomMaterialChange={setCustomMaterial}
+                subjectName={activeSubject.name}
+                isGenerating={isGenerating}
+                notesLabel="Use Saved Notes"
+                customLabel="Paste Custom Material"
+                customPlaceholder="Paste textbook or syllabus content to generate exam from..."
+              />
 
               <div className="flex items-center justify-end gap-2.5 pt-3 border-t-2 border-slate-200">
                 <button
@@ -409,9 +358,7 @@ export const ExamsManager: React.FC = () => {
                 </button>
               </div>
             </form>
-          </div>
-        </div>
-      )}
+      </Modal>
     </div>
   );
 };

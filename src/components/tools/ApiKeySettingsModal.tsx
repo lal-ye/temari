@@ -20,6 +20,7 @@ import { AVAILABLE_PROVIDERS, getProviderConfig, getModelOption } from './modelP
 import { resolveActiveModel } from '../../../shared/aiCatalog';
 import { ModelPicker } from './ModelPicker';
 import { aiConnection } from '../../services/aiConnection';
+import { Modal } from '../ui/Modal';
 
 interface ApiKeySettingsModalProps {
   isOpen: boolean;
@@ -184,39 +185,17 @@ export const ApiKeySettingsModal: React.FC<ApiKeySettingsModalProps> = ({
   const helpLink = getKeyHelpLink();
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-xs p-4 animate-in fade-in duration-150">
-      <div className="w-full max-w-2xl bg-white border-3 border-slate-900 rounded-2xl p-6 shadow-neo-lg relative max-h-[90vh] overflow-y-auto">
-        {/* Close Button */}
-        <button
-          onClick={onClose}
-          className="absolute top-4 right-4 p-1.5 text-slate-900 hover:bg-yellow-300 rounded-xl border-2 border-slate-900 transition-all shadow-neo-sm active:translate-y-0.5"
-          aria-label="Close"
-        >
-          <X className="w-4 h-4" />
-        </button>
-
-        {/* Modal Header */}
-        <div className="flex items-center gap-3 mb-5">
-          <div className="p-2.5 bg-[#FEF08A] text-slate-950 rounded-xl border-2 border-slate-900 shadow-neo-sm">
-            <Cpu className="w-5 h-5 text-slate-900" />
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h2 className="text-base font-black text-slate-900 uppercase tracking-wide">
-                Model-Agnostic AI Architecture
-              </h2>
-              <span className="text-[10px] font-black px-2 py-0.5 bg-emerald-100 text-emerald-900 border border-emerald-300 rounded-md">
-                Multi-Provider
-              </span>
-            </div>
-            <p className="text-xs font-bold text-slate-600 mt-0.5">
-              Switch between Google Gemini, OpenAI, Claude, Groq, DeepSeek, OpenRouter, or Local Ollama
-            </p>
-          </div>
-        </div>
-
-        <div className="space-y-4">
-          {/* Detailed Provider and Model Picker */}
+    <Modal
+      open={isOpen}
+      onClose={onClose}
+      title="Model-Agnostic AI Architecture"
+      subtitle="Switch between Google Gemini, OpenAI, Claude, Groq, DeepSeek, OpenRouter, or Local Ollama"
+      icon={<Cpu className="w-5 h-5 text-slate-900" />}
+      iconClassName="bg-[#FEF08A] text-slate-950"
+      maxWidthClassName="max-w-2xl"
+    >
+      <div className="space-y-4">
+        {/* Detailed Provider and Model Picker */}
           <div className="bg-[#FAF8F5] border-2 border-slate-900 rounded-xl p-3.5 shadow-neo-sm">
             <ModelPicker
               variant="detailed"
@@ -433,7 +412,6 @@ export const ApiKeySettingsModal: React.FC<ApiKeySettingsModalProps> = ({
             </div>
           </div>
         </div>
-      </div>
-    </div>
+      </Modal>
   );
 };

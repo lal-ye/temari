@@ -6,11 +6,13 @@ const EXIT_MS = 160;
 interface ModalProps {
   open: boolean;
   onClose: () => void;
-  title: string;
-  subtitle?: string;
+  title: React.ReactNode;
+  subtitle?: React.ReactNode;
   icon: React.ReactNode;
   /** Tailwind classes for the icon box (bg colour per modal flavour). */
   iconClassName?: string;
+  /** Tailwind max-width class (e.g. max-w-xl, max-w-2xl). Defaults to max-w-md. */
+  maxWidthClassName?: string;
   children: React.ReactNode;
 }
 
@@ -27,6 +29,7 @@ export function Modal({
   subtitle,
   icon,
   iconClassName = 'bg-cyan-300 text-slate-950',
+  maxWidthClassName = 'max-w-md',
   children,
 }: ModalProps) {
   const [closing, setClosing] = useState(false);
@@ -70,9 +73,9 @@ export function Modal({
       <div
         role="dialog"
         aria-modal="true"
-        aria-label={title}
+        aria-label={typeof title === 'string' ? title : 'Dialog'}
         onClick={(e) => e.stopPropagation()}
-        className={`w-full max-w-md bg-white border-3 border-slate-900 rounded-2xl p-6 shadow-neo-xl relative max-h-[90vh] overflow-y-auto ${
+        className={`w-full ${maxWidthClassName} bg-white border-3 border-slate-900 rounded-2xl p-6 shadow-neo-xl relative max-h-[90vh] overflow-y-auto ${
           closing ? 'modal-panel-out' : 'modal-panel-in'
         }`}
       >

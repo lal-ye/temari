@@ -1,8 +1,31 @@
 @import "tailwindcss";
 
+/* Ethiopic & Latin Editorial Typography Layer (font.et / Abyssinica SIL + Playfair Display) */
+@font-face {
+  font-family: 'Abyssinica SIL';
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: swap;
+  src: local('Abyssinica SIL'),
+       local('AbyssinicaSIL'),
+       local('Nyala'),
+       local('Kefa'),
+       url('https://fonts.gstatic.com/s/abyssinicasil/v9/oY1H8ezOqK7iI3rK_45WKoc8J6UZ.ttf') format('truetype');
+}
+
+@font-face {
+  font-family: 'Playfair Display';
+  font-style: normal;
+  font-weight: 600 900;
+  font-display: swap;
+  src: local('Playfair Display Bold'),
+       local('PlayfairDisplay-Bold'),
+       url('https://fonts.gstatic.com/s/playfairdisplay/v40/nuFvD-vYSZviVYUb_rj3ij__anPXJzDwcbmjWBN2PKeiukDQ.ttf') format('truetype');
+}
+
 @layer base {
   body {
-    font-family: 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-family: 'Inter', 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     background-color: #FAF8F5;
     color: #0F172A;
   }
@@ -12,7 +35,60 @@
   }
 }
 
+/* Font Family Classes */
+.font-ethiopic {
+  font-family: 'Abyssinica SIL', 'Noto Serif Ethiopic', 'Nyala', 'Kefa', 'WashRa', 'GeezType', Georgia, serif;
+}
+
+.font-editorial {
+  font-family: 'Playfair Display', Georgia, 'Times New Roman', serif;
+}
+
+.font-body {
+  font-family: 'Inter', 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+}
+
+/* Concrete Type Scale Specifications */
+/* 1. App wordmark (ተማሪ): 24px, Bold, Ethiopic display face */
+.app-wordmark {
+  font-family: 'Abyssinica SIL', 'Noto Serif Ethiopic', 'Nyala', 'Kefa', serif;
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: -0.01em;
+}
+
+/* 2. Section heading: 22px / 1.15, 700, Playfair Display */
+.section-heading {
+  font-family: 'Playfair Display', Georgia, serif;
+  font-size: 22px;
+  line-height: 1.15;
+  font-weight: 700;
+  letter-spacing: -0.015em;
+}
+
+/* 3. Note body: 16px / 1.7, 400, Inter or iA Writer Quattro */
+.note-body {
+  font-family: 'Inter', 'Plus Jakarta Sans', system-ui, sans-serif;
+  font-size: 16px;
+  line-height: 1.7;
+  font-weight: 400;
+}
+
+/* 4. Badge / chip: 11px, 600, uppercase, ls: 0.06em */
+.badge-chip {
+  font-family: 'Inter', 'JetBrains Mono', system-ui, sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
 /* Neo-Brutalist BeautifulUI Shadow Utilities */
+.shadow-neo-xs {
+  box-shadow: 1px 1px 0px 0px #0F172A;
+}
+
 .shadow-neo-sm {
   box-shadow: 2px 2px 0px 0px #0F172A;
 }
@@ -45,26 +121,61 @@
   box-shadow: 4px 4px 0px 0px #E11D48;
 }
 
-/* Neo-brutal tactile button interaction */
-.btn-neo {
-  transition: all 0.12s ease-in-out;
+/* ==========================================================================
+   Kinetic Physics Engine (MOTION_INTENSITY: 5/10)
+   ========================================================================== */
+
+/* Button Press Depress: 80ms press -> 120ms spring release */
+button,
+[role="button"],
+.btn-neo,
+.btn-kinetic {
+  transition: transform 120ms cubic-bezier(0.34, 1.3, 0.64, 1),
+              box-shadow 120ms cubic-bezier(0.34, 1.3, 0.64, 1),
+              background-color 150ms ease,
+              border-color 150ms ease,
+              color 150ms ease;
+  will-change: transform, box-shadow;
 }
-.btn-neo:hover {
+
+button:active:not(:disabled),
+[role="button"]:active:not([aria-disabled="true"]),
+.btn-neo:active,
+.btn-kinetic:active {
+  transition: transform 80ms ease-out,
+              box-shadow 80ms ease-out,
+              background-color 150ms ease,
+              border-color 150ms ease,
+              color 150ms ease !important;
+}
+
+.btn-neo:hover,
+.btn-kinetic:hover {
   transform: translate(-1.5px, -1.5px);
   box-shadow: 4px 4px 0px 0px #0F172A;
 }
-.btn-neo:active {
+
+.btn-neo:active,
+.btn-kinetic:active {
   transform: translate(1px, 1px);
   box-shadow: 1px 1px 0px 0px #0F172A;
 }
 
-/* 3D Flashcard Flip utilities */
+button:disabled,
+button:disabled:hover,
+button:disabled:active {
+  transform: none !important;
+  transition: opacity 150ms ease !important;
+}
+
+/* 3D Flashcard Flip utilities (Spring easing cubic-bezier(0.34, 1.56, 0.64, 1) with 12-15% overshoot) */
 .perspective-1000 {
   perspective: 1000px;
 }
 
 .transform-style-3d {
   transform-style: preserve-3d;
+  -webkit-transform-style: preserve-3d;
 }
 
 .backface-hidden {
@@ -74,6 +185,125 @@
 
 .rotate-y-180 {
   transform: rotateY(180deg);
+}
+
+/* Flashcard 3D flip physics */
+.card,
+.flashcard-card {
+  transform-style: preserve-3d;
+  -webkit-transform-style: preserve-3d;
+  transition: transform 420ms cubic-bezier(0.34, 1.56, 0.64, 1);
+  will-change: transform;
+}
+
+.card.flipped,
+.flashcard-card.flipped {
+  transform: rotateY(180deg);
+}
+
+.card-face,
+.flashcard-face {
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  transform-style: preserve-3d;
+  -webkit-transform-style: preserve-3d;
+}
+
+.card-face.flashcard-back,
+.flashcard-back {
+  transform: rotateY(180deg);
+}
+
+/* Stacked Card Deck Illusion: pseudo-cards behind active card with scale & translateY offsets, 50ms stagger */
+.deck-card {
+  position: absolute;
+  inset: 0;
+  transform-origin: center top;
+  pointer-events: none;
+  user-select: none;
+  transition: transform 220ms cubic-bezier(0, 0, 0.2, 1), opacity 200ms ease;
+  will-change: transform;
+}
+
+.deck-card-1 {
+  transform: scale(0.96) translateY(4px);
+  z-index: 3;
+  transition-delay: 50ms;
+}
+
+.deck-card-2 {
+  transform: scale(0.92) translateY(8px);
+  z-index: 2;
+  transition-delay: 100ms;
+}
+
+.deck-card-3 {
+  transform: scale(0.88) translateY(12px);
+  z-index: 1;
+  transition-delay: 150ms;
+}
+
+/* Gesture Discoverability: Ghost Hand Swipe Animation (1.5s, plays once) */
+@keyframes ghost-hand-swipe {
+  0% {
+    opacity: 0;
+    transform: translateX(40px) translateY(6px) scale(0.9);
+  }
+  15% {
+    opacity: 1;
+    transform: translateX(28px) translateY(0px) scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: translateX(-32px) translateY(-2px) scale(1);
+  }
+  75% {
+    opacity: 1;
+    transform: translateX(14px) translateY(0px) scale(0.98);
+  }
+  90% {
+    opacity: 0.7;
+    transform: translateX(0px) translateY(4px) scale(0.95);
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(0px) translateY(8px) scale(0.9);
+  }
+}
+
+.ghost-hand-anim {
+  animation: ghost-hand-swipe 1.5s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+  pointer-events: none;
+}
+
+/* Long-press Term Explainer Pulse Ring (300ms) */
+@keyframes pulse-ring-expand {
+  0% {
+    transform: translate(-50%, -50%) scale(0.25);
+    opacity: 0.95;
+    box-shadow: 0 0 0 2px #EAB308, 0 0 8px rgba(234, 179, 8, 0.5);
+  }
+  70% {
+    opacity: 0.85;
+    box-shadow: 0 0 0 5px #FACC15, 0 0 16px rgba(250, 204, 21, 0.7);
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(1.6);
+    opacity: 0;
+    box-shadow: 0 0 0 10px #FEF08A, 0 0 24px rgba(254, 240, 138, 0.9);
+  }
+}
+
+.pulse-ring-indicator {
+  position: fixed;
+  width: 44px;
+  height: 44px;
+  border-radius: 9999px;
+  border: 2.5px solid #0F172A;
+  background-color: rgba(254, 240, 138, 0.4);
+  pointer-events: none;
+  z-index: 9999;
+  animation: pulse-ring-expand 300ms cubic-bezier(0, 0, 0.2, 1) forwards;
 }
 
 /* Callout Styling */
@@ -126,14 +356,22 @@
 .app-header { view-transition-name: app-header; }
 .app-main { view-transition-name: app-main; }
 
-/* Flashcard reveal: content appears when moving to the next/prev card */
+/* Flashcard entrance translation from the deck: use ease-out (NOT spring) */
 @keyframes flashcard-reveal {
-  from { opacity: 0; transform: translateY(10px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
-.flashcard-reveal { animation: flashcard-reveal 200ms cubic-bezier(0.2, 0.9, 0.3, 1.2) both; }
+.flashcard-reveal {
+  animation: flashcard-reveal 240ms cubic-bezier(0, 0, 0.2, 1) both;
+}
 
-/* Reduced motion: skip all decorative animation (view transitions, modals) */
+/* Reduced Motion — Non-Negotiable Accessibility */
 @media (prefers-reduced-motion: reduce) {
   ::view-transition-group(*),
   ::view-transition-old(*),
@@ -145,8 +383,59 @@
   .modal-backdrop-out,
   .modal-panel-in,
   .modal-panel-out,
-  .flashcard-reveal {
+  .flashcard-reveal,
+  .ghost-hand-anim,
+  .pulse-ring-indicator {
     animation: none !important;
+  }
+
+  /* Flashcards: transition opacity 150ms ease, no 3D spin */
+  .card,
+  .flashcard-card {
+    transition: opacity 150ms ease !important;
+    transform: none !important;
+  }
+  .card.flipped,
+  .flashcard-card.flipped {
+    transform: none !important;
+  }
+  .card.flipped .flashcard-front,
+  .flashcard-card.flipped .flashcard-front {
+    opacity: 0 !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
+  }
+  .card.flipped .flashcard-back,
+  .flashcard-card.flipped .flashcard-back {
+    opacity: 1 !important;
+    visibility: visible !important;
+    pointer-events: auto !important;
+    transform: none !important;
+  }
+  .card:not(.flipped) .flashcard-back,
+  .flashcard-card:not(.flipped) .flashcard-back {
+    opacity: 0 !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
+    transform: none !important;
+  }
+
+  /* Stacked card deck */
+  .deck-card,
+  .deck-card-1,
+  .deck-card-2,
+  .deck-card-3 {
+    transition: none !important;
+  }
+
+  /* Buttons */
+  button,
+  [role="button"],
+  .btn-neo,
+  .btn-press,
+  .btn-kinetic {
+    transition: none !important;
+    transform: none !important;
   }
 }
 

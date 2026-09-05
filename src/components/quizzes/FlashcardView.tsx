@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Flashcard } from '../../types';
 import {
   RotateCw,
@@ -11,8 +11,9 @@ import {
   Award,
   BookOpen,
   HelpCircle,
+  Hand,
 } from 'lucide-react';
-import confetti from 'canvas-confetti';
+import { fireConfetti } from '../../utils/confetti';
 
 interface FlashcardViewProps {
   quizName: string;
@@ -37,7 +38,45 @@ export const FlashcardView: React.FC<FlashcardViewProps> = ({
   const [selectedText, setSelectedText] = useState<string | null>(null);
   const [isComplete, setIsComplete] = useState(false);
 
+  // Responsive Swipe Gesture & Discoverability States
+  const [dragOffset, setDragOffset] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+  const [isDragging, setIsDragging] = useState(false);
+  const [gestureAxis, setGestureAxis] = useState<'horizontal' | 'vertical' | null>(null);
+  const [showGhostHand, setShowGhostHand] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return !localStorage.getItem('temari_swipe_hint_seen');
+  });
+
+  const pointerStartRef = useRef<{ x: number; y: number; time: number } | null>(null);
+  const hasDraggedRef = useRef(false);
+
   const currentCard = cards[currentIndex];
+
+  // Ghost hand discoverability animation (1.5s single play, respects prefers-reduced-motion)
+  useEffect(() => {
+    if (!showGhostHand) return;
+
+    const prefersReducedMotion = typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (prefersReducedMotion) {
+      setShowGhostHand(false);
+      localStorage.setItem('temari_swipe_hint_seen', 'true');
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      setShowGhostHand(false);
+      localStorage.setItem('temari_swipe_hint_seen', 'true');
+    }, 1800);
+
+    return () => clearTimeout(timer);
+  }, [showGhostHand]);
+
+  const dismissGhostHand = () => {
+    if (showGhostHand) {
+      setShowGhostHand(false);
+      localStorage.setItem('temari_swipe_hint_seen', 'true');
+    }
+  };
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -118,7 +157,7 @@ export const FlashcardView: React.FC<FlashcardViewProps> = ({
     setIsComplete(true);
     const score = Math.round((masteredIds.size / Math.max(1, cards.length)) * 100);
     if (score >= 70) {
-      confetti({ particleCount: 60, spread: 70, origin: { y: 0.6 } });
+      fireConfetti({ particleCount: 60 });
     }
     if (onFinish) {
       onFinish(score, masteredIds.size);
@@ -134,6 +173,90 @@ export const FlashcardView: React.FC<FlashcardViewProps> = ({
     } else {
       setSelectedText(null);
     }
+  };
+
+  // Pointer & Gesture Event Handlers
+  const handlePointerDown = (e: React.PointerEvent) => {
+    dismissGhostHand();
+    pointerStartRef.current = { x: e.clientX, y: e.clientY, time: Date.now() };
+    hasDraggedRef.current = false;
+    setIsDragging(true);
+    setGestureAxis(null);
+    try {
+      e.currentTarget.setPointerCapture(e.pointerId);
+    } catch {
+      // ignore
+    }
+  };
+
+  const handlePointerMove = (e: React.PointerEvent) => {
+    if (!pointerStartRef.current || !isDragging) return;
+
+    const dx = e.clientX - pointerStartRef.current.x;
+    const dy = e.clientY - pointerStartRef.current.y;
+
+    if (!hasDraggedRef.current && Math.hypot(dx, dy) > 8) {
+      hasDraggedRef.current = true;
+      if (isFlipped && Math.abs(dy) > Math.abs(dx)) {
+        setGestureAxis('vertical');
+      } else {
+        setGestureAxis('horizontal');
+      }
+    }
+
+    if (gestureAxis === 'horizontal') {
+      // Dampen at deck boundaries (first card swipe right or last card swipe left)
+      const atStart = currentIndex === 0 && dx > 0;
+      const atEnd = currentIndex === cards.length - 1 && dx < 0;
+      const factor = atStart || atEnd ? 0.25 : 0.85;
+      setDragOffset({ x: dx * factor, y: 0 });
+    } else if (gestureAxis === 'vertical' && isFlipped) {
+      setDragOffset({ x: 0, y: dy * 0.85 });
+    }
+  };
+
+  const handlePointerUp = (e: React.PointerEvent) => {
+    try {
+      e.currentTarget.releasePointerCapture(e.pointerId);
+    } catch {
+      // ignore
+    }
+
+    if (!hasDraggedRef.current) {
+      // Tap or Click: flip card
+      setIsFlipped((f) => !f);
+    } else {
+      // Gesture triggers
+      if (gestureAxis === 'horizontal') {
+        if (dragOffset.x < -65) {
+          handleNext();
+        } else if (dragOffset.x > 65) {
+          handlePrev();
+        }
+      } else if (gestureAxis === 'vertical' && isFlipped) {
+        if (dragOffset.y < -65) {
+          // Swipe up: Hard / Need Practice
+          markNeedReview();
+        } else if (dragOffset.y > 65) {
+          // Swipe down: Easy / Mastered
+          markMastered();
+        }
+      }
+    }
+
+    setIsDragging(false);
+    setDragOffset({ x: 0, y: 0 });
+    setGestureAxis(null);
+    pointerStartRef.current = null;
+    hasDraggedRef.current = false;
+  };
+
+  const handlePointerCancel = () => {
+    setIsDragging(false);
+    setDragOffset({ x: 0, y: 0 });
+    setGestureAxis(null);
+    pointerStartRef.current = null;
+    hasDraggedRef.current = false;
   };
 
   if (isComplete) {
@@ -175,13 +298,13 @@ export const FlashcardView: React.FC<FlashcardViewProps> = ({
               setMasteredIds(new Set());
               setReviewIds(new Set());
             }}
-            className="px-5 py-2.5 bg-yellow-300 hover:bg-yellow-200 text-slate-950 font-black text-xs rounded-xl border-2 border-slate-900 shadow-neo transition-all active:translate-y-0.5"
+            className="btn-kinetic px-5 py-2.5 bg-yellow-300 hover:bg-yellow-200 text-slate-950 font-black text-xs rounded-xl border-2 border-slate-900 shadow-neo active:translate-x-0.5 active:translate-y-0.5 active:shadow-neo-xs"
           >
             Practice Again
           </button>
           <button
             onClick={onClose}
-            className="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-800 font-black text-xs rounded-xl border-2 border-slate-900 shadow-neo-sm transition-all active:translate-y-0.5"
+            className="btn-kinetic px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-800 font-black text-xs rounded-xl border-2 border-slate-900 shadow-neo-sm active:translate-x-0.5 active:translate-y-0.5 active:shadow-neo-xs"
           >
             Back to Quizzes
           </button>
@@ -206,7 +329,7 @@ export const FlashcardView: React.FC<FlashcardViewProps> = ({
         <div className="flex items-center gap-2">
           <button
             onClick={handleShuffle}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-white hover:bg-slate-100 text-slate-900 rounded-xl border-2 border-slate-900 text-xs font-black shadow-neo-sm transition-all active:translate-y-0.5"
+            className="btn-kinetic flex items-center gap-1.5 px-3 py-1.5 bg-white hover:bg-slate-100 text-slate-900 rounded-xl border-2 border-slate-900 text-xs font-black shadow-neo-sm active:translate-x-0.5 active:translate-y-0.5 active:shadow-neo-xs"
             title="Shuffle deck"
           >
             <Shuffle className="w-3.5 h-3.5" />
@@ -215,7 +338,7 @@ export const FlashcardView: React.FC<FlashcardViewProps> = ({
 
           <button
             onClick={onClose}
-            className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-900 rounded-xl border-2 border-slate-900 text-xs font-black shadow-neo-sm transition-all active:translate-y-0.5"
+            className="btn-kinetic px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-900 rounded-xl border-2 border-slate-900 text-xs font-black shadow-neo-sm active:translate-x-0.5 active:translate-y-0.5 active:shadow-neo-xs"
           >
             Exit Drill
           </button>
@@ -235,7 +358,8 @@ export const FlashcardView: React.FC<FlashcardViewProps> = ({
         <div className="mx-auto w-fit bg-slate-900 text-white px-4 py-2 rounded-xl border-2 border-yellow-300 shadow-neo-md flex items-center gap-2.5 animate-in zoom-in-95 duration-150">
           <Sparkles className="w-4 h-4 text-yellow-300 shrink-0" />
           <span className="text-xs font-bold">
-            Explain &ldquo;<strong className="text-yellow-200 font-black">{selectedText}</strong>&rdquo; with ተማሪ AI?
+            Explain &ldquo;<strong className="text-yellow-200 font-black">{selectedText}</strong>&rdquo; with{' '}
+            <span className="font-ethiopic font-bold text-yellow-300 text-sm">ተማሪ</span> AI?
           </span>
           <button
             onClick={() => {
@@ -249,102 +373,234 @@ export const FlashcardView: React.FC<FlashcardViewProps> = ({
         </div>
       )}
 
-      {/* 3D Flashcard Container */}
-      <div
-        className="relative h-80 w-full perspective-1000 cursor-pointer select-text"
-        onClick={() => setIsFlipped(!isFlipped)}
-        onMouseUp={handleSelection}
-      >
-        {/* keyed reveal: replays the enter animation when the card changes.
-            The flipper inside stays on its own transform layer for the 3D flip. */}
-        <div key={currentIndex} className="w-full h-full flashcard-reveal">
+      {/* 3D Flashcard & Stacked Deck Container */}
+      <div className="relative pt-2 pb-6 px-1">
+        {/* Physical Stacked Card Deck Illusion (pseudo-cards behind active card) */}
+        {cards.length - 1 - currentIndex >= 3 && (
           <div
-            className={`w-full h-full duration-300 transform-style-3d relative transition-transform ${
-              isFlipped ? 'rotate-y-180' : ''
-            }`}
+            aria-hidden="true"
+            className="deck-card deck-card-3 bg-slate-200/90 border-3 border-slate-900 rounded-2xl shadow-neo-sm flex items-end justify-center pb-1.5"
           >
-          {/* Front Face (Question) */}
-          <div className="absolute inset-0 w-full h-full bg-white border-3 border-slate-900 rounded-2xl p-6 shadow-neo-lg flex flex-col justify-between backface-hidden">
-            <div className="flex items-center justify-between text-xs text-slate-500 font-black">
-              <span className="flex items-center gap-1.5 text-cyan-800">
-                <BookOpen className="w-4 h-4" /> QUESTION
-              </span>
-              {currentCard?.difficulty && (
-                <span
-                  className={`px-2 py-0.5 rounded-lg border border-slate-900 text-[10px] font-black uppercase shadow-xs ${
-                    currentCard.difficulty === 'Easy'
-                      ? 'bg-emerald-300 text-slate-950'
-                      : currentCard.difficulty === 'Medium'
-                      ? 'bg-amber-300 text-slate-950'
-                      : 'bg-rose-300 text-slate-950'
-                  }`}
-                >
-                  {currentCard.difficulty}
-                </span>
-              )}
-            </div>
+            <span className="text-[9px] font-black uppercase tracking-wider text-slate-500/80">
+              {cards.length - currentIndex - 1} cards below
+            </span>
+          </div>
+        )}
 
-            <div className="my-auto text-center py-4">
-              <p className="text-lg md:text-xl font-black text-slate-950 leading-relaxed">
-                {currentCard?.question}
-              </p>
-            </div>
+        {cards.length - 1 - currentIndex >= 2 && (
+          <div
+            aria-hidden="true"
+            className="deck-card deck-card-2 bg-slate-100 border-3 border-slate-900 rounded-2xl shadow-neo-sm flex items-end justify-center pb-1.5"
+          >
+            <span className="text-[9px] font-black uppercase tracking-wider text-slate-500/80">
+              {cards.length - currentIndex - 1} cards below
+            </span>
+          </div>
+        )}
 
-            <div className="flex items-center justify-between text-[11px] font-bold text-slate-600 pt-3 border-t-2 border-slate-200">
-              <span className="flex items-center gap-1.5">
-                <RotateCw className="w-3.5 h-3.5 text-slate-900" /> Click or press Space to flip
-              </span>
-              <span className="text-cyan-800 font-black">Highlight text to explain</span>
+        {cards.length - 1 - currentIndex >= 1 && (
+          <div
+            aria-hidden="true"
+            className="deck-card deck-card-1 bg-[#FAF8F5] border-3 border-slate-900 rounded-2xl shadow-neo-sm flex items-end justify-center pb-1.5"
+          >
+            <span className="text-[9px] font-black uppercase tracking-wider text-slate-500/80">
+              {cards.length - currentIndex - 1} {cards.length - currentIndex - 1 === 1 ? 'card' : 'cards'} in deck
+            </span>
+          </div>
+        )}
+
+        {/* Peeking Edge Affordances (8px peeking edges for next/previous card) */}
+        {currentIndex < cards.length - 1 && (
+          <div
+            aria-hidden="true"
+            className="absolute top-4 bottom-8 right-0 w-2.5 md:w-3.5 bg-yellow-200/90 border-2 border-slate-900 rounded-r-xl shadow-neo-xs flex items-center justify-center transition-transform z-0 pointer-events-none"
+            style={{
+              transform:
+                dragOffset.x < 0
+                  ? `translateX(${Math.min(12, 6 + Math.abs(dragOffset.x) * 0.12)}px)`
+                  : 'translateX(6px)',
+            }}
+            title="Swipe left for next card"
+          >
+            <span className="w-0.5 h-6 bg-slate-900/50 rounded-full" />
+          </div>
+        )}
+
+        {currentIndex > 0 && (
+          <div
+            aria-hidden="true"
+            className="absolute top-4 bottom-8 left-0 w-2.5 md:w-3.5 bg-yellow-200/90 border-2 border-slate-900 rounded-l-xl shadow-neo-xs flex items-center justify-center transition-transform z-0 pointer-events-none"
+            style={{
+              transform:
+                dragOffset.x > 0
+                  ? `translateX(-${Math.min(12, 6 + dragOffset.x * 0.12)}px)`
+                  : 'translateX(-6px)',
+            }}
+            title="Swipe right for previous card"
+          >
+            <span className="w-0.5 h-6 bg-slate-900/50 rounded-full" />
+          </div>
+        )}
+
+        {/* Active Top Card Container with Pointer & Swipe Gestures */}
+        <div
+          className="relative h-80 md:h-88 w-full perspective-1000 cursor-grab active:cursor-grabbing select-text z-10"
+          onPointerDown={handlePointerDown}
+          onPointerMove={handlePointerMove}
+          onPointerUp={handlePointerUp}
+          onPointerCancel={handlePointerCancel}
+          onMouseUp={handleSelection}
+        >
+          {/* Keyed reveal: ease-out translation when entering from the deck */}
+          <div
+            key={currentIndex}
+            className="w-full h-full flashcard-reveal"
+            style={{
+              transform:
+                gestureAxis === 'horizontal'
+                  ? `translateX(${dragOffset.x}px) rotate(${dragOffset.x * 0.035}deg)`
+                  : gestureAxis === 'vertical' && isFlipped
+                  ? `translateY(${dragOffset.y}px)`
+                  : undefined,
+              transition: isDragging
+                ? 'none'
+                : 'transform 260ms cubic-bezier(0.34, 1.3, 0.64, 1)',
+              touchAction: 'none',
+            }}
+          >
+            <div
+              className={`card flashcard-card w-full h-full relative ${
+                isFlipped ? 'flipped' : ''
+              }`}
+            >
+              {/* Front Face (Question) */}
+              <div className="card-face flashcard-face flashcard-front absolute inset-0 w-full h-full bg-white border-3 border-slate-900 rounded-2xl p-6 md:p-8 shadow-neo-lg flex flex-col justify-between">
+                <div className="flex items-center justify-between text-xs text-slate-500 font-black">
+                  <span className="flex items-center gap-1.5 text-cyan-800">
+                    <BookOpen className="w-4 h-4" /> QUESTION
+                  </span>
+                  {currentCard?.difficulty && (
+                    <span
+                      className={`px-2 py-0.5 rounded-lg border border-slate-900 text-[10px] font-black uppercase shadow-xs ${
+                        currentCard.difficulty === 'Easy'
+                          ? 'bg-emerald-300 text-slate-950'
+                          : currentCard.difficulty === 'Medium'
+                          ? 'bg-amber-300 text-slate-950'
+                          : 'bg-rose-300 text-slate-950'
+                      }`}
+                    >
+                      {currentCard.difficulty}
+                    </span>
+                  )}
+                </div>
+
+                <div className="my-auto text-center py-4">
+                  <p className="text-lg md:text-xl font-black text-slate-950 leading-relaxed">
+                    {currentCard?.question}
+                  </p>
+                </div>
+
+                <div className="flex items-center justify-between text-[11px] font-bold text-slate-600 pt-3 border-t-2 border-slate-200">
+                  <span className="flex items-center gap-1.5">
+                    <RotateCw className="w-3.5 h-3.5 text-slate-900" /> Tap/Space to flip • Swipe ◄ ►
+                  </span>
+                  <span className="text-cyan-800 font-black">Highlight text for ተማሪ AI</span>
+                </div>
+              </div>
+
+              {/* Back Face (Answer) */}
+              <div className="card-face flashcard-face flashcard-back absolute inset-0 w-full h-full bg-[#FAF8F5] text-slate-950 border-3 border-slate-900 rounded-2xl p-6 md:p-8 shadow-neo-lg flex flex-col justify-between rotate-y-180 overflow-hidden">
+                {/* Swipe Up: Rate Hard (Red Tint Preview during drag) */}
+                {isFlipped && gestureAxis === 'vertical' && dragOffset.y < 0 && (
+                  <div
+                    className="absolute inset-0 bg-rose-500/25 border-3 border-rose-600 rounded-2xl z-20 flex flex-col items-center justify-center pointer-events-none transition-opacity"
+                    style={{ opacity: Math.min(0.92, Math.abs(dragOffset.y) / 80) }}
+                  >
+                    <div className="px-4 py-2 bg-rose-200 text-rose-950 border-2 border-slate-900 rounded-xl font-black text-xs shadow-neo flex items-center gap-2 transform -translate-y-2">
+                      <XCircle className="w-5 h-5 text-rose-700" />
+                      <span>Release to rate <strong>Hard</strong> (Need Practice)</span>
+                    </div>
+                  </div>
+                )}
+
+                {/* Swipe Down: Rate Easy (Green Tint Preview during drag) */}
+                {isFlipped && gestureAxis === 'vertical' && dragOffset.y > 0 && (
+                  <div
+                    className="absolute inset-0 bg-emerald-500/25 border-3 border-emerald-600 rounded-2xl z-20 flex flex-col items-center justify-center pointer-events-none transition-opacity"
+                    style={{ opacity: Math.min(0.92, dragOffset.y / 80) }}
+                  >
+                    <div className="px-4 py-2 bg-emerald-200 text-emerald-950 border-2 border-slate-900 rounded-xl font-black text-xs shadow-neo flex items-center gap-2 transform translate-y-2">
+                      <CheckCircle2 className="w-5 h-5 text-emerald-700" />
+                      <span>Release to rate <strong>Easy</strong> (Mastered!)</span>
+                    </div>
+                  </div>
+                )}
+
+                <div className="flex items-center justify-between text-xs font-black text-slate-900">
+                  <span className="flex items-center gap-1.5 text-emerald-800">
+                    <Sparkles className="w-4 h-4 text-yellow-500" /> ANSWER & EXPLANATION
+                  </span>
+                  <span className="px-2 py-0.5 bg-white border border-slate-900 rounded text-slate-900 text-[10px] font-bold">
+                    Card {currentIndex + 1} of {cards.length}
+                  </span>
+                </div>
+
+                <div className="my-auto text-center py-4">
+                  <p className="text-sm md:text-base font-bold text-slate-900 leading-relaxed">
+                    {currentCard?.answer}
+                  </p>
+                </div>
+
+                <div className="flex items-center justify-between text-[11px] font-bold text-slate-600 pt-3 border-t-2 border-slate-200">
+                  <span className="flex items-center gap-1.5">
+                    <RotateCw className="w-3.5 h-3.5 text-slate-900" /> Swipe ▲ Hard • ▼ Easy
+                  </span>
+                  <span className="text-cyan-800 font-black">Highlight text for ተማሪ AI</span>
+                </div>
+              </div>
             </div>
           </div>
 
-          {/* Back Face (Answer) */}
-          <div className="absolute inset-0 w-full h-full bg-[#FAF8F5] text-slate-950 border-3 border-slate-900 rounded-2xl p-6 shadow-neo-lg flex flex-col justify-between backface-hidden rotate-y-180">
-            <div className="flex items-center justify-between text-xs font-black text-slate-900">
-              <span className="flex items-center gap-1.5 text-emerald-800">
-                <Sparkles className="w-4 h-4 text-yellow-500" /> ANSWER & EXPLANATION
-              </span>
-              <span className="px-2 py-0.5 bg-white border border-slate-900 rounded text-slate-900 text-[10px]">
-                Card {currentIndex + 1}
-              </span>
+          {/* Discoverability Pattern: Ghost-hand Animation (1.5s, plays once on first launch) */}
+          {showGhostHand && (
+            <div
+              onClick={dismissGhostHand}
+              className="absolute inset-0 z-30 flex flex-col items-center justify-center bg-slate-950/20 backdrop-blur-[1px] rounded-2xl cursor-pointer select-none"
+            >
+              <div className="ghost-hand-anim flex flex-col items-center gap-2">
+                <div className="p-3 bg-yellow-300 border-2 border-slate-900 rounded-2xl shadow-neo text-slate-950 flex items-center justify-center">
+                  <Hand className="w-7 h-7 transform -rotate-12" />
+                </div>
+                <div className="px-3.5 py-1.5 bg-slate-900 text-white text-[11px] font-black rounded-xl border border-yellow-300 shadow-neo flex items-center gap-1.5 whitespace-nowrap">
+                  <span>Swipe ◄ ► to navigate • Swipe ▲ ▼ on back to rate</span>
+                </div>
+              </div>
             </div>
-
-            <div className="my-auto text-center py-4">
-              <p className="text-sm md:text-base font-bold text-slate-900 leading-relaxed">
-                {currentCard?.answer}
-              </p>
-            </div>
-
-            <div className="flex items-center justify-between text-[11px] font-bold text-slate-600 pt-3 border-t-2 border-slate-200">
-              <span>Click to flip back</span>
-              <span className="text-cyan-800 font-black">Highlight text to explain</span>
-            </div>
-          </div>
-        </div>
+          )}
         </div>
       </div>
 
-      {/* Navigation & Self Assessment Buttons */}
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2">
+      {/* Navigation & Self Assessment Buttons with Kinetic Physics */}
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-1">
         <div className="flex items-center gap-2">
           <button
             onClick={handlePrev}
             disabled={currentIndex === 0}
-            className="flex items-center gap-1 px-3.5 py-2 bg-white hover:bg-slate-50 border-2 border-slate-900 rounded-xl text-xs font-black text-slate-900 disabled:opacity-40 transition-all shadow-neo-sm active:translate-y-0.5"
+            className="btn-kinetic flex items-center gap-1 px-3.5 py-2 bg-white hover:bg-slate-50 border-2 border-slate-900 rounded-xl text-xs font-black text-slate-900 disabled:opacity-40 shadow-neo-sm active:translate-x-0.5 active:translate-y-0.5 active:shadow-neo-xs"
           >
             <ChevronLeft className="w-3.5 h-3.5" /> Previous
           </button>
 
           <button
             onClick={() => setIsFlipped(!isFlipped)}
-            className="flex items-center gap-1 px-3.5 py-2 bg-yellow-300 hover:bg-yellow-200 text-slate-950 rounded-xl border-2 border-slate-900 text-xs font-black shadow-neo-sm transition-all active:translate-y-0.5"
+            className="btn-kinetic flex items-center gap-1 px-3.5 py-2 bg-yellow-300 hover:bg-yellow-200 text-slate-950 rounded-xl border-2 border-slate-900 text-xs font-black shadow-neo-sm active:translate-x-0.5 active:translate-y-0.5 active:shadow-neo-xs"
           >
             <RotateCw className="w-3.5 h-3.5" /> Flip Card
           </button>
 
           <button
             onClick={handleNext}
-            className="flex items-center gap-1 px-3.5 py-2 bg-white hover:bg-slate-50 border-2 border-slate-900 rounded-xl text-xs font-black text-slate-900 transition-all shadow-neo-sm active:translate-y-0.5"
+            className="btn-kinetic flex items-center gap-1 px-3.5 py-2 bg-white hover:bg-slate-50 border-2 border-slate-900 rounded-xl text-xs font-black text-slate-900 shadow-neo-sm active:translate-x-0.5 active:translate-y-0.5 active:shadow-neo-xs"
           >
             Next <ChevronRight className="w-3.5 h-3.5" />
           </button>
@@ -353,7 +609,7 @@ export const FlashcardView: React.FC<FlashcardViewProps> = ({
         <div className="flex items-center gap-2">
           <button
             onClick={markNeedReview}
-            className="flex items-center gap-1.5 px-4 py-2 bg-rose-200 hover:bg-rose-100 text-rose-950 border-2 border-slate-900 rounded-xl text-xs font-black shadow-neo-sm transition-all active:translate-y-0.5"
+            className="btn-kinetic flex items-center gap-1.5 px-4 py-2 bg-rose-200 hover:bg-rose-100 text-rose-950 border-2 border-slate-900 rounded-xl text-xs font-black shadow-neo-sm active:translate-x-0.5 active:translate-y-0.5 active:shadow-neo-xs"
             title="Mark as Still Learning"
           >
             <XCircle className="w-4 h-4" /> Need Practice
@@ -361,7 +617,7 @@ export const FlashcardView: React.FC<FlashcardViewProps> = ({
 
           <button
             onClick={markMastered}
-            className="flex items-center gap-1.5 px-4 py-2 bg-emerald-300 hover:bg-emerald-200 text-emerald-950 border-2 border-slate-900 rounded-xl text-xs font-black shadow-neo-sm transition-all active:translate-y-0.5"
+            className="btn-kinetic flex items-center gap-1.5 px-4 py-2 bg-emerald-300 hover:bg-emerald-200 text-emerald-950 border-2 border-slate-900 rounded-xl text-xs font-black shadow-neo-sm active:translate-x-0.5 active:translate-y-0.5 active:shadow-neo-xs"
             title="Mark as Mastered"
           >
             <CheckCircle2 className="w-4 h-4" /> Mastered!
