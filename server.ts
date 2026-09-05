@@ -8,6 +8,7 @@ import {
   fetchLiveProviderModels,
   AIProviderId,
 } from './server/aiProvider.ts';
+import { AI_PROVIDERS, DEFAULT_AI_PROVIDER, getProviderInfo } from './shared/aiCatalog.ts';
 
 dotenv.config();
 
@@ -23,28 +24,21 @@ app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
 // 1. Health check & Provider Info
 app.get('/api/health', (req: Request, res: Response) => {
+  const defaultInfo = getProviderInfo(DEFAULT_AI_PROVIDER);
   res.json({
     status: 'ok',
     appName: 'StudySmart (Temari)',
     hasServerKey: !!process.env.GEMINI_API_KEY,
-    defaultProvider: 'gemini',
-    defaultModel: 'gemini-2.5-flash',
-    supportedProviders: ['gemini', 'openai', 'anthropic', 'groq', 'deepseek', 'openrouter', 'custom'],
+    defaultProvider: defaultInfo.id,
+    defaultModel: defaultInfo.defaultModel,
+    supportedProviders: AI_PROVIDERS.map((p) => p.id),
     timestamp: new Date().toISOString(),
   });
 });
 
 app.get('/api/ai/providers', (req: Request, res: Response) => {
   res.json({
-    providers: [
-      { id: 'gemini', name: 'Google Gemini', defaultModel: 'gemini-2.5-flash' },
-      { id: 'openai', name: 'OpenAI', defaultModel: 'gpt-4o-mini' },
-      { id: 'anthropic', name: 'Anthropic Claude', defaultModel: 'claude-3-5-haiku-20241022' },
-      { id: 'groq', name: 'Groq (Llama)', defaultModel: 'llama-3.3-70b-versatile' },
-      { id: 'deepseek', name: 'DeepSeek', defaultModel: 'deepseek-chat' },
-      { id: 'openrouter', name: 'OpenRouter', defaultModel: 'meta-llama/llama-3.3-70b-instruct' },
-      { id: 'custom', name: 'Custom / Local (Ollama)', defaultModel: 'llama3.2' },
-    ],
+    providers: AI_PROVIDERS.map(({ id, name, defaultModel }) => ({ id, name, defaultModel })),
   });
 });
 

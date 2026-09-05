@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Flashcard } from '../../types';
-import { AIService } from '../../services/aiService';
+import { ai } from '../../services/ai';
+import { OfflineBanner } from '../tools/OfflineBanner';
 import { studyStore } from '../../hooks/useStudyStore';
 import { useActiveSubject, useNotes, useQuizzes } from '../../hooks/useStudyStore';
 import { FlashcardView } from './FlashcardView';
@@ -37,6 +38,7 @@ export const QuizzesManager: React.FC<QuizzesManagerProps> = ({ onHighlightTerm 
   const [selectedNoteId, setSelectedNoteId] = useState<string>('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [generatedOffline, setGeneratedOffline] = useState(false);
 
   // Notes from useNotes() are already scoped to the active subject.
   const subjectNotes = notes;
@@ -68,11 +70,12 @@ export const QuizzesManager: React.FC<QuizzesManagerProps> = ({ onHighlightTerm 
     setError(null);
 
     try {
-      const flashcards = await AIService.generateQuiz({
+      const { source: quizSource, value: flashcards } = await ai.generateQuiz({
         material: textToUse,
         quizLength,
         difficulty,
       });
+      setGeneratedOffline(quizSource === 'offline');
 
       const newQuiz = studyStore.addQuiz({
         name: quizName.trim() || `${activeSubject.name} Flashcard Drill`,
@@ -160,6 +163,10 @@ export const QuizzesManager: React.FC<QuizzesManagerProps> = ({ onHighlightTerm 
           Generate New Quiz Deck
         </button>
       </div>
+
+      {generatedOffline && (
+        <OfflineBanner label="Offline draft — no AI Provider was reachable, so these flashcards were assembled locally. Reconnect and regenerate for full AI flashcards." />
+      )}
 
       {/* Quizzes Grid */}
       {quizzes.length === 0 ? (

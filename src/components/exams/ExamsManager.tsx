@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { StoredAttempt, ExamQuestion } from '../../types';
 import { studyStore } from '../../hooks/useStudyStore';
 import { useActiveSubject, useAttempts, useNotes } from '../../hooks/useStudyStore';
-import { AIService } from '../../services/aiService';
+import { ai } from '../../services/ai';
 import { ExamTakingView } from './ExamTakingView';
 import { ExamResultsView } from './ExamResultsView';
 import {
@@ -26,6 +26,7 @@ export const ExamsManager: React.FC = () => {
     title: string;
     questions: ExamQuestion[];
     timeLimitMinutes: number;
+    offlineDraft?: boolean;
   } | null>(null);
   const [showGenerateModal, setShowGenerateModal] = useState(false);
 
@@ -65,7 +66,7 @@ export const ExamsManager: React.FC = () => {
     setError(null);
 
     try {
-      const generatedQuestions = await AIService.generateExam({
+      const { source: examSource, value: generatedQuestions } = await ai.generateExam({
         material: textToUse,
         numberOfQuestions: questionCount,
       });
@@ -75,6 +76,7 @@ export const ExamsManager: React.FC = () => {
         title: examTitle.trim() || `${activeSubject.name} Comprehensive Mock Exam`,
         questions: generatedQuestions,
         timeLimitMinutes: timeLimit,
+        offlineDraft: examSource === 'offline',
       });
       // Reset form
       setExamTitle('');
@@ -109,6 +111,7 @@ export const ExamsManager: React.FC = () => {
         subjectId={activeSubject.id}
         questions={takingExam.questions}
         timeLimitMinutes={takingExam.timeLimitMinutes}
+        offlineDraft={takingExam.offlineDraft}
         onCompleted={handleExamCompleted}
         onCancel={() => setTakingExam(null)}
       />

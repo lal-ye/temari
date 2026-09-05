@@ -351,7 +351,6 @@ export default function App() {
       />
 
       <ExplainTermModal
-        isOpen={Boolean(explainTermData)}
         term={explainTermData?.term || ''}
         context={explainTermData?.context}
         onClose={() => setExplainTermData(null)}

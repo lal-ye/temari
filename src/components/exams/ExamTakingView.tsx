@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { ExamQuestion, ExamResult, Article, StoredAttempt } from '../../types';
-import { AIService } from '../../services/aiService';
+import { ai } from '../../services/ai';
 import {
   Clock,
   Flag,
@@ -19,6 +19,7 @@ interface ExamTakingViewProps {
   subjectId: string;
   questions: ExamQuestion[];
   timeLimitMinutes?: number;
+  offlineDraft?: boolean;
   onCompleted: (attempt: Omit<StoredAttempt, 'id' | 'date'>) => void;
   onCancel: () => void;
 }
@@ -29,6 +30,7 @@ export const ExamTakingView: React.FC<ExamTakingViewProps> = ({
   subjectId,
   questions,
   timeLimitMinutes = 20,
+  offlineDraft,
   onCompleted,
   onCancel,
 }) => {
@@ -88,7 +90,7 @@ export const ExamTakingView: React.FC<ExamTakingViewProps> = ({
     setIsGrading(true);
 
     try {
-      const grading = await AIService.gradeExam({
+      const { source: gradeSource, value: grading } = await ai.gradeExam({
         exam: questions,
         userAnswers: answers,
       });
@@ -99,6 +101,7 @@ export const ExamTakingView: React.FC<ExamTakingViewProps> = ({
         subjectName,
         name: examTitle,
         type: 'Exam',
+        gradedOffline: gradeSource === 'offline',
         timeSpentSeconds: timeLimitMinutes * 60 - timeLeft,
         overallScore: grading.overallScore,
         totalQuestions: questions.length,
@@ -174,6 +177,11 @@ export const ExamTakingView: React.FC<ExamTakingViewProps> = ({
           <span className="px-2 py-0.5 bg-yellow-300 text-slate-950 border border-slate-900 rounded-md text-[10px] font-black uppercase tracking-wider shadow-xs">
             {subjectName}
           </span>
+          {offlineDraft && (
+            <span className="ml-1 px-2 py-0.5 bg-amber-200 text-amber-950 border border-slate-900 rounded-md text-[10px] font-black uppercase tracking-wider shadow-xs">
+              Offline draft questions
+            </span>
+          )}
           <h2 className="text-lg font-black text-slate-950 leading-tight mt-1">{examTitle}</h2>
           <span className="text-xs font-bold text-slate-600">
             Answered: <strong className="text-cyan-800 font-black">{answeredCount}</strong> of {questions.length} questions
