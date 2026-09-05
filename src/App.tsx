@@ -10,6 +10,7 @@ import { ExplainTermModal } from './components/tools/ExplainTermModal';
 import { ApiKeySettingsModal } from './components/tools/ApiKeySettingsModal';
 import { ModelPicker } from './components/tools/ModelPicker';
 import { Modal } from './components/ui/Modal';
+import { runViewTransition } from './utils/viewTransition';
 import {
   BookOpen,
   Layers,
@@ -43,6 +44,7 @@ export default function App() {
 
   // Modals and Drawers
   const [openModal, setOpenModal] = useState<OpenModal>(null);
+  const [confirmDeleteSubjectId, setConfirmDeleteSubjectId] = useState<string | null>(null);
   const [explainTermData, setExplainTermData] = useState<{ term: string; context?: string } | null>(
     null
   );
@@ -66,15 +68,17 @@ export default function App() {
     setOpenModal(null);
   };
 
+  const handleTabChange = (tab: TabType) => {
+    if (tab === activeTab) return;
+    // Native view transition cross-fade for lateral navigation (ADR-0004).
+    runViewTransition(() => setActiveTab(tab));
+  };
+
   const handleDeleteSubject = (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    if (subjects.length <= 1) {
-      alert('You must have at least one active subject.');
-      return;
-    }
-    if (confirm('Are you sure you want to delete this subject and all its related materials?')) {
-      deleteSubject(id);
-    }
+    // The delete button is hidden when one Subject remains; guard anyway.
+    if (subjects.length <= 1) return;
+    setConfirmDeleteSubjectId(id);
   };
 
   const handleHighlightExplain = (term: string, context?: string) => {
@@ -101,7 +105,7 @@ export default function App() {
 
       {/* Left Sidebar (Neo-Brutalist Canvas) */}
       <aside
-        className={`fixed lg:static inset-y-0 left-0 z-50 w-68 bg-[#FFFDF9] text-slate-900 flex flex-col h-full max-h-screen overflow-y-auto overscroll-contain p-4 border-r-3 border-slate-900 shadow-neo-lg lg:shadow-none transition-transform duration-200 ease-in-out ${
+        className={`app-sidebar fixed lg:static inset-y-0 left-0 z-50 w-68 bg-[#FFFDF9] text-slate-900 flex flex-col h-full max-h-screen overflow-y-auto overscroll-contain p-4 border-r-3 border-slate-900 shadow-neo-lg lg:shadow-none transition-transform duration-200 ease-in-out ${
           sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
         }`}
       >
@@ -176,7 +180,7 @@ export default function App() {
                 <button
                   key={item.id}
                   onClick={() => {
-                    setActiveTab(item.id as TabType);
+                    handleTabChange(item.id as TabType);
                     setSidebarOpen(false);
                   }}
                   className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-black transition-all border-2 text-left ${
@@ -260,7 +264,7 @@ export default function App() {
       {/* Main Content View Container */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         {/* Top Header Bar */}
-        <header className="h-14 bg-white border-b-3 border-slate-900 flex items-center justify-between px-4 sm:px-6 shrink-0 z-10 shadow-xs">
+        <header className="app-header h-14 bg-white border-b-3 border-slate-900 flex items-center justify-between px-4 sm:px-6 shrink-0 z-10 shadow-xs">
           <div className="flex items-center gap-3">
             <button
               onClick={() => setSidebarOpen(true)}
@@ -319,7 +323,7 @@ export default function App() {
         </header>
 
         {/* Scrollable View Area */}
-        <main className="flex-1 overflow-y-auto p-4 sm:p-6 bg-[#FAF8F5] bg-neo-dots">
+        <main className="app-main flex-1 overflow-y-auto p-4 sm:p-6 bg-[#FAF8F5] bg-neo-dots">
           <div className="max-w-6xl mx-auto">
             {activeTab === 'notes' && (
               <NotesManager onHighlightTerm={handleHighlightExplain} />
@@ -441,6 +445,43 @@ export default function App() {
             </div>
           </div>
         )}
+      </Modal>
+
+      {/* Confirm Delete Subject */}
+      <Modal
+        open={confirmDeleteSubjectId !== null}
+        onClose={() => setConfirmDeleteSubjectId(null)}
+        title="Delete Subject"
+        subtitle="This cannot be undone"
+        icon={<Trash2 className="w-5 h-5" />}
+        iconClassName="bg-rose-200 text-rose-950"
+      >
+        <p className="text-sm font-bold text-slate-700 mb-5">
+          Delete{' '}
+          <span className="text-slate-950">
+            &ldquo;{subjects.find((s) => s.id === confirmDeleteSubjectId)?.name}&rdquo;
+          </span>{' '}
+          and all of its Notes, Quizzes, Exams and Study Tasks?
+        </p>
+        <div className="flex items-center justify-end gap-2.5 pt-3 border-t-2 border-slate-100">
+          <button
+            type="button"
+            onClick={() => setConfirmDeleteSubjectId(null)}
+            className="px-4 py-2 text-xs font-black text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl border-2 border-slate-900 transition-all shadow-neo-sm"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              if (confirmDeleteSubjectId) deleteSubject(confirmDeleteSubjectId);
+              setConfirmDeleteSubjectId(null);
+            }}
+            className="px-5 py-2 text-xs font-black text-white bg-rose-600 hover:bg-rose-700 rounded-xl border-2 border-slate-900 transition-all shadow-neo active:translate-y-0.5"
+          >
+            Delete Subject
+          </button>
+        </div>
       </Modal>
     </div>
   );

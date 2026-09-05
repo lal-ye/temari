@@ -255,11 +255,14 @@ export const FlashcardView: React.FC<FlashcardViewProps> = ({
         onClick={() => setIsFlipped(!isFlipped)}
         onMouseUp={handleSelection}
       >
-        <div
-          className={`w-full h-full duration-300 transform-style-3d relative transition-transform ${
-            isFlipped ? 'rotate-y-180' : ''
-          }`}
-        >
+        {/* keyed reveal: replays the enter animation when the card changes.
+            The flipper inside stays on its own transform layer for the 3D flip. */}
+        <div key={currentIndex} className="w-full h-full flashcard-reveal">
+          <div
+            className={`w-full h-full duration-300 transform-style-3d relative transition-transform ${
+              isFlipped ? 'rotate-y-180' : ''
+            }`}
+          >
           {/* Front Face (Question) */}
           <div className="absolute inset-0 w-full h-full bg-white border-3 border-slate-900 rounded-2xl p-6 shadow-neo-lg flex flex-col justify-between backface-hidden">
             <div className="flex items-center justify-between text-xs text-slate-500 font-black">
@@ -317,6 +320,7 @@ export const FlashcardView: React.FC<FlashcardViewProps> = ({
               <span className="text-cyan-800 font-black">Highlight text to explain</span>
             </div>
           </div>
+        </div>
         </div>
       </div>
 

@@ -120,6 +120,19 @@
 .modal-panel-in { animation: modal-panel-in 180ms cubic-bezier(0.2, 0.9, 0.3, 1.2) both; }
 .modal-panel-out { animation: modal-panel-out 150ms ease-in both; }
 
+/* Tab view transitions: persistent chrome keeps a stable name so only the
+   main content area cross-fades when switching tabs (lateral navigation). */
+.app-sidebar { view-transition-name: app-sidebar; }
+.app-header { view-transition-name: app-header; }
+.app-main { view-transition-name: app-main; }
+
+/* Flashcard reveal: content appears when moving to the next/prev card */
+@keyframes flashcard-reveal {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.flashcard-reveal { animation: flashcard-reveal 200ms cubic-bezier(0.2, 0.9, 0.3, 1.2) both; }
+
 /* Reduced motion: skip all decorative animation (view transitions, modals) */
 @media (prefers-reduced-motion: reduce) {
   ::view-transition-group(*),
@@ -131,7 +144,8 @@
   .modal-backdrop-in,
   .modal-backdrop-out,
   .modal-panel-in,
-  .modal-panel-out {
+  .modal-panel-out,
+  .flashcard-reveal {
     animation: none !important;
   }
 }
