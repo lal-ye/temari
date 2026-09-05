@@ -155,7 +155,12 @@ export interface UserSettings {
   pomodoroBreakMinutes: number;
   pomodoroLongBreakMinutes: number;
   soundEnabled: boolean;
-  /** Zen Mode: collapse the desktop sidebar to focus on the study surface. */
+  /**
+   * @deprecated Zen Mode collapsed the desktop sidebar. The sidebar was
+   * removed in favour of header navigation plus the command palette, so there
+   * is nothing left to collapse. The field is retained so that settings
+   * persisted by earlier versions still parse; nothing reads it.
+   */
   zenMode: boolean;
 }
 

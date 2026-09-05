@@ -424,61 +424,38 @@ button:disabled:active {
 .modal-panel-out { animation: modal-panel-out 150ms ease-in both; }
 
 /* ==========================================================================
-   App layout + Zen Mode (spatial consistency)
+   App layout
 
-   The sidebar is never conditionally rendered. Zen Mode animates the grid
-   column to zero, so the sidebar slides out to the left and comes back to
-   exactly where the brain left it. A conditional render would teleport it.
-
-   Below `lg` the sidebar is a fixed-position overlay drawer, so the layout is
-   a single column there and Zen is a desktop-only concern.
+   The sidebar was removed in favour of header navigation plus the command
+   palette, so the shell is now a single column: header, scrolling main, and on
+   mobile a bottom tab bar. No grid tracks left to animate, which also retires
+   Zen Mode - with no sidebar there is nothing to collapse.
    ========================================================================== */
 .app-layout {
-  display: grid;
-  grid-template-columns: 1fr;
-  grid-template-rows: 100%;
-}
-
-@media (min-width: 1024px) {
-  .app-layout {
-    --sidebar-w: 19rem; /* matches .app-sidebar-inner (w-76) */
-    grid-template-columns: var(--sidebar-w) minmax(0, 1fr);
-  }
-
-  .app-layout[data-animate="true"] {
-    transition: grid-template-columns var(--dur-layout) var(--ease-out);
-  }
-
-  .app-layout[data-zen="true"] {
-    --sidebar-w: 0rem;
-  }
-
-  /* The inner panel keeps its intrinsic width while the column shrinks, so the
-     sidebar slides out under the clip rather than reflowing its contents. */
-  .app-layout > .app-sidebar {
-    overflow: hidden;
-  }
+  display: flex;
+  flex-direction: column;
 }
 
 /* ==========================================================================
-   Navigation active indicator (spatial consistency)
+   Hub tab active indicator (spatial consistency)
 
-   One element that slides between nav items, rather than a highlight class
-   that teleports. The eye follows a single object, so the active state keeps
-   its identity across a change. Keyboard navigation (keys 1-5) sets
+   One element that slides between tabs, rather than a highlight class that
+   teleports. The eye follows a single object, so the active state keeps its
+   identity across a change. Now travels on x rather than y, the sidebar list
+   having become a header row. Keyboard navigation (keys 1-5) sets
    data-animate="false" for one frame so the indicator jumps instantly.
    ========================================================================== */
-.app-nav-list {
+.app-hub-list {
   position: relative;
 }
 
-.app-nav-indicator {
+.app-hub-indicator {
   position: absolute;
   left: 0;
   top: 0;
-  width: 100%;
-  height: var(--indicator-h, 0px);
-  transform: translate3d(4px, var(--indicator-y, 0px), 0);
+  height: 100%;
+  width: var(--indicator-w, 0px);
+  transform: translate3d(var(--indicator-x, 0px), 0, 0);
   background-color: #67E8F9;
   border: 2px solid #0F172A;
   border-radius: 0.75rem;
@@ -487,13 +464,10 @@ button:disabled:active {
   z-index: 0;
 }
 
-/* The sidebar is captured as a single view-transition snapshot, which would
-   freeze any CSS transition inside it and cross-fade the indicator between two
-   positions — a teleport with extra steps. Naming the indicator lifts it out of
-   the sidebar's snapshot into its own group, so the platform morphs it from the
-   old box to the new one. This is the shared-layout animation (the platform's
-   answer to Framer Motion's `layoutId`), with no library. */
-.app-nav-indicator {
+/* Lifted out of the header's view-transition snapshot into its own group so
+   the platform morphs it from the old box to the new one, rather than
+   cross-fading two positions. Shared-layout animation, no library. */
+.app-hub-indicator {
   view-transition-name: nav-indicator;
 }
 
@@ -502,8 +476,6 @@ button:disabled:active {
   animation-timing-function: var(--ease-out);
 }
 
-/* Pure morph: the indicator is one continuous object, so its snapshots must not
-   cross-fade into each other. */
 ::view-transition-old(nav-indicator),
 ::view-transition-new(nav-indicator) {
   animation: none;
@@ -513,23 +485,33 @@ button:disabled:active {
 
 /* Fallback slide for browsers without view transitions, and for state changes
    that happen outside one. Suppressed on the keyboard path. */
-.app-nav-list[data-animate="true"] .app-nav-indicator {
-  transition: transform 200ms var(--ease-out), height 200ms var(--ease-out);
+.app-hub-list[data-animate="true"] .app-hub-indicator {
+  transition: transform 200ms var(--ease-out), width 200ms var(--ease-out);
 }
 
-.app-nav-list[data-animate="false"] .app-nav-indicator {
+.app-hub-list[data-animate="false"] .app-hub-indicator {
   transition: none;
 }
 
 /* Indicator not yet measured (first paint): stay hidden rather than flash at 0,0. */
-.app-nav-indicator[data-ready="false"] {
+.app-hub-indicator[data-ready="false"] {
   opacity: 0;
 }
 
-.app-nav-item {
+.app-hub-item {
   position: relative;
   z-index: 1;
   background-color: transparent;
+}
+
+/* The hub row scrolls horizontally at narrow widths; a visible scrollbar would
+   sit on top of the indicator. */
+.no-scrollbar {
+  scrollbar-width: none;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
 }
 
 /* ==========================================================================
@@ -587,7 +569,6 @@ button:disabled:active {
 
 /* Tab view transitions: persistent chrome keeps a stable name so only the
    main content area cross-fades when switching tabs (lateral navigation). */
-.app-sidebar { view-transition-name: app-sidebar; }
 .app-header { view-transition-name: app-header; }
 .app-main { view-transition-name: app-main; }
 
@@ -634,18 +615,12 @@ button:disabled:active {
   }
 
   /* Nav indicator: still positioned correctly, just never travels. */
-  .app-nav-list[data-animate="true"] .app-nav-indicator,
-  .app-nav-list[data-animate="false"] .app-nav-indicator {
+  .app-hub-list[data-animate="true"] .app-hub-indicator,
+  .app-hub-list[data-animate="false"] .app-hub-indicator {
     transition: none !important;
   }
-  .app-nav-indicator {
+  .app-hub-indicator {
     view-transition-name: none !important;
-  }
-
-  /* Zen Mode still collapses, it just does not travel. */
-  .app-layout,
-  .app-layout[data-animate="true"] {
-    transition: none !important;
   }
 
   /* Flashcards: transition opacity 150ms ease, no 3D spin */

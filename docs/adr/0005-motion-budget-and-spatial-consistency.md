@@ -50,7 +50,12 @@ keyboard.
   which is correct when there is nothing on screen to morph from.
 - **Zen Mode collapses a grid column, it does not unmount the sidebar.** The
   sidebar slides out to the left under a clip and returns to the same place.
+  *(Superseded: the sidebar was later removed altogether in favour of header
+  navigation plus a command palette, which retired Zen Mode with it. See
+  ADR-0006.)*
 - **The nav indicator is one element that travels**, not a class that teleports.
+  This survives the sidebar removal; the indicator now travels on x across the
+  header hub tabs rather than on y down the sidebar.
 
 ### 3. Gestures track the input, and commit by cost
 
