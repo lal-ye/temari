@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Temari — Interactive Notes wireframe</title>
+<style>
+  :root {
+    --ink: #0F172A;
+    --line: #94A3B8;
+    --paper: #FAFAF9;
+    --note: #FEF3C7;
+    --accent: #67E8F9;
+    --warn: #FECDD3;
+    --ok: #A7F3D0;
+    --mute: #64748B;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding: 40px 24px 96px;
+    background: #F1F5F9;
+    color: var(--ink);
+    font: 14px/1.6 ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  .wrap { max-width: 1080px; margin: 0 auto; }
+  h1 { font-size: 28px; margin: 0 0 4px; letter-spacing: -0.02em; }
+  h2 {
+    font-size: 18px; margin: 56px 0 6px; padding-bottom: 8px;
+    border-bottom: 2px solid var(--ink); letter-spacing: -0.01em;
+  }
+  h3 { font-size: 14px; margin: 28px 0 8px; text-transform: uppercase; letter-spacing: 0.06em; }
+  .lede { color: var(--mute); margin: 0 0 8px; max-width: 68ch; text-wrap: pretty; }
+  code {
+    font: 12px/1.4 ui-monospace, "SF Mono", Menlo, monospace;
+    background: #E2E8F0; padding: 1px 5px; border-radius: 4px;
+  }
+
+  /* ---------- wireframe primitives ---------- */
+  .frame {
+    background: #fff; border: 2px solid var(--ink); border-radius: 10px;
+    padding: 0; margin: 18px 0 8px; overflow: hidden;
+  }
+  .browser {
+    background: var(--paper); border-bottom: 2px solid var(--ink);
+    padding: 6px 10px; font: 11px ui-monospace, monospace; color: var(--mute);
+  }
+  .box {
+    border: 1.5px dashed var(--line); border-radius: 6px;
+    padding: 10px; position: relative; background: #fff;
+  }
+  .box.solid { border-style: solid; }
+  .box.fill { background: var(--paper); }
+  .lbl {
+    font: 10px/1.2 ui-monospace, monospace; text-transform: uppercase;
+    letter-spacing: 0.07em; color: var(--mute); margin-bottom: 6px; display: block;
+  }
+  .ph { background: repeating-linear-gradient(135deg,#F1F5F9 0 6px,#E8EDF3 6px 12px);
+        border-radius: 3px; height: 9px; margin: 5px 0; }
+  .ph.w40 { width: 40%; } .ph.w60 { width: 60%; } .ph.w80 { width: 80%; }
+  .btn {
+    display: inline-block; border: 1.5px solid var(--ink); border-radius: 6px;
+    padding: 4px 10px; font-size: 11px; font-weight: 700; background: #fff;
+    box-shadow: 2px 2px 0 var(--ink);
+  }
+  .btn.cta { background: var(--note); }
+  .btn.alt { background: var(--accent); }
+  .row { display: flex; gap: 10px; align-items: flex-start; }
+  .between { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+  .grid12 { display: grid; grid-template-columns: repeat(12, 1fr); gap: 12px; padding: 14px; }
+  .c4 { grid-column: span 4; } .c8 { grid-column: span 8; }
+
+  /* numbered call-outs */
+  .pin {
+    position: absolute; top: -9px; left: -9px; width: 20px; height: 20px;
+    border-radius: 50%; background: var(--ink); color: #fff;
+    font: 700 11px/20px ui-monospace, monospace; text-align: center; z-index: 2;
+  }
+  .pin.r { left: auto; right: -9px; }
+
+  /* legend + tables */
+  table { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 13px; }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid #CBD5E1; vertical-align: top; }
+  th { font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--mute); }
+  td code { white-space: nowrap; }
+
+  .note-cal { border-left: 4px solid var(--ink); background: #fff; padding: 12px 16px; margin: 14px 0; }
+  .note-cal.q { border-color: #DB2777; background: #FDF2F8; }
+  .note-cal.f { border-color: #EA580C; background: #FFF7ED; }
+
+  ul.tight { margin: 6px 0; padding-left: 20px; }
+  ul.tight li { margin: 3px 0; }
+
+  /* flow diagram */
+  .flow { display: flex; flex-direction: column; gap: 0; margin: 16px 0; }
+  .step { display: grid; grid-template-columns: 132px 1fr; gap: 14px; align-items: start; }
+  .step .who {
+    font: 10px/1.5 ui-monospace, monospace; text-transform: uppercase;
+    letter-spacing: 0.06em; color: var(--mute); padding-top: 10px; text-align: right;
+  }
+  .step .what {
+    border: 1.5px solid var(--ink); border-radius: 6px; padding: 8px 12px;
+    background: #fff; font-size: 13px;
+  }
+  .step .what.ai { background: var(--note); }
+  .step .what.store { background: var(--ok); }
+  .step .what.err { background: var(--warn); }
+  .arrow { grid-column: 2; color: var(--line); font-size: 16px; line-height: 1; padding: 2px 0 2px 14px; }
+
+  .tag {
+    display: inline-block; font: 10px/1 ui-monospace, monospace; padding: 3px 6px;
+    border: 1px solid var(--line); border-radius: 4px; color: var(--mute); margin-left: 6px;
+  }
+  .swatch { display:inline-block; width:11px; height:11px; border:1px solid var(--ink); border-radius:2px; vertical-align:-1px; margin-right:5px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <h1>Interactive Notes — wireframe &amp; workflow</h1>
+  <p class="lede">
+    Temari's Notes hub, drawn from the shipped code rather than an ideal. Every box maps
+    to a real element; every arrow to a real call. Numbered pins are referenced in the
+    tables underneath. Prepared to solicit design and workflow critique — the open
+    questions are collected at the end.
+  </p>
+  <p class="lede">
+    <span class="swatch" style="background:var(--note)"></span>AI work &nbsp;
+    <span class="swatch" style="background:var(--ok)"></span>store write &nbsp;
+    <span class="swatch" style="background:var(--warn)"></span>failure path &nbsp;
+    <span class="swatch" style="background:#fff"></span>local UI state
+  </p>
+
+  <!-- ============================================================ -->
+  <h2>1. Default view — desktop (≥1024px)</h2>
+  <p class="lede">Two panes inside a 12-column grid: a list rail and a reading surface.</p>
+
+  <div class="frame">
+    <div class="browser">temari — Interactive Notes</div>
+
+    <!-- app chrome -->
+    <div style="padding:10px 14px; border-bottom:2px solid var(--ink); background:#fff;">
+      <div class="between">
+        <div class="row" style="align-items:center;">
+          <strong style="font-size:12px;">ተ Temari</strong>
+          <span class="btn" style="box-shadow:none;">Biology ▾</span>
+          <span class="btn alt" style="box-shadow:none;">Notes</span>
+          <span style="font-size:11px;color:var(--mute)">Quizzes · Exams · Analytics · Planner</span>
+        </div>
+        <div class="row" style="align-items:center;">
+          <span class="btn" style="box-shadow:none;">🔥 3</span>
+          <span class="btn" style="box-shadow:none;">⌕ ⌘K</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- hub header -->
+    <div style="padding:14px;">
+      <div class="box solid" style="position:relative;">
+        <span class="pin">1</span>
+        <div class="between">
+          <div style="flex:1">
+            <span class="lbl">ተማሪ Smart Notes · Biology</span>
+            <strong style="font-size:15px;">Interactive Study Notes</strong>
+            <div class="ph w80"></div>
+          </div>
+          <span class="btn cta">✦ Generate Notes with AI</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- two-pane grid -->
+    <div class="grid12" style="padding-top:0;">
+      <div class="c4">
+        <div class="box solid" style="position:relative;">
+          <span class="pin">2</span>
+          <div class="box fill" style="padding:6px 8px; margin-bottom:8px;">
+            <span style="font-size:11px;color:var(--mute)">⌕ Search notes or tags…</span>
+          </div>
+
+          <div class="box" style="background:var(--ok); border-style:solid; margin-bottom:6px; position:relative;">
+            <span class="pin r" style="background:#059669">3</span>
+            <div class="between"><strong style="font-size:12px">Cellular Respiration</strong><span style="font-size:11px">🗑</span></div>
+            <div class="ph w80"></div><div class="ph w60"></div>
+            <div class="between" style="margin-top:6px;font-size:10px;color:var(--mute)">
+              <span>3 Sep 2026</span><span class="tag" style="margin:0">Midterm</span>
+            </div>
+          </div>
+
+          <div class="box" style="margin-bottom:6px;">
+            <div class="between"><strong style="font-size:12px">Krebs Cycle</strong><span style="font-size:11px">🗑</span></div>
+            <div class="ph w80"></div><div class="ph w40"></div>
+          </div>
+          <div class="box">
+            <div class="between"><strong style="font-size:12px">Photosynthesis</strong><span style="font-size:11px">🗑</span></div>
+            <div class="ph w60"></div><div class="ph w80"></div>
+          </div>
+          <p style="font:10px ui-monospace,monospace;color:var(--mute);margin:8px 0 0">
+            max-height 600px · overflow-y auto
+          </p>
+        </div>
+      </div>
+
+      <div class="c8">
+        <div class="box solid" style="position:relative; padding:0;">
+          <span class="pin">4</span>
+
+          <div style="padding:8px 12px;background:var(--paper);border-bottom:1.5px solid var(--line);font-size:10px;color:var(--mute);text-align:center;position:relative;">
+            <span class="pin" style="left:-9px;top:-9px;background:#EA580C">5</span>
+            ↓ pull-down zone — “Pull down to refresh / re-summarize”
+          </div>
+
+          <div class="between" style="padding:10px 12px;background:var(--paper);border-bottom:1.5px solid var(--line);">
+            <div>
+              <strong style="font-size:13px">Cellular Respiration</strong>
+              <div style="font-size:10px;color:var(--mute)">🕐 3 Sep 2026 · lecture-04.pdf</div>
+            </div>
+            <div class="row">
+              <span class="btn">Edit Markdown</span>
+              <span class="btn">⧉ Copy</span>
+              <span class="btn alt">⎙ Print / PDF</span>
+            </div>
+          </div>
+
+          <div style="padding:10px 12px;">
+            <span class="tag">🏷 Biology</span><span class="tag">🏷 AI Generated</span>
+          </div>
+
+          <div style="padding:4px 18px 18px;position:relative;">
+            <span class="pin" style="left:4px;background:#DB2777">6</span>
+            <div style="height:6px"></div>
+            <strong style="font-size:16px;display:block;border-bottom:1.5px solid var(--ink);padding-bottom:5px;">H1 — rendered heading</strong>
+            <div class="ph"></div><div class="ph w80"></div>
+
+            <div class="box" style="background:#DBEAFE;border-style:solid;margin:10px 0;">
+              <strong style="font-size:11px">Note callout</strong>
+              <div class="ph w80"></div>
+            </div>
+
+            <div class="box solid" style="margin:10px 0;padding:0;">
+              <div style="background:var(--note);border-bottom:1.5px solid var(--ink);padding:6px 10px;font-size:11px;font-weight:700">Comparison table</div>
+              <div style="padding:6px 10px;"><div class="ph w80"></div><div class="ph w60"></div></div>
+            </div>
+
+            <div class="box solid" style="margin:10px 0;background:var(--paper);text-align:center;padding:20px;">
+              <span class="lbl" style="margin:0">EditorialDiagram — inline SVG from ```diagram fence</span>
+            </div>
+
+            <div class="ph"></div><div class="ph w60"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <table>
+    <tr><th style="width:40px">Pin</th><th style="width:30%">Element</th><th>Code</th></tr>
+    <tr><td>1</td><td>Hub header + primary CTA</td><td><code>NotesManager.tsx</code> — captures morph origin, opens generate modal</td></tr>
+    <tr><td>2</td><td>Search + list rail</td><td><code>filteredNotes</code>, client-side substring over title, content, tags</td></tr>
+    <tr><td>3</td><td>Selected note card</td><td><code>selectedNoteId</code>; delete calls <code>window.confirm</code></td></tr>
+    <tr><td>4</td><td>Reading surface</td><td><code>NoteViewer.tsx</code></td></tr>
+    <tr><td>5</td><td>Pull-to-refresh</td><td>Rubber-band, commits ≥55px</td></tr>
+    <tr><td>6</td><td>Note body</td><td><code>parseNoteSegments</code> → <code>formatMarkdown</code> → <code>dangerouslySetInnerHTML</code></td></tr>
+  </table>
+
+  <!-- ============================================================ -->
+  <h2>2. The generate flow</h2>
+
+  <div class="flow">
+    <div class="step"><div class="who">learner</div><div class="what">Clicks <strong>Generate Notes with AI</strong></div></div>
+    <div class="arrow">↓</div>
+    <div class="step"><div class="who">Modal</div><div class="what">Morphs out of the button rect <span class="tag">useModalOrigin</span></div></div>
+    <div class="arrow">↓</div>
+    <div class="step"><div class="who">learner</div><div class="what">Uploads PDF/TXT <em>or</em> pastes text · optional title, tags</div></div>
+    <div class="arrow">↓ <em style="font-size:11px">PDF only</em></div>
+    <div class="step"><div class="who">AI (OCR)</div><div class="what ai"><code>aiConnection.extractPdfText</code> — blocking, spinner in the drop zone</div></div>
+    <div class="arrow">↓</div>
+    <div class="step"><div class="who">learner</div><div class="what">Submits — disabled until <code>materialText</code> is non-empty</div></div>
+    <div class="arrow">↓</div>
+    <div class="step"><div class="who">AI</div><div class="what ai"><code>ai.generateNotes()</code> → HTTP adapter. UI shows 3 timed stages:<br>
+      <em>Reading material → Structuring sections → Writing the note</em></div></div>
+    <div class="arrow">↓ <em style="font-size:11px">on throw (not abort)</em></div>
+    <div class="step"><div class="who">fallback</div><div class="what err"><code>offline.generateNotes()</code> — local draft, returns <code>source:'offline'</code></div></div>
+    <div class="arrow">↓</div>
+    <div class="step"><div class="who">store</div><div class="what store"><code>studyStore.addNote()</code> → localStorage; subjectId stamped from active subject</div></div>
+    <div class="arrow">↓</div>
+    <div class="step"><div class="who">UI</div><div class="what">Select new note · close modal · reset form · banner if offline</div></div>
+  </div>
+
+  <p class="lede" style="font-size:13px">
+    <strong>Note:</strong> the progress stages are time-driven, not
+    progress-driven — the model reports nothing back. They advance on a fixed
+    2.2s timer and are honest about elapsed time rather than showing a fake percentage.
+  </p>
+
+  <!-- ============================================================ -->
+  <h2>3. Reading-surface gestures</h2>
+
+  <table>
+    <tr><th style="width:22%">Gesture</th><th style="width:26%">Behaviour</th><th>Implementation</th></tr>
+    <tr>
+      <td><strong>Select text</strong></td>
+      <td>Tooltip: <em>Explain “X” with ተማሪ AI?</em></td>
+      <td><code>onMouseUp</code>; only fires for 2–59 chars</td>
+    </tr>
+    <tr>
+      <td><strong>Long-press 300ms</strong></td>
+      <td>Pulse ring → explainer modal morphs from the press point</td>
+      <td><code>getWordAtPoint</code> via <code>caretRangeFromPoint</code>; cancels past 8px drift; 25ms haptic</td>
+    </tr>
+    <tr>
+      <td><strong>Pull down</strong></td>
+      <td>Rubber-band → “Release to refresh”</td>
+      <td>Damped <code>pow(Δy,0.76)×2.2</code>, cap 84px, commits ≥55px</td>
+    </tr>
+  </table>
+
+  <!-- ============================================================ -->
+  <h2>4. Architecture</h2>
+  <div class="flow">
+    <div class="step"><div class="who">component</div><div class="what"><code>NotesManager</code> — list, search, modal, edit form<br><code>NoteViewer</code> — chrome, gestures, markdown → HTML</div></div>
+    <div class="arrow">↓ reads</div>
+    <div class="step"><div class="who">hook</div><div class="what"><code>useNotes()</code> — subject-scoped, re-renders on store version bump</div></div>
+    <div class="arrow">↓ writes</div>
+    <div class="step"><div class="who">store</div><div class="what store"><code>studyStore</code> — single mutation surface, localStorage behind an adapter seam</div></div>
+    <div class="arrow">↓ generation</div>
+    <div class="step"><div class="who">port</div><div class="what ai"><code>ai.generateNotes</code> — HTTP adapter, offline adapter as fallback</div></div>
+  </div>
+  <p class="lede" style="font-size:13px">
+    Selection is derived, not stored: <code>notes.find(id) || notes[0] || null</code>.
+    Switching subject or deleting a note can never strand a stale note on screen.
+  </p>
+
+  <!-- ============================================================ -->
+  <h2>5. Friction I would ask about</h2>
+  <p class="lede">Ordered by how much I suspect they matter. These are the questions, not conclusions.</p>
+
+  <div class="note-cal q">
+    <strong>1. The note is generated once and then goes inert.</strong>
+    <p style="margin:6px 0 0">
+      This is the big one. Notes are the entry point to the whole app — material comes
+      in here first — but a finished note has no path onward. To quiz yourself on it you
+      go to the Quizzes hub and paste the source material <em>again</em>. Nothing links a
+      quiz, an exam or a planner task back to the note it came from; <code>StoredNote</code>
+      and <code>StoredQuiz</code> share only a <code>subjectId</code>.
+      <br><em>Ask: should the note be the hub — “generate flashcards from this note” inline —
+      and should generated artefacts carry a <code>sourceNoteId</code>?</em>
+    </p>
+  </div>
+
+  <div class="note-cal q">
+    <strong>2. Pull-to-refresh currently does nothing.</strong>
+    <p style="margin:6px 0 0">
+      The gesture is fully built — damping, thresholds, a success state reading
+      “Note Refreshed with ተማሪ AI”. The handler passed in is
+      <code>await new Promise(r =&gt; setTimeout(r, 850))</code>. It waits, then claims success.
+      The note is unchanged.
+      <br><em>Ask: wire it to real re-generation, or remove it? Shipping a gesture that
+      lies about having done work is worse than not having it.</em>
+    </p>
+  </div>
+
+  <div class="note-cal f">
+    <strong>3. Two gestures share one pointer surface.</strong>
+    <p style="margin:6px 0 0">
+      Long-press-to-explain and pull-to-refresh both listen on overlapping elements.
+      A slow downward drag starting on a word begins a press timer <em>and</em> a pull.
+      The 8px drift cancel is what keeps them apart.
+      <br><em>Ask: does this hold up on a real touchscreen? I could not verify — no browser
+      in this environment.</em>
+    </p>
+  </div>
+
+  <div class="note-cal f">
+    <strong>4. Markdown is rendered by regex into raw HTML.</strong>
+    <p style="margin:6px 0 0">
+      <code>formatMarkdown</code> is ~90 lines of chained <code>.replace()</code> feeding
+      <code>dangerouslySetInnerHTML</code>. No sanitiser. Model output is trusted
+      today, but the same path renders pasted user material. Nested lists, code blocks
+      and inline links are unsupported.
+      <br><em>Ask: worth moving to a real parser, or is the constrained subset a feature?</em>
+    </p>
+  </div>
+
+  <div class="note-cal">
+    <strong>5. Editing is a raw markdown textarea.</strong>
+    <p style="margin:6px 0 0">
+      Editing replaces the reading pane with a 16-row monospace box — no preview, no
+      split view. The learner leaves the rendered note to edit the note.
+      <em>Ask: live preview, or edit-in-place on the rendered surface?</em>
+    </p>
+  </div>
+
+  <div class="note-cal">
+    <strong>6. Smaller things.</strong>
+    <ul class="tight" style="margin-top:6px">
+      <li>Delete uses <code>window.confirm</code> — an OS dialog in an otherwise fully styled app. Not unique to Notes: there are 5 across the codebase (Notes, Quizzes, Exams, Analytics, and exam submit).</li>
+      <li>Search is exact-substring, so “mitochondria” misses “mitochondrion”.</li>
+      <li>No sort or filter control; list order is store order.</li>
+      <li>Long generations cannot be cancelled — <code>AbortError</code> is handled in the port but nothing surfaces it.</li>
+      <li>The list rail has a fixed 600px scroll area independent of the viewer's height.</li>
+    </ul>
+  </div>
+
+  <h2>6. What I would most like advice on</h2>
+  <ol style="max-width:70ch">
+    <li><strong>Should the note become the workspace</strong> — quizzes, exams and tasks spawned from it and linked back — or stay a document, with the hubs as peers?</li>
+    <li><strong>Is a two-pane list+reader right</strong> at this scale, or does it cost too much width once notes get long? The reader is 8 of 12 columns.</li>
+    <li><strong>Are the gestures pulling their weight?</strong> Long-press-to-explain is genuinely useful. Pull-to-refresh is a stub. Both cost complexity on a surface whose main job is reading.</li>
+    <li><strong>Where should “generate” live?</strong> It is currently a modal over the hub. If notes are the entry point to the app, a full-page intake might carry the weight better.</li>
+  </ol>
+
+</div>
+</body>
+</html>
