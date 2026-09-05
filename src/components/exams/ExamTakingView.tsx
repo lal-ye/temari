@@ -11,6 +11,7 @@ import {
   Loader2,
   HelpCircle,
 } from 'lucide-react';
+import { GenerationProgress } from '../ui/GenerationProgress';
 import { fireConfetti } from '../../utils/confetti';
 
 interface ExamTakingViewProps {
@@ -159,14 +160,14 @@ export const ExamTakingView: React.FC<ExamTakingViewProps> = ({
 
   if (isGrading) {
     return (
-      <div className="bg-white border-3 border-slate-900 rounded-2xl p-10 shadow-neo-xl text-center max-w-lg mx-auto space-y-4">
-        <Loader2 className="w-12 h-12 text-slate-900 animate-spin mx-auto" />
-        <h3 className="section-heading text-slate-950">
-          <span className="font-ethiopic font-bold text-yellow-600">ተማሪ</span> AI is Grading Your Exam...
+      <div className="bg-white border-3 border-slate-900 rounded-2xl p-10 shadow-neo-xl max-w-lg mx-auto space-y-4">
+        <h3 className="section-heading text-slate-950 text-center">
+          <span className="font-ethiopic font-bold text-yellow-600">ተማሪ</span> AI is Grading Your Exam
         </h3>
-        <p className="text-xs font-bold text-slate-600 leading-relaxed">
-          Evaluating your responses, calculating concept mastery, diagnosing weak areas, and generating recommended study materials.
-        </p>
+        <GenerationProgress
+          kind="grading"
+          detail={`${answeredCount} of ${questions.length} questions answered.`}
+        />
       </div>
     );
   }

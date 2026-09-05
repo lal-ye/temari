@@ -6,6 +6,8 @@ import { studyStore } from '../../hooks/useStudyStore';
 import { useActiveSubject, useNotes, useQuizzes } from '../../hooks/useStudyStore';
 import { FlashcardView } from './FlashcardView';
 import { Modal, type MorphOrigin } from '../ui/Modal';
+import { GenerationProgress } from '../ui/GenerationProgress';
+import { EmptyState } from '../ui/EmptyState';
 import { SourceMaterialSelector } from '../ui/SourceMaterialSelector';
 import { useModalOrigin } from '../ui/useModalOrigin';
 import {
@@ -182,22 +184,22 @@ export const QuizzesManager: React.FC<QuizzesManagerProps> = ({ onHighlightTerm 
 
       {/* Quizzes Grid */}
       {quizzes.length === 0 ? (
-        <div className="bg-white border-3 border-slate-900 rounded-2xl p-12 text-center shadow-neo">
-          <Layers className="w-12 h-12 mx-auto text-slate-400 mb-3" />
-          <h3 className="text-base font-black text-slate-900">No Flashcard Decks Yet</h3>
-          <p className="text-xs font-bold text-slate-600 max-w-sm mx-auto mt-1 mb-5">
-            Generate flashcards directly from your saved study notes or any lecture text with Temari AI.
-          </p>
-          <button
-            onClick={(e) => {
-              generateOrigin.capture(e);
-              setShowGenerateModal(true);
-            }}
-            className="inline-flex items-center gap-2 px-5 py-2.5 bg-yellow-300 hover:bg-yellow-200 text-slate-950 font-black text-xs rounded-xl border-2 border-slate-900 shadow-neo transition-all active:translate-y-0.5"
-          >
-            <Sparkles className="w-4 h-4 text-slate-900" /> Create Flashcard Quiz
-          </button>
-        </div>
+        <EmptyState
+          icon={Layers}
+          title="No Flashcard Decks Yet"
+          description="Generate flashcards directly from your saved study notes or any lecture text with Temari AI."
+          action={
+            <button
+              onClick={(e) => {
+                generateOrigin.capture(e);
+                setShowGenerateModal(true);
+              }}
+              className="inline-flex items-center gap-2 px-5 py-2.5 bg-yellow-300 hover:bg-yellow-200 text-slate-950 font-black text-xs rounded-xl border-2 border-slate-900 shadow-neo transition-all active:translate-y-0.5"
+            >
+              <Sparkles className="w-4 h-4 text-slate-900" /> Create Flashcard Quiz
+            </button>
+          }
+        />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
           {quizzes.map((quiz) => (
@@ -281,6 +283,10 @@ export const QuizzesManager: React.FC<QuizzesManagerProps> = ({ onHighlightTerm 
         )}
 
         <form onSubmit={handleGenerateQuiz} className="space-y-4">
+          {isGenerating && (
+            <GenerationProgress kind="quiz" detail={`Subject: ${activeSubject.name}`} />
+          )}
+
               <div>
                 <label className="block text-xs font-black uppercase tracking-wider text-slate-800 mb-1">
                   Quiz Deck Name

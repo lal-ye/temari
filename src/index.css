@@ -475,6 +475,35 @@ button:disabled:active {
   background-color: transparent;
 }
 
+/* ==========================================================================
+   Generation waiting state (src/components/ui/GenerationProgress.tsx)
+
+   Generation is occasional and slow, so it sits in the "standard animation"
+   tier: enough motion to show the request is alive, nothing that draws the eye
+   on the hundredth run.
+   ========================================================================== */
+@keyframes generation-stage-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.45; }
+}
+
+.generation-stage-pulse {
+  animation: generation-stage-pulse 1.4s var(--ease-out) infinite;
+}
+
+/* Animated ellipsis that does not reflow the label as it cycles. */
+@keyframes generation-ellipsis {
+  0% { content: ''; }
+  25% { content: '.'; }
+  50% { content: '..'; }
+  75%, 100% { content: '...'; }
+}
+
+.generation-ellipsis::after {
+  content: '...';
+  animation: generation-ellipsis 1.6s steps(1, end) infinite;
+}
+
 /* Tab view transitions: persistent chrome keeps a stable name so only the
    main content area cross-fades when switching tabs (lateral navigation). */
 .app-sidebar { view-transition-name: app-sidebar; }
@@ -510,8 +539,16 @@ button:disabled:active {
   .modal-panel-out,
   .flashcard-reveal,
   .ghost-hand-anim,
-  .pulse-ring-indicator {
+  .pulse-ring-indicator,
+  .generation-stage-pulse {
     animation: none !important;
+  }
+
+  /* Keep the ellipsis, drop its cycling — the elapsed counter already shows
+     the request is alive. */
+  .generation-ellipsis::after {
+    animation: none !important;
+    content: '...';
   }
 
   /* Nav indicator: still positioned correctly, just never travels. */
