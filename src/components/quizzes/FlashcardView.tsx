@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import type { MorphOrigin } from '../ui/Modal';
+import { prefersReducedMotion } from '../../utils/viewTransition';
 import { Flashcard } from '../../types';
 import {
   RotateCw,
@@ -65,8 +66,7 @@ export const FlashcardView: React.FC<FlashcardViewProps> = ({
   useEffect(() => {
     if (!showGhostHand) return;
 
-    const prefersReducedMotion = typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    if (prefersReducedMotion) {
+    if (prefersReducedMotion()) {
       setShowGhostHand(false);
       localStorage.setItem('temari_swipe_hint_seen', 'true');
       return;
