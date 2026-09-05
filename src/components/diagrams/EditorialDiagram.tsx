@@ -1,5 +1,8 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { parseDiagramContent, ParsedDiagram, MindmapModel, FlowModel, StackModel } from './diagramParser';
+import { parseDiagramFence } from './diagramDoc';
+import { FigureRenderer } from './FigureRenderer';
+import { FigureShell } from './FigureShell';
 import { TEMARI_DIAGRAM_PROFILE } from './temariDiagramProfile';
 import {
   GraduationCap,
@@ -18,9 +21,47 @@ interface EditorialDiagramProps {
   content: string;
   title?: string;
   defaultMode?: 'static' | 'teacher';
+  /** Figure number shown in the caption. */
+  figIndex?: number;
+  /** Click a node to route its term to the AI explainer. */
+  onNodeActivate?: (label: string, context: string, el: HTMLElement | SVGElement) => void;
 }
 
 export const EditorialDiagram: React.FC<EditorialDiagramProps> = ({
+  content,
+  title = 'Concept Map',
+  defaultMode = 'static',
+  figIndex,
+  onNodeActivate,
+}) => {
+  /**
+   * Route the fence body. Structured JSON goes to the deterministic layout
+   * engine; anything else falls through to the legacy indented parser, because
+   * notes generated before the JSON contract shipped are still in people's
+   * localStorage and must keep rendering.
+   */
+  const fence = useMemo(() => parseDiagramFence(content), [content]);
+
+  if (fence.kind === 'doc' && fence.doc) {
+    return (
+      <FigureShell doc={fence.doc} figIndex={figIndex}>
+        <FigureRenderer doc={fence.doc} figIndex={figIndex} onNodeActivate={onNodeActivate} />
+      </FigureShell>
+    );
+  }
+
+  if (fence.kind === 'invalid') {
+    return <FigureShell.Error errors={fence.errors ?? []} raw={fence.raw} figIndex={figIndex} />;
+  }
+
+  return <LegacyEditorialDiagram content={content} title={title} defaultMode={defaultMode} />;
+};
+
+/**
+ * The pre-JSON renderer, kept verbatim for notes already in storage. New
+ * generations never reach this path.
+ */
+const LegacyEditorialDiagram: React.FC<EditorialDiagramProps> = ({
   content,
   title = 'Concept Map',
   defaultMode = 'static',
@@ -276,7 +317,28 @@ function renderSvgDiagram(parsed: ParsedDiagram, activeIndex: number | null): Re
   const profile = TEMARI_DIAGRAM_PROFILE;
 
   if (parsed.type === 'raw-svg') {
-    return <div dangerouslySetInnerHTML={{ __html: parsed.svgHtml }} className="max-w-full" />;
+    /**
+     * Model-authored SVG is no longer injected.
+     *
+     * This branch used to pass the string straight to dangerouslySetInnerHTML.
+     * An <svg> body can carry <script>, event-handler attributes and
+     * <foreignObject>, so that was a script-injection sink fed by remote model
+     * output and by whatever a learner pasted as source material. Nothing
+     * sanitises it on the way in.
+     *
+     * Rather than add a sanitiser for a path that should not exist, the raw
+     * route is refused outright: the whole point of the DiagramDoc contract is
+     * that the model supplies structure and this codebase draws it.
+     */
+    return (
+      <div className="p-4 border-2 border-dashed border-slate-400 rounded-xl bg-[#FAF8F5] text-center">
+        <p className="text-xs font-black text-slate-800">Raw SVG figures are not rendered</p>
+        <p className="mt-1 text-[11px] font-medium text-slate-600 max-w-md mx-auto text-pretty">
+          This figure supplied finished SVG rather than a structured diagram. Regenerate the
+          note to get a figure drawn by Temari.
+        </p>
+      </div>
+    );
   }
 
   if (parsed.type === 'flow') {

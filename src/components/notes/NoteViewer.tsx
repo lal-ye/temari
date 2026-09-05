@@ -218,6 +218,10 @@ export const NoteViewer: React.FC<NoteViewerProps> = ({ note, onEdit, onHighligh
   // Parse note content into alternating markdown and diagram segments
   const segments = useMemo(() => parseNoteSegments(note.content), [note.content]);
 
+  // Figure numbering runs across the whole note. Reset on every render pass so
+  // it stays in step with the segments actually drawn.
+  let figureCounter = 0;
+
   // Handle text highlight for "Explain with AI"
   const handleMouseUp = () => {
     const selection = window.getSelection();
@@ -501,11 +505,22 @@ export const NoteViewer: React.FC<NoteViewerProps> = ({ note, onEdit, onHighligh
       >
         {segments.map((segment, idx) => {
           if (segment.type === 'diagram') {
+            // Figures are numbered across the note so the caption ("Fig. 2")
+            // matches what a learner would cite when asking about it.
+            figureCounter += 1;
+            const figIndex = figureCounter;
             return (
               <EditorialDiagram
                 key={`diagram-${idx}`}
                 content={segment.content}
                 title={note.title}
+                figIndex={figIndex}
+                onNodeActivate={(label, context, el) => {
+                  // A node is a portal, not an illustration: tapping it asks
+                  // the explainer about that exact term, morphing out of the
+                  // box that was pressed.
+                  if (onHighlightTerm) onHighlightTerm(label, context, el as HTMLElement);
+                }}
               />
             );
           }
