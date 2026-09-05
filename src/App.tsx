@@ -14,7 +14,8 @@ import { PomodoroTimer } from './components/tools/PomodoroTimer';
 import { ExplainTermModal } from './components/tools/ExplainTermModal';
 import { ApiKeySettingsModal } from './components/tools/ApiKeySettingsModal';
 import { ModelPicker } from './components/tools/ModelPicker';
-import { Modal } from './components/ui/Modal';
+import { Modal, type MorphOrigin } from './components/ui/Modal';
+import { useModalOrigin } from './components/ui/useModalOrigin';
 import {
   prefersReducedMotion,
   runViewTransition,
@@ -87,6 +88,9 @@ export default function App() {
 
   // Modals and Drawers
   const [openModal, setOpenModal] = useState<OpenModal>(null);
+  // Whichever control opened the current app-level modal, so it can morph from it.
+  const modalOrigin = useModalOrigin();
+  const explainOrigin = useModalOrigin();
   const [confirmDeleteSubjectId, setConfirmDeleteSubjectId] = useState<string | null>(null);
   const [explainTermData, setExplainTermData] = useState<{ term: string; context?: string } | null>(
     null
@@ -132,7 +136,10 @@ export default function App() {
     setConfirmDeleteSubjectId(id);
   };
 
-  const handleHighlightExplain = (term: string, context?: string) => {
+  const handleHighlightExplain = (term: string, context?: string, origin?: MorphOrigin) => {
+    // The explainer grows out of the word the learner pressed, not the centre
+    // of the screen, so the answer is visibly about *that* term.
+    explainOrigin.capture(origin ?? null);
     setExplainTermData({ term, context });
   };
 
@@ -342,7 +349,10 @@ export default function App() {
                 <span>Active Subject</span>
               </span>
               <button
-                onClick={() => setOpenModal('add-subject')}
+                onClick={(e) => {
+                  modalOrigin.capture(e);
+                  setOpenModal('add-subject');
+                }}
                 className="btn-kinetic px-2.5 py-1 bg-cyan-300 hover:bg-cyan-200 text-slate-950 rounded-lg border-2 border-slate-900 flex items-center gap-1 text-[10px] font-black shadow-neo-xs transition-all active:translate-x-0.5 active:translate-y-0.5 min-h-[32px]"
                 title="Add New Subject"
               >
@@ -453,7 +463,8 @@ export default function App() {
               Smart Utilities
             </div>
             <button
-              onClick={() => {
+              onClick={(e) => {
+                modalOrigin.capture(e);
                 setOpenModal('pomodoro');
                 setSidebarOpen(false);
               }}
@@ -468,7 +479,8 @@ export default function App() {
               </span>
             </button>
             <button
-              onClick={() => {
+              onClick={(e) => {
+                modalOrigin.capture(e);
                 setOpenModal('api-key');
                 setSidebarOpen(false);
               }}
@@ -562,7 +574,10 @@ export default function App() {
             />
 
             <button
-              onClick={() => setOpenModal('api-key')}
+              onClick={(e) => {
+                modalOrigin.capture(e);
+                setOpenModal('api-key');
+              }}
               className="p-1.5 text-slate-900 bg-white hover:bg-slate-100 rounded-xl border-2 border-slate-900 shadow-neo-sm transition-all active:translate-y-0.5"
               title="AI Providers & Model Settings"
               aria-label="AI Providers and Models Settings"
@@ -627,6 +642,7 @@ export default function App() {
         isOpen={openModal === 'api-key'}
         onClose={() => setOpenModal(null)}
         onSaved={() => {}}
+        originRef={modalOrigin.ref}
       />
 
       <PomodoroTimer
@@ -638,12 +654,14 @@ export default function App() {
         term={explainTermData?.term || ''}
         context={explainTermData?.context}
         onClose={() => setExplainTermData(null)}
+        originRef={explainOrigin.ref}
       />
 
       {/* Add Subject Modal */}
       <Modal
         open={openModal === 'add-subject'}
         onClose={() => setOpenModal(null)}
+        originRef={modalOrigin.ref}
         title="Add Course Subject"
         subtitle="Create a dedicated subject folder in Temari"
         icon={<FolderPlus className="w-5 h-5" />}

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import type { MorphOrigin } from '../ui/Modal';
 import { Flashcard } from '../../types';
 import {
   RotateCw,
@@ -19,7 +20,7 @@ interface FlashcardViewProps {
   quizName: string;
   flashcards: Flashcard[];
   onFinish?: (score: number, masteredCount: number) => void;
-  onHighlightTerm?: (term: string, context?: string) => void;
+  onHighlightTerm?: (term: string, context?: string, origin?: MorphOrigin) => void;
   onClose: () => void;
 }
 
@@ -362,8 +363,13 @@ export const FlashcardView: React.FC<FlashcardViewProps> = ({
             <span className="font-ethiopic font-bold text-yellow-300 text-sm">ተማሪ</span> AI?
           </span>
           <button
-            onClick={() => {
-              if (onHighlightTerm) onHighlightTerm(selectedText, isFlipped ? currentCard?.answer : currentCard?.question);
+            onClick={(e) => {
+              if (onHighlightTerm)
+                onHighlightTerm(
+                  selectedText,
+                  isFlipped ? currentCard?.answer : currentCard?.question,
+                  e.currentTarget
+                );
               setSelectedText(null);
             }}
             className="px-2.5 py-1 bg-yellow-300 text-slate-950 font-black text-xs rounded-lg border border-slate-900 hover:bg-yellow-200 transition-colors shadow-neo-sm"

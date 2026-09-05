@@ -2,11 +2,12 @@ import React, { useMemo, useRef, useState } from 'react';
 import { StoredNote } from '../../types';
 import { Copy, Check, Printer, FileText, Maximize2, Share2, Sparkles, Tag, BookOpen, Clock, RefreshCw } from 'lucide-react';
 import { EditorialDiagram } from '../diagrams/EditorialDiagram';
+import { pointOrigin, type MorphOrigin } from '../ui/Modal';
 
 interface NoteViewerProps {
   note: StoredNote;
   onEdit?: () => void;
-  onHighlightTerm?: (term: string, context?: string) => void;
+  onHighlightTerm?: (term: string, context?: string, origin?: MorphOrigin) => void;
   onRefresh?: () => void | Promise<void>;
 }
 
@@ -249,7 +250,8 @@ export const NoteViewer: React.FC<NoteViewerProps> = ({ note, onEdit, onHighligh
           setSelectedTerm(result.word);
           setTermContext(result.context);
           if (onHighlightTerm) {
-            onHighlightTerm(result.word, result.context);
+            // No element to point at — morph out of the press point itself.
+            onHighlightTerm(result.word, result.context, pointOrigin(x, y));
           }
           if (typeof navigator !== 'undefined' && navigator.vibrate) {
             navigator.vibrate(25);
@@ -460,8 +462,8 @@ export const NoteViewer: React.FC<NoteViewerProps> = ({ note, onEdit, onHighligh
             <span className="font-ethiopic font-bold text-yellow-300 text-sm">ተማሪ</span> AI?
           </span>
           <button
-            onClick={() => {
-              if (onHighlightTerm) onHighlightTerm(selectedTerm, termContext);
+            onClick={(e) => {
+              if (onHighlightTerm) onHighlightTerm(selectedTerm, termContext, e.currentTarget);
               setSelectedTerm(null);
             }}
             className="px-2.5 py-1 bg-yellow-300 text-slate-950 font-black text-xs rounded-lg border border-slate-900 hover:bg-yellow-200 transition-colors shadow-neo-sm"

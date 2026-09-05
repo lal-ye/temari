@@ -20,18 +20,21 @@ import { AVAILABLE_PROVIDERS, getProviderConfig, getModelOption } from './modelP
 import { resolveActiveModel } from '../../../shared/aiCatalog';
 import { ModelPicker } from './ModelPicker';
 import { aiConnection } from '../../services/aiConnection';
-import { Modal } from '../ui/Modal';
+import { Modal, type MorphOrigin } from '../ui/Modal';
 
 interface ApiKeySettingsModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSaved: () => void;
+  /** Control that opened this dialog, so it can morph out of it. */
+  originRef?: React.RefObject<MorphOrigin | null>;
 }
 
 export const ApiKeySettingsModal: React.FC<ApiKeySettingsModalProps> = ({
   isOpen,
   onClose,
   onSaved,
+  originRef,
 }) => {
   const store = getStudyStore();
   const currentSettings = store.settings;
@@ -193,6 +196,7 @@ export const ApiKeySettingsModal: React.FC<ApiKeySettingsModalProps> = ({
       icon={<Cpu className="w-5 h-5 text-slate-900" />}
       iconClassName="bg-[#FEF08A] text-slate-950"
       maxWidthClassName="max-w-2xl"
+      originRef={originRef}
     >
       <div className="space-y-4">
         {/* Detailed Provider and Model Picker */}

@@ -5,8 +5,9 @@ import { OfflineBanner } from '../tools/OfflineBanner';
 import { studyStore } from '../../hooks/useStudyStore';
 import { useActiveSubject, useNotes, useQuizzes } from '../../hooks/useStudyStore';
 import { FlashcardView } from './FlashcardView';
-import { Modal } from '../ui/Modal';
+import { Modal, type MorphOrigin } from '../ui/Modal';
 import { SourceMaterialSelector } from '../ui/SourceMaterialSelector';
+import { useModalOrigin } from '../ui/useModalOrigin';
 import {
   Layers,
   Sparkles,
@@ -16,7 +17,7 @@ import {
 } from 'lucide-react';
 
 interface QuizzesManagerProps {
-  onHighlightTerm?: (term: string, context?: string) => void;
+  onHighlightTerm?: (term: string, context?: string, origin?: MorphOrigin) => void;
 }
 
 export const QuizzesManager: React.FC<QuizzesManagerProps> = ({ onHighlightTerm }) => {
@@ -29,6 +30,7 @@ export const QuizzesManager: React.FC<QuizzesManagerProps> = ({ onHighlightTerm 
   const [activeQuizId, setActiveQuizId] = useState<string | null>(null);
   const activeQuiz = quizzes.find((q) => q.id === activeQuizId) || null;
   const [showGenerateModal, setShowGenerateModal] = useState(false);
+  const generateOrigin = useModalOrigin();
 
   // Form state
   const [quizName, setQuizName] = useState('');
@@ -163,7 +165,10 @@ export const QuizzesManager: React.FC<QuizzesManagerProps> = ({ onHighlightTerm 
         </div>
 
         <button
-          onClick={() => setShowGenerateModal(true)}
+          onClick={(e) => {
+            generateOrigin.capture(e);
+            setShowGenerateModal(true);
+          }}
           className="flex items-center justify-center gap-2 px-5 py-2.5 bg-yellow-300 hover:bg-yellow-200 text-slate-950 font-black text-xs rounded-xl border-2 border-slate-900 shadow-neo transition-all active:translate-y-0.5 shrink-0"
         >
           <Sparkles className="w-4 h-4 text-slate-900" />
@@ -184,7 +189,10 @@ export const QuizzesManager: React.FC<QuizzesManagerProps> = ({ onHighlightTerm 
             Generate flashcards directly from your saved study notes or any lecture text with Temari AI.
           </p>
           <button
-            onClick={() => setShowGenerateModal(true)}
+            onClick={(e) => {
+              generateOrigin.capture(e);
+              setShowGenerateModal(true);
+            }}
             className="inline-flex items-center gap-2 px-5 py-2.5 bg-yellow-300 hover:bg-yellow-200 text-slate-950 font-black text-xs rounded-xl border-2 border-slate-900 shadow-neo transition-all active:translate-y-0.5"
           >
             <Sparkles className="w-4 h-4 text-slate-900" /> Create Flashcard Quiz
@@ -259,6 +267,7 @@ export const QuizzesManager: React.FC<QuizzesManagerProps> = ({ onHighlightTerm 
       <Modal
         open={showGenerateModal}
         onClose={() => setShowGenerateModal(false)}
+        originRef={generateOrigin.ref}
         title="Generate AI Flashcard Deck"
         subtitle={`Subject: ${activeSubject.name}`}
         icon={<Sparkles className="w-5 h-5 text-slate-950" />}

@@ -2,15 +2,17 @@ import React, { useState, useEffect } from 'react';
 import { Sparkles, ExternalLink, BookOpen, Loader2 } from 'lucide-react';
 import { ai } from '../../services/ai';
 import { Article } from '../../types';
-import { Modal } from '../ui/Modal';
+import { Modal, type MorphOrigin } from '../ui/Modal';
 
 interface ExplainTermModalProps {
   term: string | null;
   context?: string;
   onClose: () => void;
+  /** The word or control this explanation was requested from. */
+  originRef?: React.RefObject<MorphOrigin | null>;
 }
 
-export const ExplainTermModal: React.FC<ExplainTermModalProps> = ({ term, context, onClose }) => {
+export const ExplainTermModal: React.FC<ExplainTermModalProps> = ({ term, context, onClose, originRef }) => {
   const [loading, setLoading] = useState(false);
   const [explanation, setExplanation] = useState<string>('');
   const [links, setLinks] = useState<Article[]>([]);
@@ -67,6 +69,7 @@ export const ExplainTermModal: React.FC<ExplainTermModalProps> = ({ term, contex
       icon={<Sparkles className="w-5 h-5 text-slate-950" />}
       iconClassName="bg-yellow-300 text-slate-950"
       maxWidthClassName="max-w-lg"
+      originRef={originRef}
     >
       <div className="space-y-4">
         {loading && (

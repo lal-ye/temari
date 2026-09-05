@@ -6,6 +6,7 @@ import { ai } from '../../services/ai';
 import { ExamTakingView } from './ExamTakingView';
 import { ExamResultsView } from './ExamResultsView';
 import { Modal } from '../ui/Modal';
+import { useModalOrigin } from '../ui/useModalOrigin';
 import { SourceMaterialSelector } from '../ui/SourceMaterialSelector';
 import {
   GraduationCap,
@@ -30,6 +31,7 @@ export const ExamsManager: React.FC = () => {
     offlineDraft?: boolean;
   } | null>(null);
   const [showGenerateModal, setShowGenerateModal] = useState(false);
+  const generateOrigin = useModalOrigin();
 
   // Form State
   const [examTitle, setExamTitle] = useState('');
@@ -164,7 +166,10 @@ export const ExamsManager: React.FC = () => {
         </div>
 
         <button
-          onClick={() => setShowGenerateModal(true)}
+          onClick={(e) => {
+            generateOrigin.capture(e);
+            setShowGenerateModal(true);
+          }}
           className="flex items-center justify-center gap-2 px-5 py-2.5 bg-yellow-300 hover:bg-yellow-200 text-slate-950 font-black text-xs rounded-xl border-2 border-slate-900 shadow-neo transition-all active:translate-y-0.5 shrink-0"
         >
           <Sparkles className="w-4 h-4 text-slate-900" />
@@ -181,7 +186,10 @@ export const ExamsManager: React.FC = () => {
             Generate your first timed mock exam to test your mastery and receive automated diagnostic reports from Temari AI.
           </p>
           <button
-            onClick={() => setShowGenerateModal(true)}
+            onClick={(e) => {
+            generateOrigin.capture(e);
+            setShowGenerateModal(true);
+          }}
             className="inline-flex items-center gap-2 px-5 py-2.5 bg-yellow-300 hover:bg-yellow-200 text-slate-950 font-black text-xs rounded-xl border-2 border-slate-900 shadow-neo transition-all active:translate-y-0.5"
           >
             <Sparkles className="w-4 h-4 text-slate-900" /> Create First Exam
@@ -251,6 +259,7 @@ export const ExamsManager: React.FC = () => {
       <Modal
         open={showGenerateModal}
         onClose={() => setShowGenerateModal(false)}
+        originRef={generateOrigin.ref}
         title="Generate Practice Mock Exam"
         subtitle={`Subject: ${activeSubject.name}`}
         icon={<Sparkles className="w-5 h-5 text-slate-950" />}
