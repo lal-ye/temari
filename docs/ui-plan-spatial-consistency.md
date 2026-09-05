@@ -1,11 +1,11 @@
 # UI Plan — Spatial Consistency, Fluid Morphing, and Motion Budget
 
-Status: phases 1–3 shipped · Date: 2026-09-05 · Branch: `arena/01a07167-temari`
+Status: all workstreams shipped · Date: 2026-09-05 · Branch: `arena/01a07167-temari`
 
-**Progress:** WS-1, WS-2, WS-3, WS-4 and WS-5 are implemented; the decisions
-they encode are recorded in [ADR-0005](./adr/0005-motion-budget-and-spatial-consistency.md).
-WS-6 (generation state primitives) and WS-7 (typography + diagram grammar)
-remain.
+**Progress:** WS-1 through WS-7 are implemented. The decisions they encode are
+recorded in [ADR-0005](./adr/0005-motion-budget-and-spatial-consistency.md), and
+the motion tiers that govern future work are in
+[DEVELOPING.md](../DEVELOPING.md#motion-budget).
 
 This plan turns the learn-ui "Invisible details" curriculum (spatial consistency,
 fluid morphing, responsive gestures, kinetic physics, frequency & novelty) into
@@ -182,7 +182,7 @@ In `FlashcardView`:
 
 Impact: 🟡 Medium · Effort: 🟡 Medium
 
-### WS-6 — Generation states as designed primitives (beautifului.dev) — todo
+### WS-6 — Generation states as designed primitives (beautifului.dev) ✅ shipped
 
 Temari's AI generation is its most novel moment and currently shows a spinner.
 Build three small `src/components/ui/` primitives:
@@ -198,7 +198,7 @@ occasionally, not hundreds of times a day.
 
 Impact: 🟢 High · Effort: 🟡 Medium
 
-### WS-7 — Typography and diagram grammar — todo
+### WS-7 — Typography and diagram grammar ✅ shipped
 
 - **Ethiopic (font.et):** pick one licensed Ethiopic display face (e.g. Menbere,
   a variable font, or Loga for UI) and self-host it in `public/fonts/` with
@@ -249,8 +249,21 @@ Impact: 🟡 Medium · Effort: 🟢 Low
 - [x] `prefers-reduced-motion: reduce` disables all of the above.
 - [x] `npm run typecheck`, `npm test` and `npm run build` pass.
 
-Remaining for WS-6/WS-7:
+- [x] Generation shows staged progress rather than a bare spinner.
+- [x] Offline attribution renders through one shared component.
+- [x] The Ethiopic face is self-hosted and subset, not resolved via `local()`.
+- [x] No shadows inside diagram SVGs.
 
-- [ ] Generation shows staged progress rather than a bare spinner.
-- [ ] Offline attribution renders through one shared component.
-- [ ] The Ethiopic face is self-hosted and subset, not resolved via `local()`.
+## 7. Follow-ups not in scope here
+
+Found while doing the above; each is independent and small.
+
+- **Analytics and Planner** still hand-roll their empty panels; they should use
+  `EmptyState` too. They were left alone because neither is a Generation
+  surface and the change is cosmetic.
+- **`ExamResultsView`** is the one remaining screen with no offline attribution
+  path, because grading results carry the flag on the Attempt rather than the
+  `GenerationResult`. Worth a look when Attempts next change shape.
+- **The novelty budget is unspent.** Per frequency-and-novelty the 10% belongs
+  on once-per-lifetime moments; Temari has no onboarding, so the obvious
+  candidate is a first-run introduction to the study loop.

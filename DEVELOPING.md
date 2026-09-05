@@ -15,6 +15,7 @@ The rules that keep this codebase navigable. The domain language lives in
 | `shared/aiCatalog.ts` | Single source of truth for provider identity + transport facts | Shared by client AND server (ADR-0003). |
 | `src/components/tools/modelPresentation.ts` | Client-only presentation of the provider catalog | Badge colours, copy, curated model lists. Never restate catalog facts. |
 | `src/types.ts` | Domain model + `UserSettings` | `Subject`, `StoredNote`, `StoredQuiz` (a Quiz = flashcard deck), `StoredAttempt`, `StudyTask`. |
+| `src/components/ui/*` | Shared UI primitives | `Modal` (+ `useModalOrigin` for morph origins), `GenerationProgress`, `EmptyState`, `SourceMaterialSelector`. Reach for these before hand-rolling a panel. |
 | `src/components/*` | Feature screens | Consume the store + `ai` + `aiConnection`. No fetch calls, no credential logic, no fallback logic in components. |
 | `server.ts` | Express API (`/api/ai/*`) + static serving | Thin transport over `server/aiProvider.ts`; routes own prompts. |
 | `server/aiProvider.ts` | Provider-agnostic execution dispatcher + JSON parsing | Transport mechanism per provider; facts from the shared catalog. |
