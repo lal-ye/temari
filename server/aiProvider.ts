@@ -1,13 +1,8 @@
 import { GoogleGenAI } from '@google/genai';
+import { AIProviderId, getProviderInfo } from '../shared/aiCatalog.ts';
 
-export type AIProviderId =
-  | 'gemini'
-  | 'openai'
-  | 'anthropic'
-  | 'groq'
-  | 'deepseek'
-  | 'openrouter'
-  | 'custom';
+// Provider identity & transport facts come from the shared catalog (docs/adr/0003).
+export type { AIProviderId };
 
 export interface ChatMessageItem {
   role: 'system' | 'user' | 'assistant';
@@ -111,47 +106,32 @@ export function parseStructuredJson<T = any>(rawText: string, fallback?: T): T {
 export async function executeAiRequest(options: ExecuteAiOptions): Promise<ExecuteAiResult> {
   const provider: AIProviderId = options.provider || 'gemini';
 
+  // Transport facts (defaults, base URLs, server env keys) come from the shared
+  // catalog — this dispatcher only chooses the transport mechanism per provider.
+  const catalogInfo = getProviderInfo(provider);
+
   switch (provider) {
     case 'gemini':
       return executeGemini(options);
     case 'openai':
-      return executeOpenAICompatible(options, {
-        providerName: 'OpenAI',
-        defaultBaseUrl: 'https://api.openai.com/v1',
-        defaultModel: 'gpt-4o-mini',
-        envKey: process.env.OPENAI_API_KEY,
-      });
     case 'groq':
-      return executeOpenAICompatible(options, {
-        providerName: 'Groq',
-        defaultBaseUrl: 'https://api.groq.com/openai/v1',
-        defaultModel: 'llama-3.3-70b-versatile',
-        envKey: process.env.GROQ_API_KEY,
-      });
     case 'deepseek':
-      return executeOpenAICompatible(options, {
-        providerName: 'DeepSeek',
-        defaultBaseUrl: 'https://api.deepseek.com',
-        defaultModel: 'deepseek-chat',
-        envKey: process.env.DEEPSEEK_API_KEY,
-      });
     case 'openrouter':
-      return executeOpenAICompatible(options, {
-        providerName: 'OpenRouter',
-        defaultBaseUrl: 'https://openrouter.ai/api/v1',
-        defaultModel: 'meta-llama/llama-3.3-70b-instruct',
-        envKey: process.env.OPENROUTER_API_KEY,
-        extraHeaders: {
-          'HTTP-Referer': 'https://temari.study',
-          'X-Title': 'Temari AI Study Companion',
-        },
-      });
     case 'custom':
       return executeOpenAICompatible(options, {
-        providerName: 'Custom / Local (Ollama)',
-        defaultBaseUrl: options.baseUrl || 'http://localhost:11434/v1',
-        defaultModel: 'llama3.2',
-        isLocal: true,
+        providerName: catalogInfo.name,
+        defaultBaseUrl: catalogInfo.defaultBaseUrl,
+        defaultModel: catalogInfo.defaultModel,
+        envKey: catalogInfo.envKeyName ? process.env[catalogInfo.envKeyName] : undefined,
+        ...(provider === 'openrouter'
+          ? {
+              extraHeaders: {
+                'HTTP-Referer': 'https://temari.study',
+                'X-Title': 'Temari AI Study Companion',
+              },
+            }
+          : {}),
+        ...(provider === 'custom' ? { isLocal: true } : {}),
       });
     case 'anthropic':
       return executeAnthropic(options);
@@ -313,7 +293,12 @@ async function executeGemini(options: ExecuteAiOptions): Promise<ExecuteAiResult
  */
 interface OpenAICompatibleConfig {
   providerName: string;
-  defaultBaseUrl: string;
+  /**
+   * Default base URL from the shared catalog. Typed optional to mirror
+   * AIProviderInfo (Gemini/Anthropic have none); every provider routed through
+   * executeOpenAICompatible defines one, and options.baseUrl can always override.
+   */
+  defaultBaseUrl?: string;
   defaultModel: string;
   envKey?: string;
   isLocal?: boolean;
@@ -326,7 +311,13 @@ async function executeOpenAICompatible(
 ): Promise<ExecuteAiResult> {
   const model = options.model?.trim() || config.defaultModel;
   const apiKey = options.apiKey?.trim() || config.envKey;
-  const baseUrl = (options.baseUrl?.trim() || config.defaultBaseUrl).replace(/\/+$/, '');
+  const baseUrl = (options.baseUrl?.trim() || config.defaultBaseUrl || '').replace(/\/+$/, '');
+
+  if (!baseUrl) {
+    throw new Error(
+      `No base URL configured for ${config.providerName}. Please provide a base URL in AI & Model Settings.`
+    );
+  }
 
   if (!apiKey && !config.isLocal) {
     throw new Error(
@@ -440,8 +431,11 @@ async function executeOpenAICompatible(
  * Anthropic Messages API Execution
  */
 async function executeAnthropic(options: ExecuteAiOptions): Promise<ExecuteAiResult> {
-  const model = options.model?.trim() || 'claude-3-5-haiku-20241022';
-  const apiKey = options.apiKey?.trim() || process.env.ANTHROPIC_API_KEY;
+  const anthropicInfo = getProviderInfo('anthropic');
+  const model = options.model?.trim() || anthropicInfo.defaultModel;
+  const apiKey =
+    options.apiKey?.trim() ||
+    (anthropicInfo.envKeyName ? process.env[anthropicInfo.envKeyName] : undefined);
 
   if (!apiKey) {
     throw new Error(

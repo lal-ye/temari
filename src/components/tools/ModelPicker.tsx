@@ -23,10 +23,10 @@ import {
   AIModelOption,
   getModelOption,
   getProviderConfig,
-  getActiveModelForProvider,
-} from '../../types';
+} from './modelPresentation';
+import { resolveActiveModel } from '../../../shared/aiCatalog';
 import { studyStore, useSettings } from '../../hooks/useStudyStore';
-import { AIService } from '../../services/aiService';
+import { aiConnection } from '../../services/aiConnection';
 
 interface ModelPickerProps {
   variant?: 'compact' | 'detailed';
@@ -43,7 +43,7 @@ export const ModelPicker: React.FC<ModelPickerProps> = ({
 }) => {
   const settings = useSettings();
   const activeProviderId: AIProvider = settings.selectedProvider || 'gemini';
-  const activeModelId = getActiveModelForProvider(settings, activeProviderId);
+  const activeModelId = resolveActiveModel(settings, activeProviderId);
 
   const [selectedProviderTab, setSelectedProviderTab] = useState<AIProvider>(activeProviderId);
   const [isOpen, setIsOpen] = useState(false);
@@ -143,7 +143,7 @@ export const ModelPicker: React.FC<ModelPickerProps> = ({
         (selectedProviderTab === 'gemini' ? settings.apiKey : undefined);
       const baseUrl = selectedProviderTab === 'custom' ? settings.customBaseUrl : undefined;
 
-      const res = await AIService.fetchLiveModels({
+      const res = await aiConnection.fetchLiveModels({
         provider: selectedProviderTab,
         apiKey,
         baseUrl,
