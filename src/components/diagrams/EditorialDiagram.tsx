@@ -354,16 +354,6 @@ function renderMindmapSvg(
       className="w-full max-w-3xl h-auto select-none"
       style={{ fontFamily: profile.fonts.body }}
     >
-      <defs>
-        {/* Solid Offset Drop Shadow Filter */}
-        <filter id="neo-shadow" x="-5%" y="-5%" width="120%" height="120%">
-          <feDropShadow dx="3" dy="3" stdDeviation="0" floodColor="#0F172A" floodOpacity="1" />
-        </filter>
-        <filter id="neo-shadow-active" x="-10%" y="-10%" width="130%" height="130%">
-          <feDropShadow dx="4" dy="4" stdDeviation="0" floodColor="#0F172A" floodOpacity="1" />
-        </filter>
-      </defs>
-
       {/* Connectors: Root to Branches */}
       {branchLayouts.map((b, idx) => {
         const isSelected = activeBranchIdx === null || activeBranchIdx === idx;
@@ -417,7 +407,7 @@ function renderMindmapSvg(
       })}
 
       {/* Root Node Box */}
-      <g filter="url(#neo-shadow)">
+      <g>
         <rect
           x={rootX}
           y={rootY}
@@ -445,12 +435,10 @@ function renderMindmapSvg(
         const isSelected = activeBranchIdx === null || activeBranchIdx === idx;
         const isActive = activeBranchIdx === idx;
         const opacity = activeBranchIdx !== null && !isSelected ? 0.35 : 1;
-        const filterUrl = isActive ? 'url(#neo-shadow-active)' : 'url(#neo-shadow)';
-
         return (
           <g key={`branch-${idx}`} opacity={opacity} className="transition-all duration-200">
             {/* Branch Card */}
-            <g filter={filterUrl}>
+            <g>
               <rect
                 x={b.x}
                 y={b.y}
@@ -474,7 +462,7 @@ function renderMindmapSvg(
 
             {/* Leaves */}
             {b.leaves.map((l, lIdx) => (
-              <g key={`leaf-${lIdx}`} filter="url(#neo-shadow)">
+              <g key={`leaf-${lIdx}`}>
                 <rect
                   x={l.x}
                   y={l.y}
@@ -526,9 +514,6 @@ function renderFlowSvg(
       style={{ fontFamily: profile.fonts.body }}
     >
       <defs>
-        <filter id="flow-shadow" x="-10%" y="-10%" width="130%" height="130%">
-          <feDropShadow dx="3" dy="3" stdDeviation="0" floodColor="#0F172A" floodOpacity="1" />
-        </filter>
         <marker id="arrow" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto">
           <path d="M 0 1 L 8 5 L 0 9 z" fill="#0F172A" />
         </marker>
@@ -558,7 +543,7 @@ function renderFlowSvg(
             )}
 
             {/* Step Card */}
-            <g filter="url(#flow-shadow)">
+            <g>
               <rect
                 x={x}
                 y={y}
@@ -644,12 +629,6 @@ function renderStackSvg(
       className="w-full max-w-lg h-auto select-none"
       style={{ fontFamily: profile.fonts.body }}
     >
-      <defs>
-        <filter id="stack-shadow" x="-5%" y="-5%" width="120%" height="120%">
-          <feDropShadow dx="3" dy="3" stdDeviation="0" floodColor="#0F172A" floodOpacity="1" />
-        </filter>
-      </defs>
-
       {layers.map((layer, idx) => {
         const x = 30;
         const y = 20 + idx * (layerHeight + gap);
@@ -659,7 +638,7 @@ function renderStackSvg(
         const fill = profile.colors.branchFills[idx % profile.colors.branchFills.length];
 
         return (
-          <g key={layer.id} opacity={opacity} filter="url(#stack-shadow)" className="transition-all duration-200">
+          <g key={layer.id} opacity={opacity} className="transition-all duration-200">
             <rect
               x={x}
               y={y}

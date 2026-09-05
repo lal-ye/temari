@@ -1,18 +1,32 @@
 @import "tailwindcss";
 
-/* Ethiopic & Latin Editorial Typography Layer (font.et / Abyssinica SIL + Playfair Display) */
+/* ==========================================================================
+   Ethiopic & Latin Editorial Typography Layer
+
+   Ethiopic is a first-class part of Temari's identity (the wordmark ተማሪ, every
+   Subject's Amharic title), not a fallback. It is therefore self-hosted and
+   pinned to one file, rather than resolved through `local()` against whatever
+   the OS happens to ship — Nyala on Windows, Kefa on macOS and nothing on most
+   Linux boxes are three different typefaces, so the wordmark silently changed
+   shape per visitor.
+
+   AbyssinicaSIL-Ethiopic.woff2 is Abyssinica SIL (OFL) subset to the Ethiopic
+   blocks and converted to WOFF2: 268kB TTF -> 77kB. The `unicode-range` keeps
+   Latin text off this file entirely, so it is only ever fetched when Ethiopic
+   is actually rendered, and Latin never waits on it.
+   ========================================================================== */
 @font-face {
   font-family: 'Abyssinica SIL';
   font-style: normal;
   font-weight: 400 700;
   font-display: swap;
-  src: local('Abyssinica SIL'),
-       local('AbyssinicaSIL'),
-       local('Nyala'),
-       local('Kefa'),
-       url('https://fonts.gstatic.com/s/abyssinicasil/v9/oY1H8ezOqK7iI3rK_45WKoc8J6UZ.ttf') format('truetype');
+  src: url('/fonts/AbyssinicaSIL-Ethiopic.woff2') format('woff2');
+  unicode-range: U+1200-137F, U+1380-139F, U+2D80-2DDF, U+AB00-AB2F;
 }
 
+/* Playfair Display carries the editorial headings only. It stays on `local()`
+   with a Georgia fallback: it is Latin-only, decorative, and not worth a
+   render-blocking download for the handful of headings that use it. */
 @font-face {
   font-family: 'Playfair Display';
   font-style: normal;
@@ -20,7 +34,8 @@
   font-display: swap;
   src: local('Playfair Display Bold'),
        local('PlayfairDisplay-Bold'),
-       url('https://fonts.gstatic.com/s/playfairdisplay/v40/nuFvD-vYSZviVYUb_rj3ij__anPXJzDwcbmjWBN2PKeiukDQ.ttf') format('truetype');
+       local('Playfair Display'),
+       local('PlayfairDisplay-Regular');
 }
 
 /* ==========================================================================
