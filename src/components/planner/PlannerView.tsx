@@ -271,13 +271,9 @@ export const PlannerView: React.FC<PlannerViewProps> = ({ onOpenPomodoro }) => {
                               {sub.name}
                             </span>
                           )}
-                          <span>•</span>
-                          <span>Due: {task.dueDate || 'Today'}</span>
+                          <span>Due {task.dueDate || 'today'}</span>
                           {task.estimatedMinutes && (
-                            <>
-                              <span>•</span>
-                              <span>{task.estimatedMinutes}m</span>
-                            </>
+                            <span className="tabular-nums">{task.estimatedMinutes}m</span>
                           )}
                         </div>
                       </div>

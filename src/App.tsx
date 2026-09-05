@@ -17,6 +17,8 @@ import {
 } from './hooks/useStudyStore';
 import { computeStudyStreak } from './utils/analytics';
 import { useOnlineStatus } from './hooks/useOnlineStatus';
+import { SkeletonAnalytics } from './components/ui/Skeleton';
+import { CommandPalette, type Command } from './components/ui/CommandPalette';
 import { NotesManager } from './components/notes/NotesManager';
 import { QuizzesManager } from './components/quizzes/QuizzesManager';
 import { ExamsManager } from './components/exams/ExamsManager';
@@ -47,6 +49,7 @@ import {
   X,
   Flame,
   Menu,
+  Search,
   PanelLeftClose,
   PanelLeftOpen,
 } from 'lucide-react';
@@ -85,6 +88,10 @@ export default function App() {
 
   const [activeTab, setActiveTab] = useState<TabType>('notes');
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [paletteOpen, setPaletteOpen] = useState(false);
+  /** Label the shortcut the way the learner's own keyboard does. */
+  const isMac =
+    typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform || '');
 
   const layoutRef = useRef<HTMLDivElement | null>(null);
 
@@ -194,6 +201,64 @@ export default function App() {
     return () => observer.disconnect();
   }, [activeTab]);
 
+  /**
+   * Every navigation and creation action, reachable from one keystroke. The
+   * palette is the fast path for returning learners; the sidebar stays the
+   * discoverable one.
+   */
+  const commands: Command[] = [
+    ...navItems.map((item, index) => ({
+      id: `go-${item.id}`,
+      label: item.label,
+      group: 'Go to',
+      icon: item.icon,
+      hint: String(index + 1),
+      run: () => handleTabChange(item.id as TabType, 'keyboard'),
+    })),
+    {
+      id: 'new-subject',
+      label: 'Add a subject',
+      group: 'Create',
+      icon: FolderPlus,
+      keywords: 'course new',
+      run: () => {
+        modalOrigin.capture(null);
+        setOpenModal('add-subject');
+      },
+    },
+    {
+      id: 'zen',
+      label: zenMode ? 'Exit Zen Mode' : 'Enter Zen Mode',
+      group: 'View',
+      icon: zenMode ? PanelLeftOpen : PanelLeftClose,
+      hint: 'Z',
+      keywords: 'focus sidebar hide',
+      run: () => toggleZenMode('keyboard'),
+    },
+    {
+      id: 'pomodoro',
+      label: 'Start a focus timer',
+      group: 'Tools',
+      icon: Clock,
+      keywords: 'pomodoro study session',
+      run: () => {
+        modalOrigin.capture(null);
+        setOpenModal('pomodoro');
+      },
+    },
+    {
+      id: 'settings',
+      label: 'AI providers and models',
+      group: 'Tools',
+      icon: Key,
+      keywords: 'api key byok settings model',
+      run: () => {
+        modalOrigin.capture(null);
+        setOpenModal('api-key');
+      },
+    },
+  ];
+
   // Mobile swipe-to-dismiss gesture state for sidebar drawer
   const [asideDragOffset, setAsideDragOffset] = useState(0);
   const [isDraggingAside, setIsDraggingAside] = useState(false);
@@ -260,6 +325,17 @@ export default function App() {
   // Desktop keyboard navigation (1-5 for study hubs, Escape to close drawer/modals)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      // Cmd/Ctrl+K works from anywhere, including inside a text field: it is
+      // the one shortcut a learner should never have to click out of first.
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        setPaletteOpen((v) => !v);
+        return;
+      }
+
+      // The palette owns the keyboard while it is open.
+      if (paletteOpen) return;
+
       const target = e.target as HTMLElement | null;
       if (
         target &&
@@ -305,7 +381,7 @@ export default function App() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [openModal, confirmDeleteSubjectId, explainTermData, sidebarOpen, activeTab, zenMode]);
+  }, [openModal, confirmDeleteSubjectId, explainTermData, sidebarOpen, activeTab, zenMode, paletteOpen]);
 
   return (
     <div
@@ -640,6 +716,20 @@ export default function App() {
 
           {/* Quick Action Controls */}
           <div className="flex items-center gap-2 sm:gap-3">
+            {/* Discoverability for the palette: a shortcut nobody can see is
+                not a feature. Reads as a search field, opens the palette. */}
+            <button
+              onClick={() => setPaletteOpen(true)}
+              className="hidden md:flex items-center gap-2 pl-2.5 pr-2 py-1.5 bg-[#FAF8F5] hover:bg-white text-slate-500 rounded-xl border-2 border-slate-900 shadow-neo-sm"
+              aria-label="Open command palette"
+            >
+              <Search className="w-3.5 h-3.5" aria-hidden="true" />
+              <span className="text-[11px] font-bold">Search actions</span>
+              <kbd className="text-[10px] font-mono font-black text-slate-600 border border-slate-300 rounded px-1 py-0.5 bg-white">
+                {isMac ? '\u2318K' : 'Ctrl K'}
+              </kbd>
+            </button>
+
             {/* Dynamic Active AI Model Selector */}
             <ModelPicker
               variant="compact"
@@ -686,19 +776,7 @@ export default function App() {
             {activeTab === 'exams' && <ExamsManager />}
 
             {activeTab === 'analytics' && (
-              <Suspense
-                fallback={
-                  <div className="max-w-6xl mx-auto space-y-4 animate-pulse">
-                    <div className="h-10 w-56 bg-slate-200 border-2 border-slate-900 rounded-xl" />
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                      {[0, 1, 2, 3].map((i) => (
-                        <div key={i} className="h-24 bg-slate-200 border-2 border-slate-900 rounded-2xl" />
-                      ))}
-                    </div>
-                    <div className="h-64 bg-slate-200 border-2 border-slate-900 rounded-2xl" />
-                  </div>
-                }
-              >
+              <Suspense fallback={<SkeletonAnalytics />}>
                 <AnalyticsView />
               </Suspense>
             )}
@@ -709,6 +787,12 @@ export default function App() {
           </div>
         </main>
       </div>
+
+      <CommandPalette
+        open={paletteOpen}
+        onClose={() => setPaletteOpen(false)}
+        commands={commands}
+      />
 
       {/* Modals and Side Drawers */}
       <ApiKeySettingsModal

@@ -561,6 +561,30 @@ button:disabled:active {
   animation: generation-ellipsis 1.6s steps(1, end) infinite;
 }
 
+/* ==========================================================================
+   Skeleton loaders (src/components/ui/Skeleton.tsx)
+
+   A slow sweep rather than a pulse: the shimmer should read as "still working"
+   at a glance and then stop competing for attention. Occasional interaction,
+   so standard tier.
+   ========================================================================== */
+@keyframes skeleton-shimmer {
+  from { background-position: 200% 0; }
+  to { background-position: -200% 0; }
+}
+
+.skeleton-shimmer {
+  background-image: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.65) 50%,
+    transparent 100%
+  );
+  background-size: 200% 100%;
+  background-repeat: no-repeat;
+  animation: skeleton-shimmer 1.6s var(--ease-out) infinite;
+}
+
 /* Tab view transitions: persistent chrome keeps a stable name so only the
    main content area cross-fades when switching tabs (lateral navigation). */
 .app-sidebar { view-transition-name: app-sidebar; }
@@ -597,7 +621,8 @@ button:disabled:active {
   .flashcard-reveal,
   .ghost-hand-anim,
   .pulse-ring-indicator,
-  .generation-stage-pulse {
+  .generation-stage-pulse,
+  .skeleton-shimmer {
     animation: none !important;
   }
 

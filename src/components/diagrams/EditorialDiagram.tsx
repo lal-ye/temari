@@ -148,7 +148,7 @@ export const EditorialDiagram: React.FC<EditorialDiagramProps> = ({
               </span>
             </div>
             <p className="text-[10px] font-medium text-slate-500">
-              Editorial Vector Diagram • Pure HTML + SVG • No External Scripts
+              Editorial vector diagram, rendered as plain HTML and SVG
             </p>
           </div>
         </div>

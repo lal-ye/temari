@@ -605,7 +605,7 @@ export const FlashcardView: React.FC<FlashcardViewProps> = ({
 
                 <div className="flex items-center justify-between text-[11px] font-bold text-slate-600 pt-3 border-t-2 border-slate-200">
                   <span className="flex items-center gap-1.5">
-                    <RotateCw className="w-3.5 h-3.5 text-slate-900" /> Tap/Space to flip • Swipe ◄ ►
+                    <RotateCw className="w-3.5 h-3.5 text-slate-900" /> Tap or press Space to flip
                   </span>
                   <span className="text-cyan-800 font-black">Highlight text for ተማሪ AI</span>
                 </div>
@@ -656,7 +656,7 @@ export const FlashcardView: React.FC<FlashcardViewProps> = ({
 
                 <div className="flex items-center justify-between text-[11px] font-bold text-slate-600 pt-3 border-t-2 border-slate-200">
                   <span className="flex items-center gap-1.5">
-                    <RotateCw className="w-3.5 h-3.5 text-slate-900" /> Swipe ▲ Hard • ▼ Easy
+                    <RotateCw className="w-3.5 h-3.5 text-slate-900" /> Swipe up for hard, down for easy
                   </span>
                   <span className="text-cyan-800 font-black">Highlight text for ተማሪ AI</span>
                 </div>
@@ -675,7 +675,7 @@ export const FlashcardView: React.FC<FlashcardViewProps> = ({
                   <Hand className="w-7 h-7 transform -rotate-12" />
                 </div>
                 <div className="px-3.5 py-1.5 bg-slate-900 text-white text-[11px] font-black rounded-xl border border-yellow-300 shadow-neo flex items-center gap-1.5 whitespace-nowrap">
-                  <span>Swipe ◄ ► to navigate • Swipe ▲ ▼ on back to rate</span>
+                  <span>Swipe sideways to move between cards</span>
                 </div>
               </div>
             </div>
