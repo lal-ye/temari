@@ -1,9 +1,8 @@
-import React, { useState } from 'react';
+import React, { lazy, Suspense, useState } from 'react';
 import { studyStore, useActiveSubject, useActiveSubjectId, useSubjects } from './hooks/useStudyStore';
 import { NotesManager } from './components/notes/NotesManager';
 import { QuizzesManager } from './components/quizzes/QuizzesManager';
 import { ExamsManager } from './components/exams/ExamsManager';
-import { AnalyticsView } from './components/analytics/AnalyticsView';
 import { PlannerView } from './components/planner/PlannerView';
 import { PomodoroTimer } from './components/tools/PomodoroTimer';
 import { ExplainTermModal } from './components/tools/ExplainTermModal';
@@ -27,6 +26,11 @@ import {
   Flame,
   Menu,
 } from 'lucide-react';
+
+/** AnalyticsView pulls in recharts (~200kB gzip); load it only when opened. */
+const AnalyticsView = lazy(() =>
+  import('./components/analytics/AnalyticsView').then((m) => ({ default: m.AnalyticsView }))
+);
 
 type TabType = 'notes' | 'quizzes' | 'exams' | 'analytics' | 'planner';
 
@@ -335,7 +339,23 @@ export default function App() {
 
             {activeTab === 'exams' && <ExamsManager />}
 
-            {activeTab === 'analytics' && <AnalyticsView />}
+            {activeTab === 'analytics' && (
+              <Suspense
+                fallback={
+                  <div className="max-w-6xl mx-auto space-y-4 animate-pulse">
+                    <div className="h-10 w-56 bg-slate-200 border-2 border-slate-900 rounded-xl" />
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                      {[0, 1, 2, 3].map((i) => (
+                        <div key={i} className="h-24 bg-slate-200 border-2 border-slate-900 rounded-2xl" />
+                      ))}
+                    </div>
+                    <div className="h-64 bg-slate-200 border-2 border-slate-900 rounded-2xl" />
+                  </div>
+                }
+              >
+                <AnalyticsView />
+              </Suspense>
+            )}
 
             {activeTab === 'planner' && (
               <PlannerView onOpenPomodoro={() => setOpenModal('pomodoro')} />
