@@ -154,7 +154,11 @@ export function Modal({
 
   if (!open) return null;
 
-  const morphing = originRectRef.current !== null && !prefersReducedMotion();
+  // Decided from the prop, not the captured rect: the rect is only filled in by
+  // the layout effect *after* this render, so keying off it would let the CSS
+  // keyframe class paint first and then fight the WAAPI morph for the same
+  // properties.
+  const morphing = Boolean(originRef?.current) && !prefersReducedMotion();
 
   return (
     <div

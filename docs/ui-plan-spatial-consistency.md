@@ -1,6 +1,11 @@
 # UI Plan — Spatial Consistency, Fluid Morphing, and Motion Budget
 
-Status: proposed · Date: 2026-09-05 · Branch: `arena/01a07167-temari`
+Status: phases 1–3 shipped · Date: 2026-09-05 · Branch: `arena/01a07167-temari`
+
+**Progress:** WS-1, WS-2, WS-3, WS-4 and WS-5 are implemented; the decisions
+they encode are recorded in [ADR-0005](./adr/0005-motion-budget-and-spatial-consistency.md).
+WS-6 (generation state primitives) and WS-7 (typography + diagram grammar)
+remain.
 
 This plan turns the learn-ui "Invisible details" curriculum (spatial consistency,
 fluid morphing, responsive gestures, kinetic physics, frequency & novelty) into
@@ -47,7 +52,7 @@ quality goes up.
 
 ## 3. Workstreams
 
-### WS-1 — Motion budget (do this first)
+### WS-1 — Motion budget ✅ shipped
 
 Everything else is easier once the baseline is quiet. Ship a single motion
 vocabulary as CSS custom properties in `index.css`:
@@ -80,7 +85,7 @@ Tasks:
 
 Impact: 🟢 High · Effort: 🟢 Low
 
-### WS-2 — Origin-aware modal morphing
+### WS-2 — Origin-aware modal morphing ✅ shipped
 
 Give `Modal` an optional `originRef?: React.RefObject<HTMLElement>`. On open,
 read `getBoundingClientRect()` of the trigger, and expand the panel from that
@@ -116,7 +121,7 @@ Wire origins for the flows where the source is on screen:
 
 Impact: 🟡 Medium · Effort: 🟡 Medium
 
-### WS-3 — Zen Mode via grid columns
+### WS-3 — Zen Mode via grid columns ✅ shipped
 
 New feature, built spatially correct from the start.
 
@@ -141,7 +146,7 @@ Rules:
 
 Impact: 🟡 Medium · Effort: 🟡 Medium
 
-### WS-4 — Sliding nav indicator
+### WS-4 — Sliding nav indicator ✅ shipped
 
 Replace the per-item `bg-[#67E8F9] … translate-x-1` class toggle with one
 absolutely positioned indicator inside the `<nav>`:
@@ -158,7 +163,7 @@ absolutely positioned indicator inside the `<nav>`:
 
 Impact: 🟢 High (this is the most-seen element in the app) · Effort: 🟢 Low
 
-### WS-5 — Gestures: velocity + correct commit timing
+### WS-5 — Gestures: velocity + correct commit timing ✅ shipped
 
 In `FlashcardView`:
 1. Record `dragStartTime`; on release compute `velocity = |offset| / elapsed`.
@@ -177,7 +182,7 @@ In `FlashcardView`:
 
 Impact: 🟡 Medium · Effort: 🟡 Medium
 
-### WS-6 — Generation states as designed primitives (beautifului.dev)
+### WS-6 — Generation states as designed primitives (beautifului.dev) — todo
 
 Temari's AI generation is its most novel moment and currently shows a spinner.
 Build three small `src/components/ui/` primitives:
@@ -193,7 +198,7 @@ occasionally, not hundreds of times a day.
 
 Impact: 🟢 High · Effort: 🟡 Medium
 
-### WS-7 — Typography and diagram grammar
+### WS-7 — Typography and diagram grammar — todo
 
 - **Ethiopic (font.et):** pick one licensed Ethiopic display face (e.g. Menbere,
   a variable font, or Loga for UI) and self-host it in `public/fonts/` with
@@ -233,13 +238,19 @@ Impact: 🟡 Medium · Effort: 🟢 Low
 
 ## 6. Definition of done
 
-- [ ] Pressing `1`–`5` swaps tabs with zero animation; clicking cross-fades.
-- [ ] The nav indicator slides between items on click and jumps on keypress.
-- [ ] Zen mode collapses the sidebar via `grid-template-columns`; the sidebar
+- [x] Pressing `1`–`5` swaps tabs with zero animation; clicking cross-fades.
+- [x] The nav indicator slides between items on click and jumps on keypress.
+- [x] Zen mode collapses the sidebar via `grid-template-columns`; the sidebar
       element is still mounted at 0 width and returns to the same place.
-- [ ] Generate modals grow from the control that opened them and shrink back on
+- [x] Generate modals grow from the control that opened them and shrink back on
       close.
-- [ ] A fast, short flashcard swipe advances the deck; a half-swipe rating that
+- [x] A fast, short flashcard swipe advances the deck; a half-swipe rating that
       is dragged back does not record an Attempt.
-- [ ] `prefers-reduced-motion: reduce` disables all of the above.
-- [ ] `bun run typecheck` and `bun run test` pass.
+- [x] `prefers-reduced-motion: reduce` disables all of the above.
+- [x] `npm run typecheck`, `npm test` and `npm run build` pass.
+
+Remaining for WS-6/WS-7:
+
+- [ ] Generation shows staged progress rather than a bare spinner.
+- [ ] Offline attribution renders through one shared component.
+- [ ] The Ethiopic face is self-hosted and subset, not resolved via `local()`.

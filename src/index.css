@@ -403,12 +403,6 @@ button:disabled:active {
   }
 }
 
-@media (min-width: 640px) and (max-width: 1023.98px) {
-  .app-layout {
-    --sidebar-w: 19rem;
-  }
-}
-
 /* ==========================================================================
    Navigation active indicator (spatial consistency)
 
