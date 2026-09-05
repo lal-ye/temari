@@ -155,6 +155,8 @@ export interface UserSettings {
   pomodoroBreakMinutes: number;
   pomodoroLongBreakMinutes: number;
   soundEnabled: boolean;
+  /** Zen Mode: collapse the desktop sidebar to focus on the study surface. */
+  zenMode: boolean;
 }
 
 /** Provider ids and their transport facts live in the shared catalog (docs/adr/0003). */

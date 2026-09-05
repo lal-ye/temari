@@ -28,6 +28,7 @@ export const DEFAULT_SETTINGS: UserSettings = {
   pomodoroBreakMinutes: 5,
   pomodoroLongBreakMinutes: 15,
   soundEnabled: true,
+  zenMode: false,
 };
 
 export const SEED_SUBJECTS: Subject[] = [

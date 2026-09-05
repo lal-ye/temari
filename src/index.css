@@ -367,6 +367,49 @@ button:disabled:active {
 .modal-panel-out { animation: modal-panel-out 150ms ease-in both; }
 
 /* ==========================================================================
+   App layout + Zen Mode (spatial consistency)
+
+   The sidebar is never conditionally rendered. Zen Mode animates the grid
+   column to zero, so the sidebar slides out to the left and comes back to
+   exactly where the brain left it. A conditional render would teleport it.
+
+   Below `lg` the sidebar is a fixed-position overlay drawer, so the layout is
+   a single column there and Zen is a desktop-only concern.
+   ========================================================================== */
+.app-layout {
+  display: grid;
+  grid-template-columns: 1fr;
+  grid-template-rows: 100%;
+}
+
+@media (min-width: 1024px) {
+  .app-layout {
+    --sidebar-w: 19rem; /* matches .app-sidebar-inner (w-76) */
+    grid-template-columns: var(--sidebar-w) minmax(0, 1fr);
+  }
+
+  .app-layout[data-animate="true"] {
+    transition: grid-template-columns var(--dur-layout) var(--ease-out);
+  }
+
+  .app-layout[data-zen="true"] {
+    --sidebar-w: 0rem;
+  }
+
+  /* The inner panel keeps its intrinsic width while the column shrinks, so the
+     sidebar slides out under the clip rather than reflowing its contents. */
+  .app-layout > .app-sidebar {
+    overflow: hidden;
+  }
+}
+
+@media (min-width: 640px) and (max-width: 1023.98px) {
+  .app-layout {
+    --sidebar-w: 19rem;
+  }
+}
+
+/* ==========================================================================
    Navigation active indicator (spatial consistency)
 
    One element that slides between nav items, rather than a highlight class
@@ -484,6 +527,12 @@ button:disabled:active {
   }
   .app-nav-indicator {
     view-transition-name: none !important;
+  }
+
+  /* Zen Mode still collapses, it just does not travel. */
+  .app-layout,
+  .app-layout[data-animate="true"] {
+    transition: none !important;
   }
 
   /* Flashcards: transition opacity 150ms ease, no 3D spin */

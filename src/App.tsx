@@ -1,5 +1,11 @@
 import React, { lazy, Suspense, useState, useEffect, useLayoutEffect, useRef } from 'react';
-import { studyStore, useActiveSubject, useActiveSubjectId, useSubjects } from './hooks/useStudyStore';
+import {
+  studyStore,
+  useActiveSubject,
+  useActiveSubjectId,
+  useSettings,
+  useSubjects,
+} from './hooks/useStudyStore';
 import { NotesManager } from './components/notes/NotesManager';
 import { QuizzesManager } from './components/quizzes/QuizzesManager';
 import { ExamsManager } from './components/exams/ExamsManager';
@@ -9,7 +15,11 @@ import { ExplainTermModal } from './components/tools/ExplainTermModal';
 import { ApiKeySettingsModal } from './components/tools/ApiKeySettingsModal';
 import { ModelPicker } from './components/tools/ModelPicker';
 import { Modal } from './components/ui/Modal';
-import { runViewTransition, type InteractionOrigin } from './utils/viewTransition';
+import {
+  prefersReducedMotion,
+  runViewTransition,
+  type InteractionOrigin,
+} from './utils/viewTransition';
 import {
   BookOpen,
   Layers,
@@ -25,6 +35,8 @@ import {
   X,
   Flame,
   Menu,
+  PanelLeftClose,
+  PanelLeftOpen,
 } from 'lucide-react';
 
 /** AnalyticsView pulls in recharts (~200kB gzip); load it only when opened. */
@@ -43,8 +55,28 @@ export default function App() {
   const activeSubjectId = useActiveSubjectId();
   const deleteSubject = studyStore.deleteSubject;
 
+  const settings = useSettings();
+  const zenMode = settings.zenMode;
+
   const [activeTab, setActiveTab] = useState<TabType>('notes');
   const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  const layoutRef = useRef<HTMLDivElement | null>(null);
+
+  /**
+   * Zen Mode collapses the desktop sidebar by animating the layout's grid
+   * column to 0 — the sidebar is never unmounted, so it slides out to the left
+   * and returns to exactly where the learner remembers it. Persisted in
+   * settings (ADR-0001: no per-screen copies of store data).
+   *
+   * The animate flag is set imperatively rather than through state because it
+   * must be on the element *before* the column change paints.
+   */
+  const toggleZenMode = (origin: InteractionOrigin = 'pointer') => {
+    const animate = origin === 'pointer' && !prefersReducedMotion();
+    layoutRef.current?.setAttribute('data-animate', animate ? 'true' : 'false');
+    studyStore.saveSettings({ zenMode: !zenMode });
+  };
 
   // Sliding nav indicator: one element that travels between items instead of a
   // highlight class that teleports (spatial consistency).
@@ -210,6 +242,11 @@ export default function App() {
         // Keyboard path: no view transition, no indicator travel.
         handleTabChange(shortcutTab, 'keyboard');
         setSidebarOpen(false);
+      } else if (e.key === 'z' || e.key === 'Z') {
+        toggleZenMode('keyboard');
+      } else if (e.key === 'Escape' && zenMode) {
+        // Escape leaves Zen before it does anything else global.
+        toggleZenMode('keyboard');
       } else if (e.key === 'Escape' && sidebarOpen) {
         setSidebarOpen(false);
       }
@@ -217,10 +254,15 @@ export default function App() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [openModal, confirmDeleteSubjectId, explainTermData, sidebarOpen, activeTab]);
+  }, [openModal, confirmDeleteSubjectId, explainTermData, sidebarOpen, activeTab, zenMode]);
 
   return (
-    <div className="flex h-screen w-full bg-[#F1F5F9] text-slate-800 font-sans overflow-hidden">
+    <div
+      ref={layoutRef}
+      className="app-layout h-screen w-full bg-[#F1F5F9] text-slate-800 font-sans overflow-hidden"
+      data-zen={zenMode ? 'true' : 'false'}
+      data-animate="false"
+    >
       {/* Mobile Sidebar Overlay with backdrop blur */}
       {sidebarOpen && (
         <div
@@ -243,10 +285,14 @@ export default function App() {
               : undefined,
           transition: isDraggingAside ? 'none' : undefined,
         }}
-        className={`app-sidebar fixed lg:static inset-y-0 left-0 z-50 w-72 sm:w-76 xl:w-76 bg-[#FFFDF9] text-slate-950 flex flex-col h-full max-h-screen overflow-y-auto overscroll-contain p-4 border-r-3 border-slate-900 shadow-neo-lg lg:shadow-none select-none transition-transform duration-200 ease-out ${
+        className={`app-sidebar fixed lg:static inset-y-0 left-0 z-50 w-72 sm:w-76 lg:w-auto bg-[#FFFDF9] text-slate-950 h-full max-h-screen shadow-neo-lg lg:shadow-none select-none transition-transform duration-200 ease-out ${
           sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
         }`}
       >
+        {/* Fixed-width inner panel. The padding and border live here, not on the
+            <aside>, so Zen Mode can collapse the grid column to 0 without the
+            contents reflowing on the way out. */}
+        <div className="app-sidebar-inner w-72 sm:w-76 xl:w-76 h-full flex flex-col overflow-y-auto overscroll-contain p-4 border-r-3 border-slate-900">
         <div className="space-y-4 shrink-0">
           {/* Brand Header: Prominent TEMARI ተማሪ with Ethiopic Identity Layer */}
           <div className="bg-[#FEF08A] border-3 border-slate-900 rounded-2xl p-3.5 shadow-neo relative overflow-hidden group">
@@ -458,10 +504,11 @@ export default function App() {
             </p>
           </div>
         </div>
+        </div>
       </aside>
 
       {/* Main Content View Container */}
-      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+      <div className="flex flex-col min-w-0 h-full overflow-hidden">
         {/* Top Header Bar */}
         <header className="app-header h-14 bg-white border-b-3 border-slate-900 flex items-center justify-between px-4 sm:px-6 shrink-0 z-10 shadow-xs">
           <div className="flex items-center gap-3">
@@ -471,6 +518,17 @@ export default function App() {
               aria-label="Open navigation menu"
             >
               <Menu className="w-4 h-4" />
+            </button>
+
+            {/* Zen Mode: collapses the sidebar column on desktop. */}
+            <button
+              onClick={() => toggleZenMode('pointer')}
+              className="btn-kinetic hidden lg:flex items-center gap-1.5 p-1.5 text-slate-900 bg-white hover:bg-slate-100 rounded-xl border-2 border-slate-900 shadow-neo-sm"
+              title={zenMode ? 'Exit Zen Mode (Z)' : 'Enter Zen Mode (Z)'}
+              aria-label={zenMode ? 'Exit Zen Mode' : 'Enter Zen Mode'}
+              aria-pressed={zenMode}
+            >
+              {zenMode ? <PanelLeftOpen className="w-4 h-4" /> : <PanelLeftClose className="w-4 h-4" />}
             </button>
 
             {/* Subject Indicator Breadcrumb */}
