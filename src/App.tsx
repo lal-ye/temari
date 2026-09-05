@@ -9,6 +9,7 @@ import { PomodoroTimer } from './components/tools/PomodoroTimer';
 import { ExplainTermModal } from './components/tools/ExplainTermModal';
 import { ApiKeySettingsModal } from './components/tools/ApiKeySettingsModal';
 import { ModelPicker } from './components/tools/ModelPicker';
+import { Modal } from './components/ui/Modal';
 import {
   BookOpen,
   Layers,
@@ -28,6 +29,9 @@ import {
 
 type TabType = 'notes' | 'quizzes' | 'exams' | 'analytics' | 'planner';
 
+/** Which app-level modal is open — one state instead of one boolean per modal. */
+type OpenModal = 'api-key' | 'pomodoro' | 'add-subject' | null;
+
 export default function App() {
   const subjects = useSubjects();
   const currentSubject = useActiveSubject();
@@ -38,12 +42,10 @@ export default function App() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   // Modals and Drawers
-  const [showApiKeyModal, setShowApiKeyModal] = useState(false);
-  const [showPomodoro, setShowPomodoro] = useState(false);
+  const [openModal, setOpenModal] = useState<OpenModal>(null);
   const [explainTermData, setExplainTermData] = useState<{ term: string; context?: string } | null>(
     null
   );
-  const [showAddSubjectModal, setShowAddSubjectModal] = useState(false);
   const [newSubjectName, setNewSubjectName] = useState('');
   const [newSubjectCode, setNewSubjectCode] = useState('');
   const [newSubjectColor, setNewSubjectColor] = useState('#2563eb');
@@ -61,7 +63,7 @@ export default function App() {
 
     setNewSubjectName('');
     setNewSubjectCode('');
-    setShowAddSubjectModal(false);
+    setOpenModal(null);
   };
 
   const handleDeleteSubject = (id: string, e: React.MouseEvent) => {
@@ -139,7 +141,7 @@ export default function App() {
             <div className="flex items-center justify-between text-[11px] font-black uppercase tracking-wider text-slate-600 mb-1.5">
               <span>Active Subject</span>
               <button
-                onClick={() => setShowAddSubjectModal(true)}
+                onClick={() => setOpenModal('add-subject')}
                 className="px-2 py-0.5 bg-cyan-300 hover:bg-cyan-200 text-slate-900 rounded-md border border-slate-900 flex items-center gap-1 text-[10px] font-black shadow-xs transition-all active:translate-y-0.5"
                 title="Add Subject"
               >
@@ -203,7 +205,7 @@ export default function App() {
             </div>
             <button
               onClick={() => {
-                setShowPomodoro(true);
+                setOpenModal('pomodoro');
                 setSidebarOpen(false);
               }}
               className="w-full flex items-center justify-between px-3 py-2 bg-white hover:bg-amber-50 rounded-xl text-xs font-bold text-slate-900 border-2 border-slate-900 shadow-xs hover:shadow-neo-sm transition-all"
@@ -218,7 +220,7 @@ export default function App() {
             </button>
             <button
               onClick={() => {
-                setShowApiKeyModal(true);
+                setOpenModal('api-key');
                 setSidebarOpen(false);
               }}
               className="w-full flex items-center justify-between px-3 py-2 bg-white hover:bg-yellow-50 rounded-xl text-xs font-bold text-slate-900 border-2 border-slate-900 shadow-xs hover:shadow-neo-sm transition-all"
@@ -290,11 +292,11 @@ export default function App() {
             {/* Dynamic Active AI Model Selector */}
             <ModelPicker
               variant="compact"
-              onOpenSettings={() => setShowApiKeyModal(true)}
+              onOpenSettings={() => setOpenModal('api-key')}
             />
 
             <button
-              onClick={() => setShowApiKeyModal(true)}
+              onClick={() => setOpenModal('api-key')}
               className="p-1.5 text-slate-900 bg-white hover:bg-slate-100 rounded-xl border-2 border-slate-900 shadow-neo-sm transition-all active:translate-y-0.5"
               title="AI Providers & Model Settings"
               aria-label="AI Providers and Models Settings"
@@ -332,7 +334,7 @@ export default function App() {
             {activeTab === 'analytics' && <AnalyticsView />}
 
             {activeTab === 'planner' && (
-              <PlannerView onOpenPomodoro={() => setShowPomodoro(true)} />
+              <PlannerView onOpenPomodoro={() => setOpenModal('pomodoro')} />
             )}
           </div>
         </main>
@@ -340,14 +342,14 @@ export default function App() {
 
       {/* Modals and Side Drawers */}
       <ApiKeySettingsModal
-        isOpen={showApiKeyModal}
-        onClose={() => setShowApiKeyModal(false)}
+        isOpen={openModal === 'api-key'}
+        onClose={() => setOpenModal(null)}
         onSaved={() => {}}
       />
 
       <PomodoroTimer
-        isOpen={showPomodoro}
-        onClose={() => setShowPomodoro(false)}
+        isOpen={openModal === 'pomodoro'}
+        onClose={() => setOpenModal(null)}
       />
 
       <ExplainTermModal
@@ -357,103 +359,89 @@ export default function App() {
       />
 
       {/* Add Subject Modal */}
-      {showAddSubjectModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 animate-in fade-in duration-150">
-          <div className="w-full max-w-md bg-white border-3 border-slate-900 rounded-2xl p-6 shadow-neo-xl relative">
-            <button
-              onClick={() => setShowAddSubjectModal(false)}
-              className="absolute top-4 right-4 p-1.5 text-slate-900 hover:bg-slate-100 rounded-lg border-2 border-slate-900 shadow-neo-sm"
-            >
-              <X className="w-4 h-4" />
-            </button>
-
-            <div className="flex items-center gap-3 mb-4">
-              <div className="p-2.5 bg-cyan-300 border-2 border-slate-900 text-slate-950 rounded-xl shadow-neo-sm">
-                <FolderPlus className="w-5 h-5" />
-              </div>
-              <div>
-                <h3 className="text-base font-black text-slate-950">Add Course Subject</h3>
-                <p className="text-xs font-bold text-slate-600">Create a dedicated subject folder in Temari</p>
-              </div>
-            </div>
-
-            <form onSubmit={handleAddSubject} className="space-y-3.5">
-              <div>
-                <label className="block text-xs font-black uppercase tracking-wider text-slate-800 mb-1">
-                  Subject / Course Name
-                </label>
-                <input
-                  type="text"
-                  value={newSubjectName}
-                  onChange={(e) => setNewSubjectName(e.target.value)}
-                  placeholder="e.g. Organic Chemistry"
-                  className="w-full px-3.5 py-2 text-xs bg-[#FAF8F5] border-2 border-slate-900 rounded-xl font-bold focus:outline-hidden focus:ring-2 focus:ring-cyan-400 shadow-neo-sm"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-black uppercase tracking-wider text-slate-800 mb-1">
-                  Course Code (Optional)
-                </label>
-                <input
-                  type="text"
-                  value={newSubjectCode}
-                  onChange={(e) => setNewSubjectCode(e.target.value)}
-                  placeholder="e.g. CHEM201"
-                  className="w-full px-3.5 py-2 text-xs bg-[#FAF8F5] border-2 border-slate-900 rounded-xl font-bold focus:outline-hidden focus:ring-2 focus:ring-cyan-400 shadow-neo-sm"
-                />
-              </div>
-
-              <div className="flex items-center justify-end gap-2.5 pt-3 border-t-2 border-slate-100">
-                <button
-                  type="button"
-                  onClick={() => setShowAddSubjectModal(false)}
-                  className="px-4 py-2 text-xs font-black text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl border-2 border-slate-900 transition-all shadow-neo-sm"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-5 py-2 text-xs font-black text-slate-950 bg-yellow-300 hover:bg-yellow-200 rounded-xl border-2 border-slate-900 transition-all shadow-neo active:translate-y-0.5"
-                >
-                  Create Subject
-                </button>
-              </div>
-            </form>
-
-            {/* List of existing subjects with delete */}
-            {subjects.length > 0 && (
-              <div className="mt-5 pt-3 border-t-2 border-slate-200">
-                <h4 className="text-[11px] font-black uppercase tracking-wider text-slate-600 mb-2">
-                  Existing Subjects
-                </h4>
-                <div className="space-y-1.5 max-h-36 overflow-y-auto pr-1">
-                  {subjects.map((s) => (
-                    <div
-                      key={s.id}
-                      className="p-2.5 bg-slate-50 border-2 border-slate-900 rounded-xl flex items-center justify-between text-xs shadow-xs"
-                    >
-                      <span className="font-bold text-slate-900">
-                        {s.name} {s.code && `(${s.code})`}
-                      </span>
-                      {subjects.length > 1 && (
-                        <button
-                          onClick={(e) => handleDeleteSubject(s.id, e)}
-                          className="text-rose-600 hover:bg-rose-100 p-1 rounded-md transition-colors"
-                          title="Delete subject"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
+      <Modal
+        open={openModal === 'add-subject'}
+        onClose={() => setOpenModal(null)}
+        title="Add Course Subject"
+        subtitle="Create a dedicated subject folder in Temari"
+        icon={<FolderPlus className="w-5 h-5" />}
+        iconClassName="bg-cyan-300 text-slate-950"
+      >
+        <form onSubmit={handleAddSubject} className="space-y-3.5">
+          <div>
+            <label className="block text-xs font-black uppercase tracking-wider text-slate-800 mb-1">
+              Subject / Course Name
+            </label>
+            <input
+              type="text"
+              value={newSubjectName}
+              onChange={(e) => setNewSubjectName(e.target.value)}
+              placeholder="e.g. Organic Chemistry"
+              className="w-full px-3.5 py-2 text-xs bg-[#FAF8F5] border-2 border-slate-900 rounded-xl font-bold focus:outline-hidden focus:ring-2 focus:ring-cyan-400 shadow-neo-sm"
+              required
+            />
           </div>
-        </div>
-      )}
+
+          <div>
+            <label className="block text-xs font-black uppercase tracking-wider text-slate-800 mb-1">
+              Course Code (Optional)
+            </label>
+            <input
+              type="text"
+              value={newSubjectCode}
+              onChange={(e) => setNewSubjectCode(e.target.value)}
+              placeholder="e.g. CHEM201"
+              className="w-full px-3.5 py-2 text-xs bg-[#FAF8F5] border-2 border-slate-900 rounded-xl font-bold focus:outline-hidden focus:ring-2 focus:ring-cyan-400 shadow-neo-sm"
+            />
+          </div>
+
+          <div className="flex items-center justify-end gap-2.5 pt-3 border-t-2 border-slate-100">
+            <button
+              type="button"
+              onClick={() => setOpenModal(null)}
+              className="px-4 py-2 text-xs font-black text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl border-2 border-slate-900 transition-all shadow-neo-sm"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="px-5 py-2 text-xs font-black text-slate-950 bg-yellow-300 hover:bg-yellow-200 rounded-xl border-2 border-slate-900 transition-all shadow-neo active:translate-y-0.5"
+            >
+              Create Subject
+            </button>
+          </div>
+        </form>
+
+        {/* List of existing subjects with delete */}
+        {subjects.length > 0 && (
+          <div className="mt-5 pt-3 border-t-2 border-slate-200">
+            <h4 className="text-[11px] font-black uppercase tracking-wider text-slate-600 mb-2">
+              Existing Subjects
+            </h4>
+            <div className="space-y-1.5 max-h-36 overflow-y-auto pr-1">
+              {subjects.map((s) => (
+                <div
+                  key={s.id}
+                  className="p-2.5 bg-slate-50 border-2 border-slate-900 rounded-xl flex items-center justify-between text-xs shadow-xs"
+                >
+                  <span className="font-bold text-slate-900">
+                    {s.name} {s.code && `(${s.code})`}
+                  </span>
+                  {subjects.length > 1 && (
+                    <button
+                      onClick={(e) => handleDeleteSubject(s.id, e)}
+                      className="text-rose-600 hover:bg-rose-100 p-1 rounded-md transition-colors"
+                      title="Delete subject"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </Modal>
     </div>
   );
 }
