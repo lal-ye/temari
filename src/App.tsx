@@ -1,14 +1,15 @@
-import React, { useState } from 'react';
+import React, { lazy, Suspense, useState } from 'react';
 import { studyStore, useActiveSubject, useActiveSubjectId, useSubjects } from './hooks/useStudyStore';
 import { NotesManager } from './components/notes/NotesManager';
 import { QuizzesManager } from './components/quizzes/QuizzesManager';
 import { ExamsManager } from './components/exams/ExamsManager';
-import { AnalyticsView } from './components/analytics/AnalyticsView';
 import { PlannerView } from './components/planner/PlannerView';
 import { PomodoroTimer } from './components/tools/PomodoroTimer';
 import { ExplainTermModal } from './components/tools/ExplainTermModal';
 import { ApiKeySettingsModal } from './components/tools/ApiKeySettingsModal';
 import { ModelPicker } from './components/tools/ModelPicker';
+import { Modal } from './components/ui/Modal';
+import { runViewTransition } from './utils/viewTransition';
 import {
   BookOpen,
   Layers,
@@ -26,7 +27,15 @@ import {
   Menu,
 } from 'lucide-react';
 
+/** AnalyticsView pulls in recharts (~200kB gzip); load it only when opened. */
+const AnalyticsView = lazy(() =>
+  import('./components/analytics/AnalyticsView').then((m) => ({ default: m.AnalyticsView }))
+);
+
 type TabType = 'notes' | 'quizzes' | 'exams' | 'analytics' | 'planner';
+
+/** Which app-level modal is open — one state instead of one boolean per modal. */
+type OpenModal = 'api-key' | 'pomodoro' | 'add-subject' | null;
 
 export default function App() {
   const subjects = useSubjects();
@@ -38,12 +47,11 @@ export default function App() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   // Modals and Drawers
-  const [showApiKeyModal, setShowApiKeyModal] = useState(false);
-  const [showPomodoro, setShowPomodoro] = useState(false);
+  const [openModal, setOpenModal] = useState<OpenModal>(null);
+  const [confirmDeleteSubjectId, setConfirmDeleteSubjectId] = useState<string | null>(null);
   const [explainTermData, setExplainTermData] = useState<{ term: string; context?: string } | null>(
     null
   );
-  const [showAddSubjectModal, setShowAddSubjectModal] = useState(false);
   const [newSubjectName, setNewSubjectName] = useState('');
   const [newSubjectCode, setNewSubjectCode] = useState('');
   const [newSubjectColor, setNewSubjectColor] = useState('#2563eb');
@@ -61,18 +69,20 @@ export default function App() {
 
     setNewSubjectName('');
     setNewSubjectCode('');
-    setShowAddSubjectModal(false);
+    setOpenModal(null);
+  };
+
+  const handleTabChange = (tab: TabType) => {
+    if (tab === activeTab) return;
+    // Native view transition cross-fade for lateral navigation (ADR-0004).
+    runViewTransition(() => setActiveTab(tab));
   };
 
   const handleDeleteSubject = (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    if (subjects.length <= 1) {
-      alert('You must have at least one active subject.');
-      return;
-    }
-    if (confirm('Are you sure you want to delete this subject and all its related materials?')) {
-      deleteSubject(id);
-    }
+    // The delete button is hidden when one Subject remains; guard anyway.
+    if (subjects.length <= 1) return;
+    setConfirmDeleteSubjectId(id);
   };
 
   const handleHighlightExplain = (term: string, context?: string) => {
@@ -99,7 +109,7 @@ export default function App() {
 
       {/* Left Sidebar (Neo-Brutalist Canvas) */}
       <aside
-        className={`fixed lg:static inset-y-0 left-0 z-50 w-68 bg-[#FFFDF9] text-slate-900 flex flex-col h-full max-h-screen overflow-y-auto overscroll-contain p-4 border-r-3 border-slate-900 shadow-neo-lg lg:shadow-none transition-transform duration-200 ease-in-out ${
+        className={`app-sidebar fixed lg:static inset-y-0 left-0 z-50 w-68 bg-[#FFFDF9] text-slate-900 flex flex-col h-full max-h-screen overflow-y-auto overscroll-contain p-4 border-r-3 border-slate-900 shadow-neo-lg lg:shadow-none transition-transform duration-200 ease-in-out ${
           sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
         }`}
       >
@@ -139,7 +149,7 @@ export default function App() {
             <div className="flex items-center justify-between text-[11px] font-black uppercase tracking-wider text-slate-600 mb-1.5">
               <span>Active Subject</span>
               <button
-                onClick={() => setShowAddSubjectModal(true)}
+                onClick={() => setOpenModal('add-subject')}
                 className="px-2 py-0.5 bg-cyan-300 hover:bg-cyan-200 text-slate-900 rounded-md border border-slate-900 flex items-center gap-1 text-[10px] font-black shadow-xs transition-all active:translate-y-0.5"
                 title="Add Subject"
               >
@@ -174,7 +184,7 @@ export default function App() {
                 <button
                   key={item.id}
                   onClick={() => {
-                    setActiveTab(item.id as TabType);
+                    handleTabChange(item.id as TabType);
                     setSidebarOpen(false);
                   }}
                   className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-black transition-all border-2 text-left ${
@@ -203,7 +213,7 @@ export default function App() {
             </div>
             <button
               onClick={() => {
-                setShowPomodoro(true);
+                setOpenModal('pomodoro');
                 setSidebarOpen(false);
               }}
               className="w-full flex items-center justify-between px-3 py-2 bg-white hover:bg-amber-50 rounded-xl text-xs font-bold text-slate-900 border-2 border-slate-900 shadow-xs hover:shadow-neo-sm transition-all"
@@ -218,7 +228,7 @@ export default function App() {
             </button>
             <button
               onClick={() => {
-                setShowApiKeyModal(true);
+                setOpenModal('api-key');
                 setSidebarOpen(false);
               }}
               className="w-full flex items-center justify-between px-3 py-2 bg-white hover:bg-yellow-50 rounded-xl text-xs font-bold text-slate-900 border-2 border-slate-900 shadow-xs hover:shadow-neo-sm transition-all"
@@ -258,7 +268,7 @@ export default function App() {
       {/* Main Content View Container */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         {/* Top Header Bar */}
-        <header className="h-14 bg-white border-b-3 border-slate-900 flex items-center justify-between px-4 sm:px-6 shrink-0 z-10 shadow-xs">
+        <header className="app-header h-14 bg-white border-b-3 border-slate-900 flex items-center justify-between px-4 sm:px-6 shrink-0 z-10 shadow-xs">
           <div className="flex items-center gap-3">
             <button
               onClick={() => setSidebarOpen(true)}
@@ -290,11 +300,11 @@ export default function App() {
             {/* Dynamic Active AI Model Selector */}
             <ModelPicker
               variant="compact"
-              onOpenSettings={() => setShowApiKeyModal(true)}
+              onOpenSettings={() => setOpenModal('api-key')}
             />
 
             <button
-              onClick={() => setShowApiKeyModal(true)}
+              onClick={() => setOpenModal('api-key')}
               className="p-1.5 text-slate-900 bg-white hover:bg-slate-100 rounded-xl border-2 border-slate-900 shadow-neo-sm transition-all active:translate-y-0.5"
               title="AI Providers & Model Settings"
               aria-label="AI Providers and Models Settings"
@@ -317,7 +327,7 @@ export default function App() {
         </header>
 
         {/* Scrollable View Area */}
-        <main className="flex-1 overflow-y-auto p-4 sm:p-6 bg-[#FAF8F5] bg-neo-dots">
+        <main className="app-main flex-1 overflow-y-auto p-4 sm:p-6 bg-[#FAF8F5] bg-neo-dots">
           <div className="max-w-6xl mx-auto">
             {activeTab === 'notes' && (
               <NotesManager onHighlightTerm={handleHighlightExplain} />
@@ -329,10 +339,26 @@ export default function App() {
 
             {activeTab === 'exams' && <ExamsManager />}
 
-            {activeTab === 'analytics' && <AnalyticsView />}
+            {activeTab === 'analytics' && (
+              <Suspense
+                fallback={
+                  <div className="max-w-6xl mx-auto space-y-4 animate-pulse">
+                    <div className="h-10 w-56 bg-slate-200 border-2 border-slate-900 rounded-xl" />
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                      {[0, 1, 2, 3].map((i) => (
+                        <div key={i} className="h-24 bg-slate-200 border-2 border-slate-900 rounded-2xl" />
+                      ))}
+                    </div>
+                    <div className="h-64 bg-slate-200 border-2 border-slate-900 rounded-2xl" />
+                  </div>
+                }
+              >
+                <AnalyticsView />
+              </Suspense>
+            )}
 
             {activeTab === 'planner' && (
-              <PlannerView onOpenPomodoro={() => setShowPomodoro(true)} />
+              <PlannerView onOpenPomodoro={() => setOpenModal('pomodoro')} />
             )}
           </div>
         </main>
@@ -340,14 +366,14 @@ export default function App() {
 
       {/* Modals and Side Drawers */}
       <ApiKeySettingsModal
-        isOpen={showApiKeyModal}
-        onClose={() => setShowApiKeyModal(false)}
+        isOpen={openModal === 'api-key'}
+        onClose={() => setOpenModal(null)}
         onSaved={() => {}}
       />
 
       <PomodoroTimer
-        isOpen={showPomodoro}
-        onClose={() => setShowPomodoro(false)}
+        isOpen={openModal === 'pomodoro'}
+        onClose={() => setOpenModal(null)}
       />
 
       <ExplainTermModal
@@ -357,103 +383,126 @@ export default function App() {
       />
 
       {/* Add Subject Modal */}
-      {showAddSubjectModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 animate-in fade-in duration-150">
-          <div className="w-full max-w-md bg-white border-3 border-slate-900 rounded-2xl p-6 shadow-neo-xl relative">
-            <button
-              onClick={() => setShowAddSubjectModal(false)}
-              className="absolute top-4 right-4 p-1.5 text-slate-900 hover:bg-slate-100 rounded-lg border-2 border-slate-900 shadow-neo-sm"
-            >
-              <X className="w-4 h-4" />
-            </button>
-
-            <div className="flex items-center gap-3 mb-4">
-              <div className="p-2.5 bg-cyan-300 border-2 border-slate-900 text-slate-950 rounded-xl shadow-neo-sm">
-                <FolderPlus className="w-5 h-5" />
-              </div>
-              <div>
-                <h3 className="text-base font-black text-slate-950">Add Course Subject</h3>
-                <p className="text-xs font-bold text-slate-600">Create a dedicated subject folder in Temari</p>
-              </div>
-            </div>
-
-            <form onSubmit={handleAddSubject} className="space-y-3.5">
-              <div>
-                <label className="block text-xs font-black uppercase tracking-wider text-slate-800 mb-1">
-                  Subject / Course Name
-                </label>
-                <input
-                  type="text"
-                  value={newSubjectName}
-                  onChange={(e) => setNewSubjectName(e.target.value)}
-                  placeholder="e.g. Organic Chemistry"
-                  className="w-full px-3.5 py-2 text-xs bg-[#FAF8F5] border-2 border-slate-900 rounded-xl font-bold focus:outline-hidden focus:ring-2 focus:ring-cyan-400 shadow-neo-sm"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-black uppercase tracking-wider text-slate-800 mb-1">
-                  Course Code (Optional)
-                </label>
-                <input
-                  type="text"
-                  value={newSubjectCode}
-                  onChange={(e) => setNewSubjectCode(e.target.value)}
-                  placeholder="e.g. CHEM201"
-                  className="w-full px-3.5 py-2 text-xs bg-[#FAF8F5] border-2 border-slate-900 rounded-xl font-bold focus:outline-hidden focus:ring-2 focus:ring-cyan-400 shadow-neo-sm"
-                />
-              </div>
-
-              <div className="flex items-center justify-end gap-2.5 pt-3 border-t-2 border-slate-100">
-                <button
-                  type="button"
-                  onClick={() => setShowAddSubjectModal(false)}
-                  className="px-4 py-2 text-xs font-black text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl border-2 border-slate-900 transition-all shadow-neo-sm"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-5 py-2 text-xs font-black text-slate-950 bg-yellow-300 hover:bg-yellow-200 rounded-xl border-2 border-slate-900 transition-all shadow-neo active:translate-y-0.5"
-                >
-                  Create Subject
-                </button>
-              </div>
-            </form>
-
-            {/* List of existing subjects with delete */}
-            {subjects.length > 0 && (
-              <div className="mt-5 pt-3 border-t-2 border-slate-200">
-                <h4 className="text-[11px] font-black uppercase tracking-wider text-slate-600 mb-2">
-                  Existing Subjects
-                </h4>
-                <div className="space-y-1.5 max-h-36 overflow-y-auto pr-1">
-                  {subjects.map((s) => (
-                    <div
-                      key={s.id}
-                      className="p-2.5 bg-slate-50 border-2 border-slate-900 rounded-xl flex items-center justify-between text-xs shadow-xs"
-                    >
-                      <span className="font-bold text-slate-900">
-                        {s.name} {s.code && `(${s.code})`}
-                      </span>
-                      {subjects.length > 1 && (
-                        <button
-                          onClick={(e) => handleDeleteSubject(s.id, e)}
-                          className="text-rose-600 hover:bg-rose-100 p-1 rounded-md transition-colors"
-                          title="Delete subject"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
+      <Modal
+        open={openModal === 'add-subject'}
+        onClose={() => setOpenModal(null)}
+        title="Add Course Subject"
+        subtitle="Create a dedicated subject folder in Temari"
+        icon={<FolderPlus className="w-5 h-5" />}
+        iconClassName="bg-cyan-300 text-slate-950"
+      >
+        <form onSubmit={handleAddSubject} className="space-y-3.5">
+          <div>
+            <label className="block text-xs font-black uppercase tracking-wider text-slate-800 mb-1">
+              Subject / Course Name
+            </label>
+            <input
+              type="text"
+              value={newSubjectName}
+              onChange={(e) => setNewSubjectName(e.target.value)}
+              placeholder="e.g. Organic Chemistry"
+              className="w-full px-3.5 py-2 text-xs bg-[#FAF8F5] border-2 border-slate-900 rounded-xl font-bold focus:outline-hidden focus:ring-2 focus:ring-cyan-400 shadow-neo-sm"
+              required
+            />
           </div>
+
+          <div>
+            <label className="block text-xs font-black uppercase tracking-wider text-slate-800 mb-1">
+              Course Code (Optional)
+            </label>
+            <input
+              type="text"
+              value={newSubjectCode}
+              onChange={(e) => setNewSubjectCode(e.target.value)}
+              placeholder="e.g. CHEM201"
+              className="w-full px-3.5 py-2 text-xs bg-[#FAF8F5] border-2 border-slate-900 rounded-xl font-bold focus:outline-hidden focus:ring-2 focus:ring-cyan-400 shadow-neo-sm"
+            />
+          </div>
+
+          <div className="flex items-center justify-end gap-2.5 pt-3 border-t-2 border-slate-100">
+            <button
+              type="button"
+              onClick={() => setOpenModal(null)}
+              className="px-4 py-2 text-xs font-black text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl border-2 border-slate-900 transition-all shadow-neo-sm"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="px-5 py-2 text-xs font-black text-slate-950 bg-yellow-300 hover:bg-yellow-200 rounded-xl border-2 border-slate-900 transition-all shadow-neo active:translate-y-0.5"
+            >
+              Create Subject
+            </button>
+          </div>
+        </form>
+
+        {/* List of existing subjects with delete */}
+        {subjects.length > 0 && (
+          <div className="mt-5 pt-3 border-t-2 border-slate-200">
+            <h4 className="text-[11px] font-black uppercase tracking-wider text-slate-600 mb-2">
+              Existing Subjects
+            </h4>
+            <div className="space-y-1.5 max-h-36 overflow-y-auto pr-1">
+              {subjects.map((s) => (
+                <div
+                  key={s.id}
+                  className="p-2.5 bg-slate-50 border-2 border-slate-900 rounded-xl flex items-center justify-between text-xs shadow-xs"
+                >
+                  <span className="font-bold text-slate-900">
+                    {s.name} {s.code && `(${s.code})`}
+                  </span>
+                  {subjects.length > 1 && (
+                    <button
+                      onClick={(e) => handleDeleteSubject(s.id, e)}
+                      className="text-rose-600 hover:bg-rose-100 p-1 rounded-md transition-colors"
+                      title="Delete subject"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      {/* Confirm Delete Subject */}
+      <Modal
+        open={confirmDeleteSubjectId !== null}
+        onClose={() => setConfirmDeleteSubjectId(null)}
+        title="Delete Subject"
+        subtitle="This cannot be undone"
+        icon={<Trash2 className="w-5 h-5" />}
+        iconClassName="bg-rose-200 text-rose-950"
+      >
+        <p className="text-sm font-bold text-slate-700 mb-5">
+          Delete{' '}
+          <span className="text-slate-950">
+            &ldquo;{subjects.find((s) => s.id === confirmDeleteSubjectId)?.name}&rdquo;
+          </span>{' '}
+          and all of its Notes, Quizzes, Exams and Study Tasks?
+        </p>
+        <div className="flex items-center justify-end gap-2.5 pt-3 border-t-2 border-slate-100">
+          <button
+            type="button"
+            onClick={() => setConfirmDeleteSubjectId(null)}
+            className="px-4 py-2 text-xs font-black text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl border-2 border-slate-900 transition-all shadow-neo-sm"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              if (confirmDeleteSubjectId) deleteSubject(confirmDeleteSubjectId);
+              setConfirmDeleteSubjectId(null);
+            }}
+            className="px-5 py-2 text-xs font-black text-white bg-rose-600 hover:bg-rose-700 rounded-xl border-2 border-slate-900 transition-all shadow-neo active:translate-y-0.5"
+          >
+            Delete Subject
+          </button>
         </div>
-      )}
+      </Modal>
     </div>
   );
 }

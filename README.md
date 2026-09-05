@@ -13,6 +13,7 @@ reachable.
   - [ADR-0001](./docs/adr/0001-study-store-deep-module.md) — one deep Study-Store module
   - [ADR-0002](./docs/adr/0002-ai-generation-port.md) — AI generation behind one port (HTTP + offline adapters)
   - [ADR-0003](./docs/adr/0003-shared-ai-provider-catalog.md) — shared AI provider catalog
+  - [ADR-0004](./docs/adr/0004-native-css-view-transitions.md) — native CSS View Transitions instead of react@canary
 
 ## Stack
 
