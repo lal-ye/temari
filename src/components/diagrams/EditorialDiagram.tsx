@@ -1,5 +1,8 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { parseDiagramContent, ParsedDiagram, MindmapModel, FlowModel, StackModel } from './diagramParser';
+import { parseDiagramFence } from './diagramDoc';
+import { FigureRenderer } from './FigureRenderer';
+import { FigureShell } from './FigureShell';
 import { TEMARI_DIAGRAM_PROFILE } from './temariDiagramProfile';
 import {
   GraduationCap,
@@ -18,9 +21,47 @@ interface EditorialDiagramProps {
   content: string;
   title?: string;
   defaultMode?: 'static' | 'teacher';
+  /** Figure number shown in the caption. */
+  figIndex?: number;
+  /** Click a node to route its term to the AI explainer. */
+  onNodeActivate?: (label: string, context: string, el: HTMLElement | SVGElement) => void;
 }
 
 export const EditorialDiagram: React.FC<EditorialDiagramProps> = ({
+  content,
+  title = 'Concept Map',
+  defaultMode = 'static',
+  figIndex,
+  onNodeActivate,
+}) => {
+  /**
+   * Route the fence body. Structured JSON goes to the deterministic layout
+   * engine; anything else falls through to the legacy indented parser, because
+   * notes generated before the JSON contract shipped are still in people's
+   * localStorage and must keep rendering.
+   */
+  const fence = useMemo(() => parseDiagramFence(content), [content]);
+
+  if (fence.kind === 'doc' && fence.doc) {
+    return (
+      <FigureShell doc={fence.doc} figIndex={figIndex}>
+        <FigureRenderer doc={fence.doc} figIndex={figIndex} onNodeActivate={onNodeActivate} />
+      </FigureShell>
+    );
+  }
+
+  if (fence.kind === 'invalid') {
+    return <FigureShell.Error errors={fence.errors ?? []} raw={fence.raw} figIndex={figIndex} />;
+  }
+
+  return <LegacyEditorialDiagram content={content} title={title} defaultMode={defaultMode} />;
+};
+
+/**
+ * The pre-JSON renderer, kept verbatim for notes already in storage. New
+ * generations never reach this path.
+ */
+const LegacyEditorialDiagram: React.FC<EditorialDiagramProps> = ({
   content,
   title = 'Concept Map',
   defaultMode = 'static',
@@ -148,7 +189,7 @@ export const EditorialDiagram: React.FC<EditorialDiagramProps> = ({
               </span>
             </div>
             <p className="text-[10px] font-medium text-slate-500">
-              Editorial Vector Diagram • Pure HTML + SVG • No External Scripts
+              Editorial vector diagram, rendered as plain HTML and SVG
             </p>
           </div>
         </div>
@@ -276,7 +317,28 @@ function renderSvgDiagram(parsed: ParsedDiagram, activeIndex: number | null): Re
   const profile = TEMARI_DIAGRAM_PROFILE;
 
   if (parsed.type === 'raw-svg') {
-    return <div dangerouslySetInnerHTML={{ __html: parsed.svgHtml }} className="max-w-full" />;
+    /**
+     * Model-authored SVG is no longer injected.
+     *
+     * This branch used to pass the string straight to dangerouslySetInnerHTML.
+     * An <svg> body can carry <script>, event-handler attributes and
+     * <foreignObject>, so that was a script-injection sink fed by remote model
+     * output and by whatever a learner pasted as source material. Nothing
+     * sanitises it on the way in.
+     *
+     * Rather than add a sanitiser for a path that should not exist, the raw
+     * route is refused outright: the whole point of the DiagramDoc contract is
+     * that the model supplies structure and this codebase draws it.
+     */
+    return (
+      <div className="p-4 border-2 border-dashed border-slate-400 rounded-xl bg-[#FAF8F5] text-center">
+        <p className="text-xs font-black text-slate-800">Raw SVG figures are not rendered</p>
+        <p className="mt-1 text-[11px] font-medium text-slate-600 max-w-md mx-auto text-pretty">
+          This figure supplied finished SVG rather than a structured diagram. Regenerate the
+          note to get a figure drawn by Temari.
+        </p>
+      </div>
+    );
   }
 
   if (parsed.type === 'flow') {
@@ -354,16 +416,6 @@ function renderMindmapSvg(
       className="w-full max-w-3xl h-auto select-none"
       style={{ fontFamily: profile.fonts.body }}
     >
-      <defs>
-        {/* Solid Offset Drop Shadow Filter */}
-        <filter id="neo-shadow" x="-5%" y="-5%" width="120%" height="120%">
-          <feDropShadow dx="3" dy="3" stdDeviation="0" floodColor="#0F172A" floodOpacity="1" />
-        </filter>
-        <filter id="neo-shadow-active" x="-10%" y="-10%" width="130%" height="130%">
-          <feDropShadow dx="4" dy="4" stdDeviation="0" floodColor="#0F172A" floodOpacity="1" />
-        </filter>
-      </defs>
-
       {/* Connectors: Root to Branches */}
       {branchLayouts.map((b, idx) => {
         const isSelected = activeBranchIdx === null || activeBranchIdx === idx;
@@ -417,7 +469,7 @@ function renderMindmapSvg(
       })}
 
       {/* Root Node Box */}
-      <g filter="url(#neo-shadow)">
+      <g>
         <rect
           x={rootX}
           y={rootY}
@@ -445,12 +497,10 @@ function renderMindmapSvg(
         const isSelected = activeBranchIdx === null || activeBranchIdx === idx;
         const isActive = activeBranchIdx === idx;
         const opacity = activeBranchIdx !== null && !isSelected ? 0.35 : 1;
-        const filterUrl = isActive ? 'url(#neo-shadow-active)' : 'url(#neo-shadow)';
-
         return (
           <g key={`branch-${idx}`} opacity={opacity} className="transition-all duration-200">
             {/* Branch Card */}
-            <g filter={filterUrl}>
+            <g>
               <rect
                 x={b.x}
                 y={b.y}
@@ -474,7 +524,7 @@ function renderMindmapSvg(
 
             {/* Leaves */}
             {b.leaves.map((l, lIdx) => (
-              <g key={`leaf-${lIdx}`} filter="url(#neo-shadow)">
+              <g key={`leaf-${lIdx}`}>
                 <rect
                   x={l.x}
                   y={l.y}
@@ -526,9 +576,6 @@ function renderFlowSvg(
       style={{ fontFamily: profile.fonts.body }}
     >
       <defs>
-        <filter id="flow-shadow" x="-10%" y="-10%" width="130%" height="130%">
-          <feDropShadow dx="3" dy="3" stdDeviation="0" floodColor="#0F172A" floodOpacity="1" />
-        </filter>
         <marker id="arrow" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto">
           <path d="M 0 1 L 8 5 L 0 9 z" fill="#0F172A" />
         </marker>
@@ -558,7 +605,7 @@ function renderFlowSvg(
             )}
 
             {/* Step Card */}
-            <g filter="url(#flow-shadow)">
+            <g>
               <rect
                 x={x}
                 y={y}
@@ -644,12 +691,6 @@ function renderStackSvg(
       className="w-full max-w-lg h-auto select-none"
       style={{ fontFamily: profile.fonts.body }}
     >
-      <defs>
-        <filter id="stack-shadow" x="-5%" y="-5%" width="120%" height="120%">
-          <feDropShadow dx="3" dy="3" stdDeviation="0" floodColor="#0F172A" floodOpacity="1" />
-        </filter>
-      </defs>
-
       {layers.map((layer, idx) => {
         const x = 30;
         const y = 20 + idx * (layerHeight + gap);
@@ -659,7 +700,7 @@ function renderStackSvg(
         const fill = profile.colors.branchFills[idx % profile.colors.branchFills.length];
 
         return (
-          <g key={layer.id} opacity={opacity} filter="url(#stack-shadow)" className="transition-all duration-200">
+          <g key={layer.id} opacity={opacity} className="transition-all duration-200">
             <rect
               x={x}
               y={y}

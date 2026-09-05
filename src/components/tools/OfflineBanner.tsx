@@ -15,7 +15,7 @@ export const OfflineBanner: React.FC<{ label?: string; className?: string }> = (
     <Zap className="w-4 h-4 shrink-0 mt-0.5" />
     <span>
       {label ||
-        'Offline draft — no AI Provider was reachable, so this content was assembled locally. Reconnect and regenerate for full AI output.'}
+        'Offline draft. No AI Provider was reachable, so this content was assembled locally. Reconnect and regenerate for full AI output.'}
     </span>
   </div>
 );

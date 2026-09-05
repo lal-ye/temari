@@ -13,25 +13,31 @@ import {
   Brain,
   RotateCw,
   Trash2,
+  Eye,
+  EyeOff,
 } from 'lucide-react';
 import { getStudyStore } from '../../services/studyStore';
 import { AIProvider } from '../../types';
 import { AVAILABLE_PROVIDERS, getProviderConfig, getModelOption } from './modelPresentation';
-import { resolveActiveModel } from '../../../shared/aiCatalog';
+import { resolveActiveModel, findRetiredModelReplacement } from '../../../shared/aiCatalog';
+import { diagnoseConnectionError, type Diagnosis } from '../../services/ai/diagnoseError';
 import { ModelPicker } from './ModelPicker';
 import { aiConnection } from '../../services/aiConnection';
-import { Modal } from '../ui/Modal';
+import { Modal, type MorphOrigin } from '../ui/Modal';
 
 interface ApiKeySettingsModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSaved: () => void;
+  /** Control that opened this dialog, so it can morph out of it. */
+  originRef?: React.RefObject<MorphOrigin | null>;
 }
 
 export const ApiKeySettingsModal: React.FC<ApiKeySettingsModalProps> = ({
   isOpen,
   onClose,
   onSaved,
+  originRef,
 }) => {
   const store = getStudyStore();
   const currentSettings = store.settings;
@@ -58,7 +64,18 @@ export const ApiKeySettingsModal: React.FC<ApiKeySettingsModalProps> = ({
     latencyMs?: number;
     message: string;
     sampleReply?: string;
+    /** Present only on failure: what went wrong and what to do. */
+    diagnosis?: Diagnosis;
   } | null>(null);
+  /** Keys are write-once in the UI; revealing is deliberate, not the default. */
+  const [showKey, setShowKey] = useState(false);
+
+  /**
+   * A model the learner previously chose that the provider has since retired.
+   * Surfaced as an offer to switch rather than migrated silently - they picked
+   * that model on purpose and deserve to know it is gone.
+   */
+  const retiredReplacement = findRetiredModelReplacement(selectedProvider, selectedModel);
 
   // Sync state when modal is opened
   useEffect(() => {
@@ -71,6 +88,7 @@ export const ApiKeySettingsModal: React.FC<ApiKeySettingsModalProps> = ({
       setCustomBaseUrl(s.customBaseUrl || 'http://localhost:11434/v1');
       setCustomModelName(s.customModelName || 'llama3.2');
       setTestResult(null);
+      setShowKey(false);
     }
   }, [isOpen]);
 
@@ -150,13 +168,27 @@ export const ApiKeySettingsModal: React.FC<ApiKeySettingsModalProps> = ({
         setTestResult({
           success: false,
           latencyMs: res.latencyMs,
-          message: res.error || 'Connection failed. Check provider credentials, model name, or network CORS/endpoint.',
+          message: res.error || 'Connection failed.',
+          diagnosis: diagnoseConnectionError({
+            message: res.error || '',
+            provider: selectedProvider,
+            hasKey: Boolean(keyToTest),
+            isLocal: selectedProvider === 'custom',
+            baseUrl: urlToTest,
+          }),
         });
       }
     } catch (err: any) {
       setTestResult({
         success: false,
-        message: err.message || 'Error executing test request.',
+        message: err?.message || 'Error executing test request.',
+        diagnosis: diagnoseConnectionError({
+          message: err?.message || '',
+          provider: selectedProvider,
+          hasKey: Boolean(keyToTest),
+          isLocal: selectedProvider === 'custom',
+          baseUrl: urlToTest,
+        }),
       });
     } finally {
       setTesting(false);
@@ -188,11 +220,12 @@ export const ApiKeySettingsModal: React.FC<ApiKeySettingsModalProps> = ({
     <Modal
       open={isOpen}
       onClose={onClose}
-      title="Model-Agnostic AI Architecture"
-      subtitle="Switch between Google Gemini, OpenAI, Claude, Groq, DeepSeek, OpenRouter, or Local Ollama"
+      title="AI provider and model"
+      subtitle="Choose who generates your notes, and with which model"
       icon={<Cpu className="w-5 h-5 text-slate-900" />}
       iconClassName="bg-[#FEF08A] text-slate-950"
       maxWidthClassName="max-w-2xl"
+      originRef={originRef}
     >
       <div className="space-y-4">
         {/* Detailed Provider and Model Picker */}
@@ -212,15 +245,15 @@ export const ApiKeySettingsModal: React.FC<ApiKeySettingsModalProps> = ({
               <div className="flex items-center gap-2">
                 <Key className="w-4 h-4 text-purple-600" />
                 <span className="text-xs font-black text-slate-900 uppercase tracking-wider">
-                  3. {activeProviderConfig.name} Configuration
+                  {activeProviderConfig.name} key
                 </span>
               </div>
               <span className="text-[10px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded border border-slate-300">
                 {selectedProvider === 'gemini'
-                  ? 'Built-in Container Key Active'
+                  ? 'Server key available'
                   : selectedProvider === 'custom'
-                  ? 'Local Engine'
-                  : 'BYOK (Bring Your Own Key)'}
+                  ? 'Runs locally'
+                  : 'Your own key'}
               </span>
             </div>
 
@@ -229,7 +262,7 @@ export const ApiKeySettingsModal: React.FC<ApiKeySettingsModalProps> = ({
               <div className="space-y-3 pt-1">
                 <div>
                   <label className="block text-[11px] font-black text-slate-800 uppercase mb-1">
-                    API Base URL (OpenAI-compatible)
+Base URL
                   </label>
                   <input
                     type="text"
@@ -266,7 +299,7 @@ export const ApiKeySettingsModal: React.FC<ApiKeySettingsModalProps> = ({
 
                 <div>
                   <label className="block text-[11px] font-black text-slate-800 uppercase mb-1">
-                    Model Identifier
+Model name
                   </label>
                   <input
                     type="text"
@@ -279,7 +312,7 @@ export const ApiKeySettingsModal: React.FC<ApiKeySettingsModalProps> = ({
 
                 <div>
                   <label className="block text-[11px] font-black text-slate-800 uppercase mb-1">
-                    Optional Bearer API Key
+API key (optional for local)
                   </label>
                   <input
                     type="password"
@@ -295,29 +328,62 @@ export const ApiKeySettingsModal: React.FC<ApiKeySettingsModalProps> = ({
               <div className="space-y-2 pt-1">
                 <p className="text-[11px] text-slate-600 leading-relaxed font-medium">
                   {selectedProvider === 'gemini'
-                    ? 'A default Gemini 2.5 Flash server key is bundled with this deployment. You can optionally enter your personal Google AI Studio key to bypass limits.'
-                    : `Enter your API key for ${activeProviderConfig.name}. The key is stored securely in your browser's private store and never logged on public servers.`}
+                    ? 'This deployment ships a shared Gemini key, so you can start without one. Add your own to avoid the shared rate limit.'
+                    : `Stored in this browser only, and sent to ${activeProviderConfig.name} through Temari's server when you generate.`}
                 </p>
 
-                <input
-                  type="password"
-                  value={currentKeyForProvider}
-                  onChange={(e) => handleKeyChange(e.target.value)}
-                  placeholder={
-                    selectedProvider === 'gemini'
-                      ? 'AIzaSy... (Optional, leave blank to use container key)'
-                      : selectedProvider === 'openai'
-                      ? 'sk-proj-... (OpenAI API key)'
-                      : selectedProvider === 'anthropic'
-                      ? 'sk-ant-... (Anthropic API key)'
-                      : selectedProvider === 'groq'
-                      ? 'gsk_... (Groq Cloud API key)'
-                      : selectedProvider === 'deepseek'
-                      ? 'sk-... (DeepSeek API key)'
-                      : 'sk-or-... (OpenRouter API key)'
-                  }
-                  className="w-full px-3 py-2 bg-slate-50 border-2 border-slate-900 rounded-xl text-xs font-mono text-slate-900 focus:outline-none focus:bg-white focus:ring-2 focus:ring-yellow-400"
-                />
+                <div className="relative">
+                  <input
+                    type={showKey ? 'text' : 'password'}
+                    value={currentKeyForProvider}
+                    onChange={(e) => handleKeyChange(e.target.value.trim())}
+                    aria-label={`${activeProviderConfig.name} API key`}
+                    aria-describedby="key-shape-hint"
+                    autoComplete="off"
+                    spellCheck={false}
+                    placeholder={activeProviderConfig.keyPlaceholder}
+                    className="w-full pl-3 pr-20 py-2 bg-slate-50 border-2 border-slate-900 rounded-xl text-xs font-mono text-slate-900 focus:outline-hidden focus:bg-white focus:ring-2 focus:ring-amber-400"
+                  />
+                  <div className="absolute right-1.5 top-1/2 -translate-y-1/2 flex items-center gap-1">
+                    {/* Confirms a paste landed without revealing the secret. */}
+                    {currentKeyForProvider && (
+                      <span className="text-[10px] font-mono font-bold text-slate-500 tabular-nums">
+                        {currentKeyForProvider.length}
+                      </span>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => setShowKey((v) => !v)}
+                      className="p-1 text-slate-600 hover:text-slate-900 rounded"
+                      aria-label={showKey ? 'Hide key' : 'Show key'}
+                      title={showKey ? 'Hide key' : 'Show key'}
+                    >
+                      {showKey ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Shape check, done locally. Catches the two mistakes that
+                    actually happen - pasting the wrong provider's key, and a
+                    truncated copy - before spending a round trip on them. */}
+                {currentKeyForProvider && (() => {
+                  const expected: Partial<Record<string, { prefix: string; label: string }>> = {
+                    openai: { prefix: 'sk-', label: 'sk-...' },
+                    anthropic: { prefix: 'sk-ant-', label: 'sk-ant-...' },
+                    groq: { prefix: 'gsk_', label: 'gsk_...' },
+                    openrouter: { prefix: 'sk-or-', label: 'sk-or-...' },
+                    gemini: { prefix: 'AIza', label: 'AIza...' },
+                  };
+                  const rule = expected[selectedProvider];
+                  if (!rule || currentKeyForProvider.startsWith(rule.prefix)) return null;
+                  return (
+                    <p id="key-shape-hint" className="text-[10px] font-bold text-amber-700">
+                      {activeProviderConfig.name} keys usually start with{' '}
+                      <span className="font-mono">{rule.label}</span>. This may be a key for a
+                      different provider.
+                    </p>
+                  );
+                })()}
 
                 <div className="flex items-center justify-between text-xs pt-0.5">
                   {helpLink ? (
@@ -348,26 +414,84 @@ export const ApiKeySettingsModal: React.FC<ApiKeySettingsModalProps> = ({
             )}
           </div>
 
-          {/* Test Status Feedback */}
+          {/* Retired-model notice. Shown before any test, because the test
+              would fail with a 404 that looks like a Temari bug. */}
+          {retiredReplacement && (
+            <div className="p-3 rounded-xl border-2 border-amber-600 bg-amber-50 flex items-start gap-2.5">
+              <AlertCircle className="w-4 h-4 text-amber-700 shrink-0 mt-0.5" aria-hidden="true" />
+              <div className="flex-1 min-w-0">
+                <p className="text-[11px] font-black text-amber-950">
+                  {activeProviderConfig.name} has retired this model
+                </p>
+                <p className="mt-0.5 text-[11px] font-medium text-amber-900 text-pretty">
+                  <span className="font-mono">{selectedModel}</span> no longer accepts requests.
+                  Switch to <span className="font-mono">{retiredReplacement}</span> to keep
+                  generating.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedModel(retiredReplacement);
+                    setTestResult(null);
+                  }}
+                  className="btn-kinetic mt-2 px-2.5 py-1 bg-amber-200 hover:bg-amber-300 text-amber-950 rounded-lg border-2 border-slate-900 text-[10px] font-black shadow-neo-xs"
+                >
+                  Use {retiredReplacement}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Test result. On failure this leads with the cause and the fix,
+              not the provider's raw error string - "fetch failed" is the same
+              message for a dead DNS lookup and an Ollama that is not running,
+              and neither tells the learner what to do. */}
           {testResult && (
             <div
-              className={`p-3 rounded-xl border-2 text-xs flex items-start gap-2 shadow-neo-sm ${
-                testResult.success
-                  ? 'bg-emerald-50 border-slate-900 text-emerald-950'
-                  : 'bg-rose-50 border-slate-900 text-rose-950'
+              role="status"
+              aria-live="polite"
+              className={`p-3 rounded-xl border-2 border-slate-900 text-xs flex items-start gap-2.5 shadow-neo-sm ${
+                testResult.success ? 'bg-emerald-50' : 'bg-rose-50'
               }`}
             >
               {testResult.success ? (
-                <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" aria-hidden="true" />
               ) : (
-                <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+                <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" aria-hidden="true" />
               )}
-              <div className="flex-1 space-y-1">
-                <div className="font-bold text-[11px]">{testResult.message}</div>
-                {testResult.sampleReply && (
-                  <div className="p-2 bg-white/80 rounded-lg border border-slate-200 text-[10px] font-mono text-slate-700">
-                    Model response: "{testResult.sampleReply.slice(0, 150)}..."
-                  </div>
+
+              <div className="flex-1 min-w-0 space-y-1">
+                {testResult.success ? (
+                  <>
+                    <p className="font-black text-[11px] text-emerald-950">
+                      Working
+                      {testResult.latencyMs !== undefined && (
+                        <span className="font-bold tabular-nums"> · replied in {testResult.latencyMs}ms</span>
+                      )}
+                    </p>
+                    <p className="text-[11px] font-medium text-emerald-900">{testResult.message}</p>
+                  </>
+                ) : (
+                  <>
+                    <p className="font-black text-[11px] text-rose-950">
+                      {testResult.diagnosis?.title ?? 'The connection test failed'}
+                    </p>
+                    <p className="text-[11px] font-medium text-rose-900 text-pretty">
+                      {testResult.diagnosis?.fix}
+                    </p>
+                    {/* Raw provider text kept available but demoted: useful
+                        when searching for the error, noise otherwise. */}
+                    {testResult.diagnosis?.kind !== 'unknown' && testResult.message && (
+                      <details className="pt-0.5">
+                        <summary className="text-[10px] font-black text-rose-800 cursor-pointer">
+                          Provider response
+                        </summary>
+                        <p className="mt-1 p-2 bg-white/70 rounded-lg border border-rose-200 text-[10px] font-mono text-slate-700 break-words">
+                          {testResult.message}
+                        </p>
+                      </details>
+                    )}
+                  </>
                 )}
               </div>
             </div>
@@ -384,12 +508,12 @@ export const ApiKeySettingsModal: React.FC<ApiKeySettingsModalProps> = ({
               {testing ? (
                 <>
                   <RotateCw className="w-3.5 h-3.5 animate-spin" />
-                  Pinging Model...
+                  Testing...
                 </>
               ) : (
                 <>
                   <Zap className="w-3.5 h-3.5 text-amber-500 fill-amber-400" />
-                  Test Active Provider & Model
+                  Test this key
                 </>
               )}
             </button>
@@ -407,7 +531,7 @@ export const ApiKeySettingsModal: React.FC<ApiKeySettingsModalProps> = ({
                 onClick={handleSave}
                 className="px-5 py-2 text-xs font-black text-slate-900 bg-[#FEF08A] hover:bg-yellow-300 rounded-xl border-2 border-slate-900 shadow-neo-sm hover:shadow-neo active:translate-y-0.5 transition-all"
               >
-                Save & Apply Configuration
+Save
               </button>
             </div>
           </div>

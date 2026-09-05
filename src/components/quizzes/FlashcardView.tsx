@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
+import type { MorphOrigin } from '../ui/Modal';
+import { prefersReducedMotion } from '../../utils/viewTransition';
 import { Flashcard } from '../../types';
 import {
   RotateCw,
@@ -19,7 +21,7 @@ interface FlashcardViewProps {
   quizName: string;
   flashcards: Flashcard[];
   onFinish?: (score: number, masteredCount: number) => void;
-  onHighlightTerm?: (term: string, context?: string) => void;
+  onHighlightTerm?: (term: string, context?: string, origin?: MorphOrigin) => void;
   onClose: () => void;
 }
 
@@ -49,6 +51,14 @@ export const FlashcardView: React.FC<FlashcardViewProps> = ({
 
   const pointerStartRef = useRef<{ x: number; y: number; time: number } | null>(null);
   const hasDraggedRef = useRef(false);
+  /** Set once a lightweight action has fired mid-swipe, so it fires only once. */
+  const committedDuringSwipeRef = useRef(false);
+  /** Last sample, for the release velocity. */
+  const lastSampleRef = useRef<{ x: number; y: number; time: number } | null>(null);
+  /** The dragged surface, so an in-flight settle can be read and interrupted. */
+  const cardSurfaceRef = useRef<HTMLDivElement | null>(null);
+  /** Offset adopted from an interrupted settle; new deltas are added to it. */
+  const interruptOffsetRef = useRef<{ x: number; y: number } | null>(null);
 
   const currentCard = cards[currentIndex];
 
@@ -56,8 +66,7 @@ export const FlashcardView: React.FC<FlashcardViewProps> = ({
   useEffect(() => {
     if (!showGhostHand) return;
 
-    const prefersReducedMotion = typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    if (prefersReducedMotion) {
+    if (prefersReducedMotion()) {
       setShowGhostHand(false);
       localStorage.setItem('temari_swipe_hint_seen', 'true');
       return;
@@ -175,9 +184,63 @@ export const FlashcardView: React.FC<FlashcardViewProps> = ({
     }
   };
 
+  /*
+   * Gesture commit rules (learn-ui, "Kinetic physics"):
+   *
+   *   Navigation (prev/next) is lightweight and reversible, so it fires DURING
+   *   the swipe the moment the card clears the threshold — waiting for release
+   *   would feel broken and gives less affordance.
+   *
+   *   Rating a card (mastered / needs review) mutates drill state, so it waits
+   *   for release however far the card has been dragged. That is what buys the
+   *   learner a peek: cross the line, change your mind, drag back, nothing
+   *   happened.
+   *
+   * Distance is not the only signal — a short fast flick counts too, so both
+   * paths also accept a velocity above VELOCITY_THRESHOLD.
+   */
+  const DISTANCE_THRESHOLD = 65;
+  const VELOCITY_THRESHOLD = 0.4; // px/ms
+
+  const sampleVelocity = () => {
+    const start = pointerStartRef.current;
+    const last = lastSampleRef.current;
+    if (!start || !last) return 0;
+    const elapsed = last.time - start.time;
+    if (elapsed <= 0) return 0;
+    return Math.hypot(last.x - start.x, last.y - start.y) / elapsed;
+  };
+
+  /**
+   * Read the surface's live transform. A settle animation may be mid-flight, in
+   * which case the committed React state says 0 but the card is visibly
+   * somewhere else; grabbing it must continue from where it *looks*, not
+   * teleport it back to centre.
+   */
+  const readLiveOffset = () => {
+    const el = cardSurfaceRef.current;
+    if (!el) return { x: 0, y: 0 };
+    const t = new DOMMatrixReadOnly(getComputedStyle(el).transform);
+    return { x: t.m41, y: t.m42 };
+  };
+
   // Pointer & Gesture Event Handlers
   const handlePointerDown = (e: React.PointerEvent) => {
     dismissGhostHand();
+
+    // Interrupt any settle in progress and adopt its current position, so the
+    // gesture that started the motion can also take it over mid-flight.
+    const live = readLiveOffset();
+    const interrupting = Math.abs(live.x) > 0.5 || Math.abs(live.y) > 0.5;
+    if (interrupting) {
+      setDragOffset(live);
+      setGestureAxis(Math.abs(live.x) >= Math.abs(live.y) ? 'horizontal' : 'vertical');
+      hasDraggedRef.current = true;
+    }
+    interruptOffsetRef.current = interrupting ? live : null;
+
+    committedDuringSwipeRef.current = false;
+    lastSampleRef.current = { x: e.clientX, y: e.clientY, time: Date.now() };
     pointerStartRef.current = { x: e.clientX, y: e.clientY, time: Date.now() };
     hasDraggedRef.current = false;
     setIsDragging(true);
@@ -191,9 +254,14 @@ export const FlashcardView: React.FC<FlashcardViewProps> = ({
 
   const handlePointerMove = (e: React.PointerEvent) => {
     if (!pointerStartRef.current || !isDragging) return;
+    if (committedDuringSwipeRef.current) return;
+
+    lastSampleRef.current = { x: e.clientX, y: e.clientY, time: Date.now() };
 
     const dx = e.clientX - pointerStartRef.current.x;
     const dy = e.clientY - pointerStartRef.current.y;
+
+    const base = interruptOffsetRef.current ?? { x: 0, y: 0 };
 
     if (!hasDraggedRef.current && Math.hypot(dx, dy) > 8) {
       hasDraggedRef.current = true;
@@ -209,9 +277,23 @@ export const FlashcardView: React.FC<FlashcardViewProps> = ({
       const atStart = currentIndex === 0 && dx > 0;
       const atEnd = currentIndex === cards.length - 1 && dx < 0;
       const factor = atStart || atEnd ? 0.25 : 0.85;
-      setDragOffset({ x: dx * factor, y: 0 });
+      const offset = base.x + dx * factor;
+      setDragOffset({ x: offset, y: 0 });
+
+      // Lightweight: navigate the moment the card reaches its logical position.
+      // Never mid-swipe at the boundaries — there is nowhere to go, and the
+      // last card would finish the drill, which is not lightweight.
+      const canAdvance = !atStart && !atEnd;
+      if (canAdvance && Math.abs(offset) > DISTANCE_THRESHOLD) {
+        committedDuringSwipeRef.current = true;
+        if (offset < 0) handleNext();
+        else handlePrev();
+        setDragOffset({ x: 0, y: 0 });
+        setGestureAxis(null);
+      }
     } else if (gestureAxis === 'vertical' && isFlipped) {
-      setDragOffset({ x: 0, y: dy * 0.85 });
+      // Rating: track the finger, but commit nothing until release.
+      setDragOffset({ x: 0, y: base.y + dy * 0.85 });
     }
   };
 
@@ -222,28 +304,35 @@ export const FlashcardView: React.FC<FlashcardViewProps> = ({
       // ignore
     }
 
-    if (!hasDraggedRef.current) {
+    const velocity = sampleVelocity();
+    const flicked = velocity > VELOCITY_THRESHOLD;
+
+    if (committedDuringSwipeRef.current) {
+      // Navigation already fired mid-swipe; nothing left to commit.
+    } else if (!hasDraggedRef.current) {
       // Tap or Click: flip card
       setIsFlipped((f) => !f);
-    } else {
-      // Gesture triggers
-      if (gestureAxis === 'horizontal') {
-        if (dragOffset.x < -65) {
-          handleNext();
-        } else if (dragOffset.x > 65) {
-          handlePrev();
-        }
-      } else if (gestureAxis === 'vertical' && isFlipped) {
-        if (dragOffset.y < -65) {
-          // Swipe up: Hard / Need Practice
-          markNeedReview();
-        } else if (dragOffset.y > 65) {
-          // Swipe down: Easy / Mastered
-          markMastered();
-        }
+    } else if (gestureAxis === 'horizontal') {
+      // Only reachable at the deck boundaries or below the mid-swipe threshold.
+      if (dragOffset.x < 0 && (dragOffset.x < -DISTANCE_THRESHOLD || flicked)) {
+        handleNext();
+      } else if (dragOffset.x > 0 && (dragOffset.x > DISTANCE_THRESHOLD || flicked)) {
+        handlePrev();
+      }
+    } else if (gestureAxis === 'vertical' && isFlipped) {
+      // Destructive-ish: rating is recorded only now, on release.
+      if (dragOffset.y < 0 && (dragOffset.y < -DISTANCE_THRESHOLD || flicked)) {
+        // Swipe up: Hard / Need Practice
+        markNeedReview();
+      } else if (dragOffset.y > 0 && (dragOffset.y > DISTANCE_THRESHOLD || flicked)) {
+        // Swipe down: Easy / Mastered
+        markMastered();
       }
     }
 
+    committedDuringSwipeRef.current = false;
+    lastSampleRef.current = null;
+    interruptOffsetRef.current = null;
     setIsDragging(false);
     setDragOffset({ x: 0, y: 0 });
     setGestureAxis(null);
@@ -257,6 +346,9 @@ export const FlashcardView: React.FC<FlashcardViewProps> = ({
     setGestureAxis(null);
     pointerStartRef.current = null;
     hasDraggedRef.current = false;
+    committedDuringSwipeRef.current = false;
+    lastSampleRef.current = null;
+    interruptOffsetRef.current = null;
   };
 
   if (isComplete) {
@@ -362,8 +454,13 @@ export const FlashcardView: React.FC<FlashcardViewProps> = ({
             <span className="font-ethiopic font-bold text-yellow-300 text-sm">ተማሪ</span> AI?
           </span>
           <button
-            onClick={() => {
-              if (onHighlightTerm) onHighlightTerm(selectedText, isFlipped ? currentCard?.answer : currentCard?.question);
+            onClick={(e) => {
+              if (onHighlightTerm)
+                onHighlightTerm(
+                  selectedText,
+                  isFlipped ? currentCard?.answer : currentCard?.question,
+                  e.currentTarget
+                );
               setSelectedText(null);
             }}
             className="px-2.5 py-1 bg-yellow-300 text-slate-950 font-black text-xs rounded-lg border border-slate-900 hover:bg-yellow-200 transition-colors shadow-neo-sm"
@@ -454,6 +551,7 @@ export const FlashcardView: React.FC<FlashcardViewProps> = ({
           {/* Keyed reveal: ease-out translation when entering from the deck */}
           <div
             key={currentIndex}
+            ref={cardSurfaceRef}
             className="w-full h-full flashcard-reveal"
             style={{
               transform:
@@ -462,6 +560,11 @@ export const FlashcardView: React.FC<FlashcardViewProps> = ({
                   : gestureAxis === 'vertical' && isFlipped
                   ? `translateY(${dragOffset.y}px)`
                   : undefined,
+              // The settle is a transition on the same property the gesture
+              // drives, so a new pointerdown (which sets isDragging) drops it
+              // to `none` and the card is back under the finger on the next
+              // frame. An in-flight settle never has to finish before the
+              // interface starts listening again.
               transition: isDragging
                 ? 'none'
                 : 'transform 260ms cubic-bezier(0.34, 1.3, 0.64, 1)',
@@ -502,7 +605,7 @@ export const FlashcardView: React.FC<FlashcardViewProps> = ({
 
                 <div className="flex items-center justify-between text-[11px] font-bold text-slate-600 pt-3 border-t-2 border-slate-200">
                   <span className="flex items-center gap-1.5">
-                    <RotateCw className="w-3.5 h-3.5 text-slate-900" /> Tap/Space to flip • Swipe ◄ ►
+                    <RotateCw className="w-3.5 h-3.5 text-slate-900" /> Tap or press Space to flip
                   </span>
                   <span className="text-cyan-800 font-black">Highlight text for ተማሪ AI</span>
                 </div>
@@ -553,7 +656,7 @@ export const FlashcardView: React.FC<FlashcardViewProps> = ({
 
                 <div className="flex items-center justify-between text-[11px] font-bold text-slate-600 pt-3 border-t-2 border-slate-200">
                   <span className="flex items-center gap-1.5">
-                    <RotateCw className="w-3.5 h-3.5 text-slate-900" /> Swipe ▲ Hard • ▼ Easy
+                    <RotateCw className="w-3.5 h-3.5 text-slate-900" /> Swipe up for hard, down for easy
                   </span>
                   <span className="text-cyan-800 font-black">Highlight text for ተማሪ AI</span>
                 </div>
@@ -572,7 +675,7 @@ export const FlashcardView: React.FC<FlashcardViewProps> = ({
                   <Hand className="w-7 h-7 transform -rotate-12" />
                 </div>
                 <div className="px-3.5 py-1.5 bg-slate-900 text-white text-[11px] font-black rounded-xl border border-yellow-300 shadow-neo flex items-center gap-1.5 whitespace-nowrap">
-                  <span>Swipe ◄ ► to navigate • Swipe ▲ ▼ on back to rate</span>
+                  <span>Swipe sideways to move between cards</span>
                 </div>
               </div>
             </div>

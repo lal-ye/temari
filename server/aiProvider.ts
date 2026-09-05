@@ -758,20 +758,36 @@ export async function fetchLiveProviderModels(options: {
         const baseUrl = (options.baseUrl?.trim() || 'http://localhost:11434/v1').replace(/\/+$/, '');
         const host = baseUrl.replace(/\/v1$/, '');
 
-        // Try Ollama /api/tags first
+        // Try Ollama's native /api/tags first.
+        //
+        // A 200 is NOT sufficient proof this is Ollama. LM Studio, vLLM and
+        // most reverse proxies answer 200 with their own body for unknown
+        // paths, and the previous code took any 200 as authoritative - so it
+        // returned an empty model list and never fell through to the standard
+        // endpoint, leaving the picker saying "no models" for servers that
+        // were listing models perfectly well one path over. Require the
+        // Ollama-shaped payload before believing it.
         try {
           const ollamaRes = await fetch(`${host}/api/tags`);
           if (ollamaRes.ok) {
             const data: any = await ollamaRes.json();
-            const models: LiveModelItem[] = (data.models || []).map((m: any) => ({
-              id: m.name,
-              name: m.name,
-              description: `Local Ollama model (${(m.size / (1024 * 1024 * 1024)).toFixed(1)} GB)`,
-            }));
-            return { success: true, provider, models };
+            const tags: any[] = Array.isArray(data?.models) ? data.models : [];
+            const looksLikeOllama = tags.length > 0 && typeof tags[0]?.name === 'string';
+
+            if (looksLikeOllama) {
+              const models: LiveModelItem[] = tags.map((m: any) => ({
+                id: m.name,
+                name: m.name,
+                description:
+                  typeof m.size === 'number'
+                    ? `Local Ollama model (${(m.size / (1024 * 1024 * 1024)).toFixed(1)} GB)`
+                    : 'Local Ollama model',
+              }));
+              return { success: true, provider, models };
+            }
           }
         } catch {
-          // continue to /v1/models
+          // Not Ollama, or not reachable on that path: fall through.
         }
 
         // Try standard OpenAI compatible /models
@@ -781,11 +797,22 @@ export async function fetchLiveProviderModels(options: {
         }
 
         const data: any = await res.json();
-        const models: LiveModelItem[] = (data.data || []).map((m: any) => ({
-          id: m.id,
-          name: m.id,
-          description: 'Local OpenAI-compatible model',
-        }));
+        const models: LiveModelItem[] = (Array.isArray(data?.data) ? data.data : []).map(
+          (m: any) => ({
+            id: m.id,
+            name: m.id,
+            description: 'Local OpenAI-compatible model',
+          })
+        );
+
+        if (models.length === 0) {
+          return {
+            success: false,
+            provider,
+            models: [],
+            error: `${baseUrl} answered but listed no models. If this is Ollama, pull one first, for example "ollama pull llama3.2".`,
+          };
+        }
 
         return { success: true, provider, models };
       }

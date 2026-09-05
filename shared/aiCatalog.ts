@@ -45,7 +45,8 @@ export const AI_PROVIDERS: readonly AIProviderInfo[] = [
   {
     id: 'openai',
     name: 'OpenAI',
-    defaultModel: 'gpt-4o-mini',
+    // gpt-4o and the whole GPT-4 generation retire 2026-10-23.
+    defaultModel: 'gpt-5.6-terra',
     requiresKey: true,
     envKeyName: 'OPENAI_API_KEY',
     defaultBaseUrl: 'https://api.openai.com/v1',
@@ -53,7 +54,8 @@ export const AI_PROVIDERS: readonly AIProviderInfo[] = [
   {
     id: 'anthropic',
     name: 'Anthropic Claude',
-    defaultModel: 'claude-3-5-haiku-20241022',
+    // claude-3-5-haiku retired 2026-02-19.
+    defaultModel: 'claude-haiku-4-5',
     requiresKey: true,
     envKeyName: 'ANTHROPIC_API_KEY',
     defaultBaseUrl: 'https://api.anthropic.com/v1',
@@ -69,7 +71,8 @@ export const AI_PROVIDERS: readonly AIProviderInfo[] = [
   {
     id: 'deepseek',
     name: 'DeepSeek',
-    defaultModel: 'deepseek-chat',
+    // deepseek-chat / deepseek-reasoner were retired 2026-07-24.
+    defaultModel: 'deepseek-v4-flash',
     requiresKey: true,
     envKeyName: 'DEEPSEEK_API_KEY',
     defaultBaseUrl: 'https://api.deepseek.com',
@@ -77,7 +80,7 @@ export const AI_PROVIDERS: readonly AIProviderInfo[] = [
   {
     id: 'openrouter',
     name: 'OpenRouter',
-    defaultModel: 'meta-llama/llama-3.3-70b-instruct',
+    defaultModel: 'deepseek/deepseek-v4-flash',
     requiresKey: true,
     envKeyName: 'OPENROUTER_API_KEY',
     defaultBaseUrl: 'https://openrouter.ai/api/v1',
@@ -92,6 +95,57 @@ export const AI_PROVIDERS: readonly AIProviderInfo[] = [
 ];
 
 export const DEFAULT_AI_PROVIDER: AIProviderId = 'gemini';
+
+/**
+ * Model ids that providers have retired, mapped to their replacement.
+ *
+ * A learner who picked a model a year ago has that id in localStorage. When
+ * the provider retires it the request fails with a 404 that reads like a bug
+ * in Temari, so selections are migrated on read rather than left to rot. Keyed
+ * `provider:model` because ids are only unique within a provider.
+ *
+ * Entries can be removed once no plausible install still holds the old id.
+ */
+export const RETIRED_MODELS: Record<string, string> = {
+  // OpenAI: GPT-4 generation retires 2026-10-23.
+  'openai:gpt-4o': 'gpt-5.6-sol',
+  'openai:gpt-4o-mini': 'gpt-5.6-terra',
+  'openai:gpt-4-turbo': 'gpt-5.6-sol',
+  'openai:gpt-3.5-turbo': 'gpt-5.6-luna',
+  'openai:o1': 'gpt-5.6-sol',
+  'openai:o3-mini': 'gpt-5.6-terra',
+  'openai:o4-mini': 'gpt-5.6-terra',
+
+  // Anthropic: 3.x line retired through 2026.
+  'anthropic:claude-3-5-haiku-20241022': 'claude-haiku-4-5',
+  'anthropic:claude-3-5-sonnet-20241022': 'claude-sonnet-5',
+  'anthropic:claude-3-7-sonnet-20250219': 'claude-sonnet-5',
+  'anthropic:claude-3-opus-20240229': 'claude-opus-5',
+
+  // DeepSeek: legacy aliases hard-retired 2026-07-24.
+  'deepseek:deepseek-chat': 'deepseek-v4-flash',
+  'deepseek:deepseek-reasoner': 'deepseek-v4-pro',
+  'deepseek:deepseek-coder': 'deepseek-v4-flash',
+
+  // Google: 2.0 line shut down 2026-06-01.
+  'gemini:gemini-2.0-flash': 'gemini-2.5-flash',
+  'gemini:gemini-2.0-flash-lite': 'gemini-2.5-flash-lite',
+  'gemini:gemini-1.5-pro': 'gemini-2.5-pro',
+  'gemini:gemini-1.5-flash': 'gemini-2.5-flash',
+};
+
+/**
+ * Replacement for a retired model id, or null if the id is still current.
+ * Callers surface the swap rather than performing it silently: a learner who
+ * chose a specific model deserves to know it changed underneath them.
+ */
+export function findRetiredModelReplacement(
+  providerId: string | undefined,
+  modelId: string | undefined
+): string | null {
+  if (!providerId || !modelId) return null;
+  return RETIRED_MODELS[`${providerId}:${modelId}`] ?? null;
+}
 
 /** Structural slice of the learner's settings relevant to model selection. */
 export interface ModelSelection {

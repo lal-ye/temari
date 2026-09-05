@@ -22,12 +22,13 @@ export const DEFAULT_SETTINGS: UserSettings = {
   selectedModel: 'gemini-2.5-flash',
   providerKeys: {},
   customBaseUrl: 'http://localhost:11434/v1',
-  customModelName: 'llama3.2:3b',
+  customModelName: 'llama3.2',
   theme: 'neobrutalist',
   pomodoroWorkMinutes: 25,
   pomodoroBreakMinutes: 5,
   pomodoroLongBreakMinutes: 15,
   soundEnabled: true,
+  zenMode: false,
 };
 
 export const SEED_SUBJECTS: Subject[] = [

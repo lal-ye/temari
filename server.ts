@@ -108,7 +108,25 @@ Specifications:
 1. Header Hierarchy: Use # for main title, ## for key modules, ### for concepts.
 2. Comparison Matrix: Include Markdown tables (|...|) comparing contrasting concepts where appropriate.
 3. Callouts: Include blockquotes with tags: > [!NOTE], > [!IMPORTANT], > [!TIP].
-4. Concept Diagram: Generate an editorial concept map or process diagram using \`\`\`diagram \\n root((Core Subject)) \\n   Branch Name \\n     Sub-concept 1 \\n     Sub-concept 2 \\n \`\`\`. Do NOT use Mermaid syntax or external library tags; use clean indented structure for Temari's native editorial vector diagram system.
+4. Figures: When a diagram teaches more than a paragraph would, emit ONE fenced block of JSON. Temari draws the picture; you supply only the structure.
+
+\`\`\`diagram
+{"version":1,"type":"loop","title":"Cellular respiration","subtitle":"Each pass yields ATP and feeds the next substrate","hub":{"id":"pool","label":"Cell energy pool","sublabel":"ATP / NADH"},"focal":["etc"],"nodes":[{"id":"glycolysis","label":"Glycolysis","sublabel":"Glucose to pyruvate","tag":"CYTOSOL"},{"id":"pyruvate","label":"Pyruvate oxidation","sublabel":"To acetyl-CoA"},{"id":"krebs","label":"Krebs cycle","sublabel":"Citric acid cycle","tag":"MATRIX"},{"id":"etc","label":"Electron transport","sublabel":"Oxidative phosphorylation","role":"focal"},{"id":"atp","label":"ATP synthesis","sublabel":"30-32 ATP per glucose"}],"edges":[{"from":"glycolysis","to":"pyruvate","label":"PYRUVATE"},{"from":"pyruvate","to":"krebs","label":"ACETYL-COA"},{"from":"krebs","to":"etc","label":"NADH"},{"from":"etc","to":"atp","label":"H+ GRADIENT"},{"from":"atp","to":"glycolysis","label":"ATP","kind":"return"}]}
+\`\`\`
+
+Figure rules, all mandatory:
+- JSON only inside the fence. Never Mermaid, never SVG, never prose or comments inside the fence.
+- "type" must be one of: loop | tree | process | pyramid.
+  Pick loop for cycles that regenerate a substrate or feed a shared pool (a loop MUST have a "hub" naming that pool).
+  Pick tree for taxonomy and part-of hierarchies. Pick process for linear stages. Pick pyramid for ranked levels.
+- Budget: at most 9 nodes, 12 edges, 2 focal ids. Aim for 5 to 7 nodes. If the topic needs more, emit an overview figure and a separate detail figure.
+- Lengths, counted in characters: node "label" at most 28, "sublabel" at most 36, edge "label" at most 14 and UPPERCASE, "tag" at most 12.
+- Node ids are kebab-case, unique, and every edge "from"/"to" must match a node id or the hub id.
+- Put the exam-critical concept in "focal". If everything is emphasised, nothing is.
+- Use the subject's real terminology. Do not invent filler nodes to reach a count.
+- If a three-column Markdown table would communicate it better, use a table and emit no figure.
+- Write labels in the language of the note, including Amharic where the source is Amharic.
+- At most one figure per major section.
 5. References: Include a references section at the bottom citing "${sourceName || 'Provided Course Material'}".`;
 
     const prompt = `Please generate rich study notes based on this source material:\n\n${material}`;

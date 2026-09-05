@@ -7,7 +7,10 @@ import { studyStore } from '../../hooks/useStudyStore';
 import { useActiveSubject, useNotes } from '../../hooks/useStudyStore';
 import { NoteViewer } from './NoteViewer';
 import { ModelPicker } from '../tools/ModelPicker';
-import { Modal } from '../ui/Modal';
+import { Modal, type MorphOrigin } from '../ui/Modal';
+import { GenerationProgress } from '../ui/GenerationProgress';
+import { EmptyState } from '../ui/EmptyState';
+import { useModalOrigin } from '../ui/useModalOrigin';
 import {
   FileText,
   Upload,
@@ -22,7 +25,7 @@ import {
 } from 'lucide-react';
 
 interface NotesManagerProps {
-  onHighlightTerm: (term: string, context?: string) => void;
+  onHighlightTerm: (term: string, context?: string, origin?: MorphOrigin) => void;
 }
 
 export const NotesManager: React.FC<NotesManagerProps> = ({ onHighlightTerm }) => {
@@ -37,6 +40,7 @@ export const NotesManager: React.FC<NotesManagerProps> = ({ onHighlightTerm }) =
   const [searchQuery, setSearchQuery] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [showGenerateModal, setShowGenerateModal] = useState(false);
+  const generateOrigin = useModalOrigin();
   const [editingNote, setEditingNote] = useState<StoredNote | null>(null);
 
   // Note generation form state
@@ -181,7 +185,10 @@ export const NotesManager: React.FC<NotesManagerProps> = ({ onHighlightTerm }) =
         </div>
 
         <button
-          onClick={() => setShowGenerateModal(true)}
+          onClick={(e) => {
+            generateOrigin.capture(e);
+            setShowGenerateModal(true);
+          }}
           className="flex items-center justify-center gap-2 px-5 py-2.5 bg-yellow-300 hover:bg-yellow-200 text-slate-950 font-black text-xs rounded-xl border-2 border-slate-900 shadow-neo transition-all active:translate-y-0.5 shrink-0"
         >
           <Sparkles className="w-4 h-4 text-slate-900" />
@@ -190,7 +197,7 @@ export const NotesManager: React.FC<NotesManagerProps> = ({ onHighlightTerm }) =
       </div>
 
       {generatedOffline && (
-        <OfflineBanner label="Offline draft — no AI Provider was reachable, so this note was assembled locally. Reconnect and regenerate for full AI notes." />
+        <OfflineBanner label="Offline draft. No AI Provider was reachable, so this note was assembled locally. Reconnect and regenerate for full AI notes." />
       )}
 
       {/* Main Grid: Sidebar List + Viewer */}
@@ -327,20 +334,23 @@ export const NotesManager: React.FC<NotesManagerProps> = ({ onHighlightTerm }) =
               }}
             />
           ) : (
-            <div className="bg-white border-3 border-slate-900 rounded-2xl p-12 text-center shadow-neo">
-              <FileText className="w-12 h-12 mx-auto text-slate-400 mb-3" />
-              <h3 className="text-base font-black text-slate-900">No Note Selected</h3>
-              <p className="text-xs font-bold text-slate-600 max-w-sm mx-auto mt-1 mb-5">
-                Choose a note from the left sidebar or generate an interactive study note with Temari AI.
-              </p>
-              <button
-                onClick={() => setShowGenerateModal(true)}
-                className="inline-flex items-center gap-2 px-5 py-2.5 bg-yellow-300 hover:bg-yellow-200 text-slate-950 font-black text-xs rounded-xl border-2 border-slate-900 shadow-neo transition-all active:translate-y-0.5"
-              >
-                <Sparkles className="w-4 h-4 text-slate-900" />
-                Generate New Note
-              </button>
-            </div>
+            <EmptyState
+              icon={FileText}
+              title="No Note Selected"
+              description="Choose a note from the left sidebar or generate an interactive study note with Temari AI."
+              action={
+                <button
+                  onClick={(e) => {
+                    generateOrigin.capture(e);
+                    setShowGenerateModal(true);
+                  }}
+                  className="inline-flex items-center gap-2 px-5 py-2.5 bg-yellow-300 hover:bg-yellow-200 text-slate-950 font-black text-xs rounded-xl border-2 border-slate-900 shadow-neo transition-all active:translate-y-0.5"
+                >
+                  <Sparkles className="w-4 h-4 text-slate-900" />
+                  Generate New Note
+                </button>
+              }
+            />
           )}
         </div>
       </div>
@@ -349,6 +359,7 @@ export const NotesManager: React.FC<NotesManagerProps> = ({ onHighlightTerm }) =
       <Modal
         open={showGenerateModal}
         onClose={() => setShowGenerateModal(false)}
+        originRef={generateOrigin.ref}
         title="Generate Dynamic Interactive Notes"
         subtitle={`Target Subject: ${activeSubject.name}`}
         icon={<Sparkles className="w-5 h-5 text-slate-950" />}
@@ -362,6 +373,10 @@ export const NotesManager: React.FC<NotesManagerProps> = ({ onHighlightTerm }) =
         )}
 
         <form onSubmit={handleGenerate} className="space-y-4">
+          {isGenerating && (
+            <GenerationProgress kind="notes" detail={`Subject: ${activeSubject.name}`} />
+          )}
+
               {/* File Upload Box */}
               <div>
                 <label className="block text-xs font-black uppercase tracking-wider text-slate-800 mb-1.5">

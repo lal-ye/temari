@@ -5,7 +5,12 @@
  * following cathrynlavery/diagram-design principles:
  * - Pure self-contained SVG/HTML output (no external runtime like Mermaid)
  * - Grounded in Temari's warm paper canvas (#FAF8F5) and crisp ink borders (#0F172A)
- * - Solid Neo-Brutalist offset shadows (3px 3px 0px #0F172A)
+ * - No shadows inside the diagram. The reference grammar is explicit about
+ *   this, and it is also the honest call: Temari's offset shadows are a UI
+ *   chrome device that says "this is a control". A diagram is a figure, not a
+ *   surface you press, so depth inside the frame is noise. Emphasis is carried
+ *   by stroke weight and colour instead. The chrome around the diagram (frame,
+ *   toolbar) keeps its shadows — the boundary is the diagram frame.
  * - Plus Jakarta Sans & JetBrains Mono typography
  * - Static by default, interactive Teacher-Mode walkthrough on demand
  */
@@ -15,7 +20,6 @@ export interface DiagramColorPalette {
   cardBg: string;
   ink: string;
   border: string;
-  shadow: string;
   rootFill: string;
   rootText: string;
   branchFills: string[];
@@ -34,7 +38,6 @@ export const TEMARI_DIAGRAM_PROFILE = {
     cardBg: '#FFFFFF',
     ink: '#0F172A',
     border: '#0F172A',
-    shadow: '#0F172A',
     rootFill: '#FEF08A', // Canary Yellow
     rootText: '#0F172A',
     branchFills: [
@@ -64,11 +67,6 @@ export const TEMARI_DIAGRAM_PROFILE = {
     branch: 10,
     leaf: 8,
     badge: 6,
-  },
-
-  shadowOffset: {
-    x: 3,
-    y: 3,
   },
 
   fonts: {

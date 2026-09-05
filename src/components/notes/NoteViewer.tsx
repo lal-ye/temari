@@ -2,11 +2,12 @@ import React, { useMemo, useRef, useState } from 'react';
 import { StoredNote } from '../../types';
 import { Copy, Check, Printer, FileText, Maximize2, Share2, Sparkles, Tag, BookOpen, Clock, RefreshCw } from 'lucide-react';
 import { EditorialDiagram } from '../diagrams/EditorialDiagram';
+import { pointOrigin, type MorphOrigin } from '../ui/Modal';
 
 interface NoteViewerProps {
   note: StoredNote;
   onEdit?: () => void;
-  onHighlightTerm?: (term: string, context?: string) => void;
+  onHighlightTerm?: (term: string, context?: string, origin?: MorphOrigin) => void;
   onRefresh?: () => void | Promise<void>;
 }
 
@@ -217,6 +218,10 @@ export const NoteViewer: React.FC<NoteViewerProps> = ({ note, onEdit, onHighligh
   // Parse note content into alternating markdown and diagram segments
   const segments = useMemo(() => parseNoteSegments(note.content), [note.content]);
 
+  // Figure numbering runs across the whole note. Reset on every render pass so
+  // it stays in step with the segments actually drawn.
+  let figureCounter = 0;
+
   // Handle text highlight for "Explain with AI"
   const handleMouseUp = () => {
     const selection = window.getSelection();
@@ -249,7 +254,8 @@ export const NoteViewer: React.FC<NoteViewerProps> = ({ note, onEdit, onHighligh
           setSelectedTerm(result.word);
           setTermContext(result.context);
           if (onHighlightTerm) {
-            onHighlightTerm(result.word, result.context);
+            // No element to point at — morph out of the press point itself.
+            onHighlightTerm(result.word, result.context, pointOrigin(x, y));
           }
           if (typeof navigator !== 'undefined' && navigator.vibrate) {
             navigator.vibrate(25);
@@ -460,8 +466,8 @@ export const NoteViewer: React.FC<NoteViewerProps> = ({ note, onEdit, onHighligh
             <span className="font-ethiopic font-bold text-yellow-300 text-sm">ተማሪ</span> AI?
           </span>
           <button
-            onClick={() => {
-              if (onHighlightTerm) onHighlightTerm(selectedTerm, termContext);
+            onClick={(e) => {
+              if (onHighlightTerm) onHighlightTerm(selectedTerm, termContext, e.currentTarget);
               setSelectedTerm(null);
             }}
             className="px-2.5 py-1 bg-yellow-300 text-slate-950 font-black text-xs rounded-lg border border-slate-900 hover:bg-yellow-200 transition-colors shadow-neo-sm"
@@ -499,11 +505,22 @@ export const NoteViewer: React.FC<NoteViewerProps> = ({ note, onEdit, onHighligh
       >
         {segments.map((segment, idx) => {
           if (segment.type === 'diagram') {
+            // Figures are numbered across the note so the caption ("Fig. 2")
+            // matches what a learner would cite when asking about it.
+            figureCounter += 1;
+            const figIndex = figureCounter;
             return (
               <EditorialDiagram
                 key={`diagram-${idx}`}
                 content={segment.content}
                 title={note.title}
+                figIndex={figIndex}
+                onNodeActivate={(label, context, el) => {
+                  // A node is a portal, not an illustration: tapping it asks
+                  // the explainer about that exact term, morphing out of the
+                  // box that was pressed.
+                  if (onHighlightTerm) onHighlightTerm(label, context, el as HTMLElement);
+                }}
               />
             );
           }

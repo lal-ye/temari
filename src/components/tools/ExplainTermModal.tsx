@@ -1,16 +1,20 @@
 import React, { useState, useEffect } from 'react';
-import { Sparkles, ExternalLink, BookOpen, Loader2 } from 'lucide-react';
+import { Sparkles, ExternalLink, BookOpen } from 'lucide-react';
 import { ai } from '../../services/ai';
 import { Article } from '../../types';
-import { Modal } from '../ui/Modal';
+import { Modal, type MorphOrigin } from '../ui/Modal';
+import { GenerationProgress } from '../ui/GenerationProgress';
+import { OfflineBanner } from './OfflineBanner';
 
 interface ExplainTermModalProps {
   term: string | null;
   context?: string;
   onClose: () => void;
+  /** The word or control this explanation was requested from. */
+  originRef?: React.RefObject<MorphOrigin | null>;
 }
 
-export const ExplainTermModal: React.FC<ExplainTermModalProps> = ({ term, context, onClose }) => {
+export const ExplainTermModal: React.FC<ExplainTermModalProps> = ({ term, context, onClose, originRef }) => {
   const [loading, setLoading] = useState(false);
   const [explanation, setExplanation] = useState<string>('');
   const [links, setLinks] = useState<Article[]>([]);
@@ -67,14 +71,10 @@ export const ExplainTermModal: React.FC<ExplainTermModalProps> = ({ term, contex
       icon={<Sparkles className="w-5 h-5 text-slate-950" />}
       iconClassName="bg-yellow-300 text-slate-950"
       maxWidthClassName="max-w-lg"
+      originRef={originRef}
     >
       <div className="space-y-4">
-        {loading && (
-          <div className="py-12 flex flex-col items-center justify-center text-slate-700 gap-3">
-            <Loader2 className="w-8 h-8 animate-spin text-slate-950" />
-            <p className="text-xs font-black">Generating student-friendly explanation...</p>
-          </div>
-        )}
+        {loading && <GenerationProgress kind="explanation" detail={`Term: “${term}”`} />}
 
         {error && (
           <div className="p-4 bg-rose-200 border-2 border-slate-900 rounded-xl text-xs font-black text-rose-950 shadow-neo-sm">
@@ -84,6 +84,11 @@ export const ExplainTermModal: React.FC<ExplainTermModalProps> = ({ term, contex
 
         {!loading && !error && explanation && (
           <div className="space-y-4 text-xs text-slate-800 leading-relaxed font-bold">
+            {/* Offline output must be identifiable, not just implied by the
+                subtitle (CONTEXT.md: Offline generation). */}
+            {offline && (
+              <OfflineBanner label="Offline draft. No AI Provider was reachable, so this explanation was assembled locally. Reconnect and regenerate for a full AI explanation." />
+            )}
             <div className="bg-[#FAF8F5] border-2 border-slate-900 rounded-xl p-4 space-y-2 shadow-neo-sm">
               <p className="whitespace-pre-line text-slate-900">{explanation}</p>
             </div>

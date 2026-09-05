@@ -1,18 +1,32 @@
 @import "tailwindcss";
 
-/* Ethiopic & Latin Editorial Typography Layer (font.et / Abyssinica SIL + Playfair Display) */
+/* ==========================================================================
+   Ethiopic & Latin Editorial Typography Layer
+
+   Ethiopic is a first-class part of Temari's identity (the wordmark ተማሪ, every
+   Subject's Amharic title), not a fallback. It is therefore self-hosted and
+   pinned to one file, rather than resolved through `local()` against whatever
+   the OS happens to ship — Nyala on Windows, Kefa on macOS and nothing on most
+   Linux boxes are three different typefaces, so the wordmark silently changed
+   shape per visitor.
+
+   AbyssinicaSIL-Ethiopic.woff2 is Abyssinica SIL (OFL) subset to the Ethiopic
+   blocks and converted to WOFF2: 268kB TTF -> 77kB. The `unicode-range` keeps
+   Latin text off this file entirely, so it is only ever fetched when Ethiopic
+   is actually rendered, and Latin never waits on it.
+   ========================================================================== */
 @font-face {
   font-family: 'Abyssinica SIL';
   font-style: normal;
   font-weight: 400 700;
   font-display: swap;
-  src: local('Abyssinica SIL'),
-       local('AbyssinicaSIL'),
-       local('Nyala'),
-       local('Kefa'),
-       url('https://fonts.gstatic.com/s/abyssinicasil/v9/oY1H8ezOqK7iI3rK_45WKoc8J6UZ.ttf') format('truetype');
+  src: url('/fonts/AbyssinicaSIL-Ethiopic.woff2') format('woff2');
+  unicode-range: U+1200-137F, U+1380-139F, U+2D80-2DDF, U+AB00-AB2F;
 }
 
+/* Playfair Display carries the editorial headings only. It stays on `local()`
+   with a Georgia fallback: it is Latin-only, decorative, and not worth a
+   render-blocking download for the handful of headings that use it. */
 @font-face {
   font-family: 'Playfair Display';
   font-style: normal;
@@ -20,10 +34,74 @@
   font-display: swap;
   src: local('Playfair Display Bold'),
        local('PlayfairDisplay-Bold'),
-       url('https://fonts.gstatic.com/s/playfairdisplay/v40/nuFvD-vYSZviVYUb_rj3ij__anPXJzDwcbmjWBN2PKeiukDQ.ttf') format('truetype');
+       local('Playfair Display'),
+       local('PlayfairDisplay-Regular');
+}
+
+/* ==========================================================================
+   Motion vocabulary (single source of truth — see docs/ui-plan-spatial-consistency.md)
+
+   Durations are tiered by interaction frequency, after Emil Kowalski's tiers:
+     100+/day, and every keyboard-initiated action → no animation, ever.
+     Tens/day (hover, list nav)                    → instant, or --dur-micro press only.
+     Occasional (modals, drawers, toasts)          → --dur-panel.
+     Rare / first-run (onboarding, celebration)    → may exceed these; spend sparingly.
+   Components must reference these variables, never literal durations.
+   ========================================================================== */
+:root {
+  --ease-out: cubic-bezier(0, 0, 0.2, 1);
+  --ease-spring: cubic-bezier(0.34, 1.3, 0.64, 1);
+  --ease-overshoot: cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  --dur-instant: 0ms;
+  --dur-micro: 120ms;
+  --dur-panel: 240ms;
+  --dur-layout: 300ms;
 }
 
 @layer base {
+  /* Keyboard focus. The app had no focus-visible styling at all: every control
+     relied on the browser default, which the neo-brutalist borders swallow.
+     Keyboard users could not tell where they were. Scoped to :focus-visible so
+     pointer users never see a ring they did not ask for. */
+  :focus-visible {
+    outline: 3px solid #0F172A;
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+
+  /* On dark surfaces the ink ring disappears; invert to the accent. */
+  .bg-slate-900 :focus-visible,
+  .bg-slate-950 :focus-visible {
+    outline-color: #FDE047;
+  }
+
+  /* Numbers that change in place (timers, scores, counters) must not reflow
+     their neighbours as digits swap width. */
+  .tabular-nums,
+  time,
+  [role="timer"] {
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Kill orphans in prose without hand-tuned line breaks. */
+  h1, h2, h3, h4 {
+    text-wrap: balance;
+  }
+
+  p {
+    text-wrap: pretty;
+  }
+
+  /* Anchor jumps inside long notes should not teleport. */
+  html {
+    scroll-behavior: smooth;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+  }
+
   body {
     font-family: 'Inter', 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     background-color: #FAF8F5;
@@ -125,30 +203,25 @@
    Kinetic Physics Engine (MOTION_INTENSITY: 5/10)
    ========================================================================== */
 
-/* Button Press Depress: 80ms press -> 120ms spring release */
-button,
-[role="button"],
+/* Button press depress. Scoped to opted-in buttons only: a transition on every
+   `button` in the app taxes the highest-frequency interaction there is. Colour
+   changes (hover highlights, used tens of times a day) are deliberately NOT
+   transitioned — a fading highlight trails the cursor and always feels one step
+   behind the pointer. Only the press, which is direct manipulation, animates. */
 .btn-neo,
 .btn-kinetic {
-  transition: transform 120ms cubic-bezier(0.34, 1.3, 0.64, 1),
-              box-shadow 120ms cubic-bezier(0.34, 1.3, 0.64, 1),
-              background-color 150ms ease,
-              border-color 150ms ease,
-              color 150ms ease;
+  transition: transform var(--dur-micro) var(--ease-spring),
+              box-shadow var(--dur-micro) var(--ease-spring);
   will-change: transform, box-shadow;
 }
 
-button:active:not(:disabled),
-[role="button"]:active:not([aria-disabled="true"]),
-.btn-neo:active,
-.btn-kinetic:active {
-  transition: transform 80ms ease-out,
-              box-shadow 80ms ease-out,
-              background-color 150ms ease,
-              border-color 150ms ease,
-              color 150ms ease !important;
+.btn-neo:active:not(:disabled),
+.btn-kinetic:active:not(:disabled) {
+  transition: transform 80ms var(--ease-out),
+              box-shadow 80ms var(--ease-out) !important;
 }
 
+/* Hover lift applies instantly; only the release back to rest is eased. */
 .btn-neo:hover,
 .btn-kinetic:hover {
   transform: translate(-1.5px, -1.5px);
@@ -350,9 +423,152 @@ button:disabled:active {
 .modal-panel-in { animation: modal-panel-in 180ms cubic-bezier(0.2, 0.9, 0.3, 1.2) both; }
 .modal-panel-out { animation: modal-panel-out 150ms ease-in both; }
 
+/* ==========================================================================
+   App layout
+
+   The sidebar was removed in favour of header navigation plus the command
+   palette, so the shell is now a single column: header, scrolling main, and on
+   mobile a bottom tab bar. No grid tracks left to animate, which also retires
+   Zen Mode - with no sidebar there is nothing to collapse.
+   ========================================================================== */
+.app-layout {
+  display: flex;
+  flex-direction: column;
+}
+
+/* ==========================================================================
+   Hub tab active indicator (spatial consistency)
+
+   One element that slides between tabs, rather than a highlight class that
+   teleports. The eye follows a single object, so the active state keeps its
+   identity across a change. Now travels on x rather than y, the sidebar list
+   having become a header row. Keyboard navigation (keys 1-5) sets
+   data-animate="false" for one frame so the indicator jumps instantly.
+   ========================================================================== */
+.app-hub-list {
+  position: relative;
+}
+
+.app-hub-indicator {
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 100%;
+  width: var(--indicator-w, 0px);
+  transform: translate3d(var(--indicator-x, 0px), 0, 0);
+  background-color: #67E8F9;
+  border: 2px solid #0F172A;
+  border-radius: 0.75rem;
+  box-shadow: 3px 3px 0px 0px #0F172A;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Lifted out of the header's view-transition snapshot into its own group so
+   the platform morphs it from the old box to the new one, rather than
+   cross-fading two positions. Shared-layout animation, no library. */
+.app-hub-indicator {
+  view-transition-name: nav-indicator;
+}
+
+::view-transition-group(nav-indicator) {
+  animation-duration: 200ms;
+  animation-timing-function: var(--ease-out);
+}
+
+::view-transition-old(nav-indicator),
+::view-transition-new(nav-indicator) {
+  animation: none;
+  mix-blend-mode: normal;
+  opacity: 1;
+}
+
+/* Fallback slide for browsers without view transitions, and for state changes
+   that happen outside one. Suppressed on the keyboard path. */
+.app-hub-list[data-animate="true"] .app-hub-indicator {
+  transition: transform 200ms var(--ease-out), width 200ms var(--ease-out);
+}
+
+.app-hub-list[data-animate="false"] .app-hub-indicator {
+  transition: none;
+}
+
+/* Indicator not yet measured (first paint): stay hidden rather than flash at 0,0. */
+.app-hub-indicator[data-ready="false"] {
+  opacity: 0;
+}
+
+.app-hub-item {
+  position: relative;
+  z-index: 1;
+  background-color: transparent;
+}
+
+/* The hub row scrolls horizontally at narrow widths; a visible scrollbar would
+   sit on top of the indicator. */
+.no-scrollbar {
+  scrollbar-width: none;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* ==========================================================================
+   Generation waiting state (src/components/ui/GenerationProgress.tsx)
+
+   Generation is occasional and slow, so it sits in the "standard animation"
+   tier: enough motion to show the request is alive, nothing that draws the eye
+   on the hundredth run.
+   ========================================================================== */
+@keyframes generation-stage-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.45; }
+}
+
+.generation-stage-pulse {
+  animation: generation-stage-pulse 1.4s var(--ease-out) infinite;
+}
+
+/* Animated ellipsis that does not reflow the label as it cycles. */
+@keyframes generation-ellipsis {
+  0% { content: ''; }
+  25% { content: '.'; }
+  50% { content: '..'; }
+  75%, 100% { content: '...'; }
+}
+
+.generation-ellipsis::after {
+  content: '...';
+  animation: generation-ellipsis 1.6s steps(1, end) infinite;
+}
+
+/* ==========================================================================
+   Skeleton loaders (src/components/ui/Skeleton.tsx)
+
+   A slow sweep rather than a pulse: the shimmer should read as "still working"
+   at a glance and then stop competing for attention. Occasional interaction,
+   so standard tier.
+   ========================================================================== */
+@keyframes skeleton-shimmer {
+  from { background-position: 200% 0; }
+  to { background-position: -200% 0; }
+}
+
+.skeleton-shimmer {
+  background-image: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.65) 50%,
+    transparent 100%
+  );
+  background-size: 200% 100%;
+  background-repeat: no-repeat;
+  animation: skeleton-shimmer 1.6s var(--ease-out) infinite;
+}
+
 /* Tab view transitions: persistent chrome keeps a stable name so only the
    main content area cross-fades when switching tabs (lateral navigation). */
-.app-sidebar { view-transition-name: app-sidebar; }
 .app-header { view-transition-name: app-header; }
 .app-main { view-transition-name: app-main; }
 
@@ -385,8 +601,26 @@ button:disabled:active {
   .modal-panel-out,
   .flashcard-reveal,
   .ghost-hand-anim,
-  .pulse-ring-indicator {
+  .pulse-ring-indicator,
+  .generation-stage-pulse,
+  .skeleton-shimmer {
     animation: none !important;
+  }
+
+  /* Keep the ellipsis, drop its cycling — the elapsed counter already shows
+     the request is alive. */
+  .generation-ellipsis::after {
+    animation: none !important;
+    content: '...';
+  }
+
+  /* Nav indicator: still positioned correctly, just never travels. */
+  .app-hub-list[data-animate="true"] .app-hub-indicator,
+  .app-hub-list[data-animate="false"] .app-hub-indicator {
+    transition: none !important;
+  }
+  .app-hub-indicator {
+    view-transition-name: none !important;
   }
 
   /* Flashcards: transition opacity 150ms ease, no 3D spin */
@@ -429,8 +663,6 @@ button:disabled:active {
   }
 
   /* Buttons */
-  button,
-  [role="button"],
   .btn-neo,
   .btn-press,
   .btn-kinetic {

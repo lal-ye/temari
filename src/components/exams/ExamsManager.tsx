@@ -6,6 +6,9 @@ import { ai } from '../../services/ai';
 import { ExamTakingView } from './ExamTakingView';
 import { ExamResultsView } from './ExamResultsView';
 import { Modal } from '../ui/Modal';
+import { GenerationProgress } from '../ui/GenerationProgress';
+import { EmptyState } from '../ui/EmptyState';
+import { useModalOrigin } from '../ui/useModalOrigin';
 import { SourceMaterialSelector } from '../ui/SourceMaterialSelector';
 import {
   GraduationCap,
@@ -30,6 +33,7 @@ export const ExamsManager: React.FC = () => {
     offlineDraft?: boolean;
   } | null>(null);
   const [showGenerateModal, setShowGenerateModal] = useState(false);
+  const generateOrigin = useModalOrigin();
 
   // Form State
   const [examTitle, setExamTitle] = useState('');
@@ -164,7 +168,10 @@ export const ExamsManager: React.FC = () => {
         </div>
 
         <button
-          onClick={() => setShowGenerateModal(true)}
+          onClick={(e) => {
+            generateOrigin.capture(e);
+            setShowGenerateModal(true);
+          }}
           className="flex items-center justify-center gap-2 px-5 py-2.5 bg-yellow-300 hover:bg-yellow-200 text-slate-950 font-black text-xs rounded-xl border-2 border-slate-900 shadow-neo transition-all active:translate-y-0.5 shrink-0"
         >
           <Sparkles className="w-4 h-4 text-slate-900" />
@@ -174,19 +181,22 @@ export const ExamsManager: React.FC = () => {
 
       {/* Attempts Grid */}
       {attempts.length === 0 ? (
-        <div className="bg-white border-3 border-slate-900 rounded-2xl p-12 text-center shadow-neo">
-          <GraduationCap className="w-12 h-12 mx-auto text-slate-400 mb-3" />
-          <h3 className="text-base font-black text-slate-900">No Exam Attempts Yet</h3>
-          <p className="text-xs font-bold text-slate-600 max-w-sm mx-auto mt-1 mb-5">
-            Generate your first timed mock exam to test your mastery and receive automated diagnostic reports from Temari AI.
-          </p>
-          <button
-            onClick={() => setShowGenerateModal(true)}
-            className="inline-flex items-center gap-2 px-5 py-2.5 bg-yellow-300 hover:bg-yellow-200 text-slate-950 font-black text-xs rounded-xl border-2 border-slate-900 shadow-neo transition-all active:translate-y-0.5"
-          >
-            <Sparkles className="w-4 h-4 text-slate-900" /> Create First Exam
-          </button>
-        </div>
+        <EmptyState
+          icon={GraduationCap}
+          title="No Exam Attempts Yet"
+          description="Generate your first timed mock exam to test your mastery and receive automated diagnostic reports from Temari AI."
+          action={
+            <button
+              onClick={(e) => {
+                generateOrigin.capture(e);
+                setShowGenerateModal(true);
+              }}
+              className="inline-flex items-center gap-2 px-5 py-2.5 bg-yellow-300 hover:bg-yellow-200 text-slate-950 font-black text-xs rounded-xl border-2 border-slate-900 shadow-neo transition-all active:translate-y-0.5"
+            >
+              <Sparkles className="w-4 h-4 text-slate-900" /> Create First Exam
+            </button>
+          }
+        />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
           {attempts.map((att) => {
@@ -251,6 +261,7 @@ export const ExamsManager: React.FC = () => {
       <Modal
         open={showGenerateModal}
         onClose={() => setShowGenerateModal(false)}
+        originRef={generateOrigin.ref}
         title="Generate Practice Mock Exam"
         subtitle={`Subject: ${activeSubject.name}`}
         icon={<Sparkles className="w-5 h-5 text-slate-950" />}
@@ -264,6 +275,10 @@ export const ExamsManager: React.FC = () => {
         )}
 
         <form onSubmit={handleGenerateAndStartExam} className="space-y-4">
+          {isGenerating && (
+            <GenerationProgress kind="exam" detail={`Subject: ${activeSubject.name}`} />
+          )}
+
               <div>
                 <label className="block text-xs font-black uppercase tracking-wider text-slate-800 mb-1">
                   Exam Title
