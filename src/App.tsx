@@ -173,11 +173,17 @@ export default function App() {
   // Mobile swipe-to-dismiss gesture state for sidebar drawer
   const [asideDragOffset, setAsideDragOffset] = useState(0);
   const [isDraggingAside, setIsDraggingAside] = useState(false);
-  const asideTouchStartRef = useRef<{ x: number; y: number } | null>(null);
+  const asideTouchStartRef = useRef<{ x: number; y: number; time: number } | null>(null);
+  /** Last sample of the drawer drag, for release velocity. */
+  const asideLastSampleRef = useRef<{ x: number; time: number } | null>(null);
 
   const handleAsideTouchStart = (e: React.TouchEvent) => {
     if (!sidebarOpen) return;
-    asideTouchStartRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+    asideTouchStartRef.current = {
+      x: e.touches[0].clientX,
+      y: e.touches[0].clientY,
+      time: Date.now(),
+    };
     setIsDraggingAside(true);
     setAsideDragOffset(0);
   };
@@ -186,6 +192,7 @@ export default function App() {
     if (!asideTouchStartRef.current || !isDraggingAside) return;
     const dx = e.touches[0].clientX - asideTouchStartRef.current.x;
     const dy = e.touches[0].clientY - asideTouchStartRef.current.y;
+    asideLastSampleRef.current = { x: e.touches[0].clientX, time: Date.now() };
 
     if (Math.abs(dx) > Math.abs(dy)) {
       if (dx < 0) {
@@ -198,19 +205,32 @@ export default function App() {
     }
   };
 
+  /**
+   * Dismissing the drawer is destructive-ish (it hides navigation), so it
+   * commits on release only, never mid-drag — cross the line, change your mind,
+   * drag back, and the drawer stays. A short fast flick still dismisses, since
+   * distance alone would ignore an obviously intentional throw.
+   */
   const handleAsideTouchEnd = () => {
-    if (asideDragOffset < -55) {
+    const start = asideTouchStartRef.current;
+    const last = asideLastSampleRef.current;
+    const elapsed = start && last ? last.time - start.time : 0;
+    const velocity = start && last && elapsed > 0 ? (start.x - last.x) / elapsed : 0;
+
+    if (asideDragOffset < -55 || velocity > 0.4) {
       setSidebarOpen(false);
     }
     setAsideDragOffset(0);
     setIsDraggingAside(false);
     asideTouchStartRef.current = null;
+    asideLastSampleRef.current = null;
   };
 
   const handleAsideTouchCancel = () => {
     setAsideDragOffset(0);
     setIsDraggingAside(false);
     asideTouchStartRef.current = null;
+    asideLastSampleRef.current = null;
   };
 
   // Desktop keyboard navigation (1-5 for study hubs, Escape to close drawer/modals)
