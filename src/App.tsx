@@ -1,11 +1,22 @@
-import React, { lazy, Suspense, useState, useEffect, useLayoutEffect, useRef } from 'react';
+import React, {
+  lazy,
+  Suspense,
+  useState,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+} from 'react';
 import {
   studyStore,
   useActiveSubject,
   useActiveSubjectId,
+  useAllAttempts,
   useSettings,
   useSubjects,
 } from './hooks/useStudyStore';
+import { computeStudyStreak } from './utils/analytics';
+import { useOnlineStatus } from './hooks/useOnlineStatus';
 import { NotesManager } from './components/notes/NotesManager';
 import { QuizzesManager } from './components/quizzes/QuizzesManager';
 import { ExamsManager } from './components/exams/ExamsManager';
@@ -58,6 +69,19 @@ export default function App() {
 
   const settings = useSettings();
   const zenMode = settings.zenMode;
+
+  // Streak is derived from Attempts across every Subject, not the active one:
+  // studying anything today counts as studying.
+  const isOnline = useOnlineStatus();
+  const allAttempts = useAllAttempts();
+  const streak = useMemo(() => computeStudyStreak(allAttempts), [allAttempts]);
+  const streakMessage = useMemo(() => {
+    if (streak.days === 0) return 'Finish a drill or exam to start a streak.';
+    if (streak.daysThisWeek >= 7) return 'Every day this week. Take a rest day if you need one.';
+    if (!streak.studiedToday) return 'Study today to keep the streak going.';
+    const remaining = 7 - streak.daysThisWeek;
+    return `${remaining} more ${remaining === 1 ? 'day' : 'days'} this week to make it a full seven.`;
+  }, [streak]);
 
   const [activeTab, setActiveTab] = useState<TabType>('notes');
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -346,7 +370,17 @@ export default function App() {
                     <p className="text-[10px] font-bold text-slate-700 tracking-wider uppercase font-mono">
                       AI Study Companion
                     </p>
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 border border-slate-900" title="Offline Ready" />
+                    {/* The app's only status dot, and it reports real state:
+                        green when a Provider is reachable, amber when
+                        generation will fall back to the offline adapter. */}
+                    <span
+                      className={`w-1.5 h-1.5 rounded-full border border-slate-900 ${
+                        isOnline ? 'bg-emerald-500' : 'bg-amber-500'
+                      }`}
+                      role="img"
+                      aria-label={isOnline ? 'Online' : 'Offline, generation will run locally'}
+                      title={isOnline ? 'Online' : 'Offline, generation will run locally'}
+                    />
                   </div>
                 </div>
               </div>
@@ -419,7 +453,7 @@ export default function App() {
             <div className="flex items-center justify-between px-2 pb-1 text-[10px] font-black uppercase tracking-wider text-slate-500">
               <span>Study Hub</span>
               <span className="hidden lg:inline text-[9px] font-mono text-slate-400 font-bold">
-                Keys 1–5
+                Keys 1-5
               </span>
             </div>
             <div
@@ -517,22 +551,41 @@ export default function App() {
           </div>
         </div>
 
-        {/* Bottom Sidebar: Study Streak Widget */}
+        {/* Bottom Sidebar: Study Streak. Every number here is computed from
+            real Attempts - a hardcoded "5-Day Streak / 85%" was telling every
+            learner the same flattering lie on their first run. */}
         <div className="pt-3 mt-auto border-t-2 border-slate-200 shrink-0">
-          <div className="bg-[#FEF08A] rounded-xl p-3 border-2 border-slate-900 shadow-neo-sm hover:shadow-neo transition-shadow">
+          <div className="bg-[#FEF08A] rounded-xl p-3 border-2 border-slate-900 shadow-neo-sm">
             <div className="flex items-center justify-between mb-1.5">
               <span className="text-[11px] font-black text-slate-950 flex items-center gap-1.5">
-                <Flame className="w-4 h-4 text-amber-600 fill-amber-600" /> 5-Day Streak
+                <Flame
+                  className={`w-4 h-4 ${
+                    streak.days > 0 ? 'text-amber-600 fill-amber-600' : 'text-slate-400'
+                  }`}
+                />
+                {streak.days > 0
+                  ? `${streak.days}-day streak`
+                  : 'No streak yet'}
               </span>
-              <span className="text-[10px] font-black px-1.5 py-0.5 bg-white text-slate-950 rounded border border-slate-900 shadow-neo-xs">
-                85%
+              <span className="text-[10px] font-black px-1.5 py-0.5 bg-white text-slate-950 rounded border border-slate-900 shadow-neo-xs tabular-nums">
+                {streak.daysThisWeek}/7
               </span>
             </div>
-            <div className="w-full bg-white h-3 rounded-full border-2 border-slate-900 overflow-hidden mb-1.5 p-0.5">
-              <div className="bg-emerald-400 h-full w-[85%] rounded-full border border-slate-900/20" />
+            <div
+              className="w-full bg-white h-3 rounded-full border-2 border-slate-900 overflow-hidden mb-1.5 p-0.5"
+              role="progressbar"
+              aria-valuenow={streak.daysThisWeek}
+              aria-valuemin={0}
+              aria-valuemax={7}
+              aria-label="Days studied this week"
+            >
+              <div
+                className="bg-emerald-400 h-full rounded-full border border-slate-900/20 transition-[width] duration-500 ease-out"
+                style={{ width: `${(streak.daysThisWeek / 7) * 100}%` }}
+              />
             </div>
-            <p className="text-[10px] font-bold text-slate-800 leading-tight">
-              3 more sessions to reach weekly mastery goal.
+            <p className="text-[10px] font-bold text-slate-800 leading-tight text-pretty">
+              {streakMessage}
             </p>
           </div>
         </div>

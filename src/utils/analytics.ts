@@ -155,3 +155,59 @@ export function computeAnalyticsSummary(
     },
   };
 }
+
+export interface StudyStreak {
+  /** Consecutive days up to and including today (or yesterday) with an Attempt. */
+  days: number;
+  /** Distinct days studied in the last 7, capped at 7. */
+  daysThisWeek: number;
+  /** Whether an Attempt was recorded today. */
+  studiedToday: boolean;
+}
+
+/** Local calendar day key, so streaks follow the learner's midnight, not UTC. */
+function dayKey(date: Date): string {
+  return `${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()}`;
+}
+
+/**
+ * Computes the study streak from real Attempts.
+ *
+ * A streak counts back from today; studying yesterday but not yet today keeps
+ * the streak alive, because the day is not over. Two Attempts on one day count
+ * once - the unit is the day, not the Attempt.
+ */
+export function computeStudyStreak(
+  attempts: StoredAttempt[],
+  now: Date = new Date()
+): StudyStreak {
+  const studied = new Set(
+    attempts
+      .map((a) => new Date(a.date))
+      .filter((d) => !Number.isNaN(d.getTime()))
+      .map(dayKey)
+  );
+
+  const dayAt = (offset: number) => {
+    const d = new Date(now);
+    d.setDate(d.getDate() - offset);
+    return d;
+  };
+
+  const studiedToday = studied.has(dayKey(now));
+
+  // Yesterday still counts: today is not over yet.
+  let days = 0;
+  for (let offset = studiedToday ? 0 : 1; ; offset += 1) {
+    if (!studied.has(dayKey(dayAt(offset)))) break;
+    days += 1;
+    if (days > 3650) break; // guard against pathological data
+  }
+
+  let daysThisWeek = 0;
+  for (let offset = 0; offset < 7; offset += 1) {
+    if (studied.has(dayKey(dayAt(offset)))) daysThisWeek += 1;
+  }
+
+  return { days, daysThisWeek, studiedToday };
+}

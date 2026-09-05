@@ -179,7 +179,7 @@ export const QuizzesManager: React.FC<QuizzesManagerProps> = ({ onHighlightTerm 
       </div>
 
       {generatedOffline && (
-        <OfflineBanner label="Offline draft — no AI Provider was reachable, so these flashcards were assembled locally. Reconnect and regenerate for full AI flashcards." />
+        <OfflineBanner label="Offline draft. No AI Provider was reachable, so these flashcards were assembled locally. Reconnect and regenerate for full AI flashcards." />
       )}
 
       {/* Quizzes Grid */}

@@ -197,7 +197,7 @@ export const NotesManager: React.FC<NotesManagerProps> = ({ onHighlightTerm }) =
       </div>
 
       {generatedOffline && (
-        <OfflineBanner label="Offline draft — no AI Provider was reachable, so this note was assembled locally. Reconnect and regenerate for full AI notes." />
+        <OfflineBanner label="Offline draft. No AI Provider was reachable, so this note was assembled locally. Reconnect and regenerate for full AI notes." />
       )}
 
       {/* Main Grid: Sidebar List + Viewer */}

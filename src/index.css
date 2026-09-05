@@ -60,6 +60,48 @@
 }
 
 @layer base {
+  /* Keyboard focus. The app had no focus-visible styling at all: every control
+     relied on the browser default, which the neo-brutalist borders swallow.
+     Keyboard users could not tell where they were. Scoped to :focus-visible so
+     pointer users never see a ring they did not ask for. */
+  :focus-visible {
+    outline: 3px solid #0F172A;
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+
+  /* On dark surfaces the ink ring disappears; invert to the accent. */
+  .bg-slate-900 :focus-visible,
+  .bg-slate-950 :focus-visible {
+    outline-color: #FDE047;
+  }
+
+  /* Numbers that change in place (timers, scores, counters) must not reflow
+     their neighbours as digits swap width. */
+  .tabular-nums,
+  time,
+  [role="timer"] {
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Kill orphans in prose without hand-tuned line breaks. */
+  h1, h2, h3, h4 {
+    text-wrap: balance;
+  }
+
+  p {
+    text-wrap: pretty;
+  }
+
+  /* Anchor jumps inside long notes should not teleport. */
+  html {
+    scroll-behavior: smooth;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+  }
+
   body {
     font-family: 'Inter', 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     background-color: #FAF8F5;

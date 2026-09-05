@@ -198,7 +198,7 @@ export const ExamTakingView: React.FC<ExamTakingViewProps> = ({
             }`}
           >
             <Clock className="w-4 h-4" />
-            <span>{formattedTime}</span>
+            <span className="tabular-nums" role="timer">{formattedTime}</span>
           </div>
 
           <button

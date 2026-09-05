@@ -87,7 +87,7 @@ export const ExplainTermModal: React.FC<ExplainTermModalProps> = ({ term, contex
             {/* Offline output must be identifiable, not just implied by the
                 subtitle (CONTEXT.md: Offline generation). */}
             {offline && (
-              <OfflineBanner label="Offline draft — no AI Provider was reachable, so this explanation was assembled locally. Reconnect and regenerate for a full AI explanation." />
+              <OfflineBanner label="Offline draft. No AI Provider was reachable, so this explanation was assembled locally. Reconnect and regenerate for a full AI explanation." />
             )}
             <div className="bg-[#FAF8F5] border-2 border-slate-900 rounded-xl p-4 space-y-2 shadow-neo-sm">
               <p className="whitespace-pre-line text-slate-900">{explanation}</p>

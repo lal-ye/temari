@@ -81,7 +81,13 @@ export const PomodoroTimer: React.FC<PomodoroTimerProps> = ({ isOpen, onClose })
 
       <div className="my-4 text-center">
         <div className="relative inline-flex items-center justify-center p-3 bg-[#FAF8F5] border-2 border-slate-900 rounded-2xl w-full shadow-neo-sm">
-          <div className="text-4xl font-black text-slate-950 font-mono tracking-tight">{formattedTime}</div>
+          <div
+            className="text-4xl font-black text-slate-950 font-mono tracking-tight tabular-nums"
+            role="timer"
+            aria-live="off"
+          >
+            {formattedTime}
+          </div>
         </div>
         <div className="w-full bg-slate-200 h-2.5 rounded-full mt-3 overflow-hidden border-2 border-slate-900">
           <div
