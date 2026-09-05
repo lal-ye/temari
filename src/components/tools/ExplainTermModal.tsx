@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Sparkles, ExternalLink, X, BookOpen, Loader2 } from 'lucide-react';
-import { AIService } from '../../services/aiService';
+import { ai } from '../../services/ai';
 import { Article } from '../../types';
 
 interface ExplainTermModalProps {
@@ -14,6 +14,7 @@ export const ExplainTermModal: React.FC<ExplainTermModalProps> = ({ term, contex
   const [explanation, setExplanation] = useState<string>('');
   const [links, setLinks] = useState<Article[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [offline, setOffline] = useState(false);
 
   useEffect(() => {
     if (!term) return;
@@ -21,12 +22,14 @@ export const ExplainTermModal: React.FC<ExplainTermModalProps> = ({ term, contex
     let isMounted = true;
     setLoading(true);
     setError(null);
+    setOffline(false);
 
-    AIService.explainTerm({ term, context })
-      .then((res) => {
+    ai.explainTerm({ term, context })
+      .then(({ source, value }) => {
         if (isMounted) {
-          setExplanation(res.explanation);
-          setLinks(res.relatedLinks || []);
+          setExplanation(value.explanation);
+          setLinks(value.relatedLinks || []);
+          setOffline(source === 'offline');
           setLoading(false);
         }
       })
@@ -61,7 +64,7 @@ export const ExplainTermModal: React.FC<ExplainTermModalProps> = ({ term, contex
           </div>
           <div>
             <span className="px-2 py-0.5 bg-yellow-300 text-slate-950 border border-slate-900 rounded-md text-[10px] font-black uppercase tracking-wider shadow-xs">
-              ተማሪ Concept Explanation
+              {offline ? 'ተማሪ Offline Draft Explanation' : 'ተማሪ Concept Explanation'}
             </span>
             <h3 className="text-lg font-black text-slate-950 break-words leading-tight mt-1">&ldquo;{term}&rdquo;</h3>
           </div>

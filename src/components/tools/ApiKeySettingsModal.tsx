@@ -1,6 +1,3 @@
-import React, { useState } from 'react';
-import { Key, CheckCircle, AlertCircle, ExternalLink, X, ShieldCheck } from 'lucide-react';
-import { getStudyStore } from '../../services/studyStore';
 import React, { useState, useEffect } from 'react';
 import {
   Key,
@@ -18,15 +15,11 @@ import {
   Trash2,
 } from 'lucide-react';
 import { getStudyStore } from '../../services/studyStore';
-import {
-  AIProvider,
-  AVAILABLE_PROVIDERS,
-  getProviderConfig,
-  getModelOption,
-  getActiveModelForProvider,
-} from '../../types';
+import { AIProvider } from '../../types';
+import { AVAILABLE_PROVIDERS, getProviderConfig, getModelOption } from './modelPresentation';
+import { resolveActiveModel } from '../../../shared/aiCatalog';
 import { ModelPicker } from './ModelPicker';
-import { AIService } from '../../services/aiService';
+import { aiConnection } from '../../services/aiConnection';
 
 interface ApiKeySettingsModalProps {
   isOpen: boolean;
@@ -72,7 +65,7 @@ export const ApiKeySettingsModal: React.FC<ApiKeySettingsModalProps> = ({
       const s = store.settings;
       const prov = s.selectedProvider || 'gemini';
       setSelectedProvider(prov);
-      setSelectedModel(getActiveModelForProvider(s, prov));
+      setSelectedModel(resolveActiveModel(s, prov));
       setProviderKeys(s.providerKeys || (s.apiKey ? { gemini: s.apiKey } : {}));
       setCustomBaseUrl(s.customBaseUrl || 'http://localhost:11434/v1');
       setCustomModelName(s.customModelName || 'llama3.2');
@@ -138,7 +131,7 @@ export const ApiKeySettingsModal: React.FC<ApiKeySettingsModalProps> = ({
     const urlToTest = selectedProvider === 'custom' ? customBaseUrl.trim() : undefined;
 
     try {
-      const res = await AIService.testConnection({
+      const res = await aiConnection.testConnection({
         provider: selectedProvider,
         model: modelToTest,
         apiKey: keyToTest,

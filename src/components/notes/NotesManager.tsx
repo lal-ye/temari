@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { StoredNote } from '../../types';
-import { AIService } from '../../services/aiService';
+import { ai } from '../../services/ai';
+import { aiConnection } from '../../services/aiConnection';
+import { OfflineBanner } from '../tools/OfflineBanner';
 import { studyStore } from '../../hooks/useStudyStore';
 import { useActiveSubject, useNotes } from '../../hooks/useStudyStore';
 import { NoteViewer } from './NoteViewer';
@@ -43,6 +45,7 @@ export const NotesManager: React.FC<NotesManagerProps> = ({ onHighlightTerm }) =
   const [customTags, setCustomTags] = useState('');
   const [isExtractingPdf, setIsExtractingPdf] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [generatedOffline, setGeneratedOffline] = useState(false);
 
   if (!activeSubject) return null;
 
@@ -68,7 +71,7 @@ export const NotesManager: React.FC<NotesManagerProps> = ({ onHighlightTerm }) =
       reader.onload = async (event) => {
         const dataUri = event.target?.result as string;
         try {
-          const extracted = await AIService.extractPdfText(dataUri);
+          const extracted = await aiConnection.extractPdfText(dataUri);
           setMaterialText(extracted);
         } catch (err: any) {
           setError('Could not extract PDF text automatically. You can copy & paste the text directly.');
@@ -91,10 +94,11 @@ export const NotesManager: React.FC<NotesManagerProps> = ({ onHighlightTerm }) =
     setError(null);
 
     try {
-      const generatedMarkdown = await AIService.generateNotes({
+      const { source: noteSource, value: generatedMarkdown } = await ai.generateNotes({
         material: materialText,
         sourceName: sourceFileName || 'Course Lecture Material',
       });
+      setGeneratedOffline(noteSource === 'offline');
 
       const tagsArray = customTags
         ? customTags.split(',').map((t) => t.trim()).filter(Boolean)
@@ -177,6 +181,10 @@ export const NotesManager: React.FC<NotesManagerProps> = ({ onHighlightTerm }) =
           Generate Notes with AI
         </button>
       </div>
+
+      {generatedOffline && (
+        <OfflineBanner label="Offline draft — no AI Provider was reachable, so this note was assembled locally. Reconnect and regenerate for full AI notes." />
+      )}
 
       {/* Main Grid: Sidebar List + Viewer */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">

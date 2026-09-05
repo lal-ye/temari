@@ -45,6 +45,11 @@ export const ExamResultsView: React.FC<ExamResultsViewProps> = ({ attempt, onRet
                 {isPassed ? 'PASSED' : 'NEEDS REVIEW'}
               </span>
               <span className="text-xs font-bold text-slate-500">{new Date(attempt.date).toLocaleDateString()}</span>
+              {attempt.gradedOffline && (
+                <span className="px-2.5 py-0.5 rounded-lg border-2 border-slate-900 text-[10px] font-black uppercase shadow-xs bg-amber-200 text-amber-950">
+                  Graded offline
+                </span>
+              )}
             </div>
             <h1 className="text-xl font-black text-slate-950 mt-1">{attempt.name}</h1>
             <p className="text-xs font-bold text-slate-600 mt-0.5">
