@@ -1,4 +1,4 @@
-import React, { lazy, Suspense, useState, useEffect, useRef } from 'react';
+import React, { lazy, Suspense, useState, useEffect, useLayoutEffect, useRef } from 'react';
 import { studyStore, useActiveSubject, useActiveSubjectId, useSubjects } from './hooks/useStudyStore';
 import { NotesManager } from './components/notes/NotesManager';
 import { QuizzesManager } from './components/quizzes/QuizzesManager';
@@ -9,7 +9,7 @@ import { ExplainTermModal } from './components/tools/ExplainTermModal';
 import { ApiKeySettingsModal } from './components/tools/ApiKeySettingsModal';
 import { ModelPicker } from './components/tools/ModelPicker';
 import { Modal } from './components/ui/Modal';
-import { runViewTransition } from './utils/viewTransition';
+import { runViewTransition, type InteractionOrigin } from './utils/viewTransition';
 import {
   BookOpen,
   Layers,
@@ -46,6 +46,13 @@ export default function App() {
   const [activeTab, setActiveTab] = useState<TabType>('notes');
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
+  // Sliding nav indicator: one element that travels between items instead of a
+  // highlight class that teleports (spatial consistency).
+  const navListRef = useRef<HTMLDivElement | null>(null);
+  const navItemRefs = useRef<Record<string, HTMLButtonElement | null>>({});
+  const navAnimateRef = useRef(false);
+  const [navIndicator, setNavIndicator] = useState<{ y: number; h: number } | null>(null);
+
   // Modals and Drawers
   const [openModal, setOpenModal] = useState<OpenModal>(null);
   const [confirmDeleteSubjectId, setConfirmDeleteSubjectId] = useState<string | null>(null);
@@ -75,10 +82,15 @@ export default function App() {
     setOpenModal(null);
   };
 
-  const handleTabChange = (tab: TabType) => {
+  /**
+   * Lateral navigation. Pointer opens cross-fade (ADR-0004); keyboard opens are
+   * instant — keys 1-5 are used many times a session and an animation the
+   * learner did not ask to watch is pure latency.
+   */
+  const handleTabChange = (tab: TabType, origin: InteractionOrigin = 'pointer') => {
     if (tab === activeTab) return;
-    // Native view transition cross-fade for lateral navigation (ADR-0004).
-    runViewTransition(() => setActiveTab(tab));
+    navAnimateRef.current = origin === 'pointer';
+    runViewTransition(() => setActiveTab(tab), { origin });
   };
 
   const handleDeleteSubject = (id: string, e: React.MouseEvent) => {
@@ -99,6 +111,25 @@ export default function App() {
     { id: 'analytics', label: 'Analytics & Progress', icon: TrendingUp },
     { id: 'planner', label: 'Study Planner', icon: Calendar },
   ];
+
+  /**
+   * Measure the active nav item and park the indicator on it. Runs before paint
+   * so the indicator never renders a frame out of position; re-measures on
+   * resize because the sidebar reflows at the `lg` breakpoint.
+   */
+  useLayoutEffect(() => {
+    const measure = () => {
+      const el = navItemRefs.current[activeTab];
+      if (!el) return;
+      setNavIndicator({ y: el.offsetTop, h: el.offsetHeight });
+    };
+
+    measure();
+
+    const observer = new ResizeObserver(measure);
+    if (navListRef.current) observer.observe(navListRef.current);
+    return () => observer.disconnect();
+  }, [activeTab]);
 
   // Mobile swipe-to-dismiss gesture state for sidebar drawer
   const [asideDragOffset, setAsideDragOffset] = useState(0);
@@ -166,20 +197,18 @@ export default function App() {
         return;
       }
 
-      if (e.key === '1') {
-        handleTabChange('notes');
-        setSidebarOpen(false);
-      } else if (e.key === '2') {
-        handleTabChange('quizzes');
-        setSidebarOpen(false);
-      } else if (e.key === '3') {
-        handleTabChange('exams');
-        setSidebarOpen(false);
-      } else if (e.key === '4') {
-        handleTabChange('analytics');
-        setSidebarOpen(false);
-      } else if (e.key === '5') {
-        handleTabChange('planner');
+      const shortcutTabs: Record<string, TabType> = {
+        '1': 'notes',
+        '2': 'quizzes',
+        '3': 'exams',
+        '4': 'analytics',
+        '5': 'planner',
+      };
+
+      const shortcutTab = shortcutTabs[e.key];
+      if (shortcutTab) {
+        // Keyboard path: no view transition, no indicator travel.
+        handleTabChange(shortcutTab, 'keyboard');
         setSidebarOpen(false);
       } else if (e.key === 'Escape' && sidebarOpen) {
         setSidebarOpen(false);
@@ -310,26 +339,48 @@ export default function App() {
           </div>
 
           {/* Navigation Menu */}
-          <nav className="space-y-1.5">
+          <nav className="space-y-1.5" aria-label="Study hub">
             <div className="flex items-center justify-between px-2 pb-1 text-[10px] font-black uppercase tracking-wider text-slate-500">
               <span>Study Hub</span>
               <span className="hidden lg:inline text-[9px] font-mono text-slate-400 font-bold">
                 Keys 1–5
               </span>
             </div>
-            {navItems.map((item, index) => {
+            <div
+              ref={navListRef}
+              className="app-nav-list space-y-1.5"
+              data-animate={navAnimateRef.current ? 'true' : 'false'}
+            >
+              <div
+                className="app-nav-indicator"
+                data-ready={navIndicator ? 'true' : 'false'}
+                aria-hidden="true"
+                style={
+                  navIndicator
+                    ? ({
+                        '--indicator-y': `${navIndicator.y}px`,
+                        '--indicator-h': `${navIndicator.h}px`,
+                      } as React.CSSProperties)
+                    : undefined
+                }
+              />
+              {navItems.map((item, index) => {
               const Icon = item.icon;
               const isActive = activeTab === item.id;
               return (
                 <button
                   key={item.id}
+                  ref={(el) => {
+                    navItemRefs.current[item.id] = el;
+                  }}
+                  aria-current={isActive ? 'page' : undefined}
                   onClick={() => {
-                    handleTabChange(item.id as TabType);
+                    handleTabChange(item.id as TabType, 'pointer');
                     setSidebarOpen(false);
                   }}
-                  className={`btn-kinetic min-h-[44px] w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-black transition-all border-2 text-left active:translate-x-0.5 active:translate-y-0.5 ${
+                  className={`app-nav-item btn-kinetic min-h-[44px] w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-black border-2 text-left active:translate-x-0.5 active:translate-y-0.5 ${
                     isActive
-                      ? 'bg-[#67E8F9] text-slate-950 border-slate-900 shadow-neo translate-x-1'
+                      ? 'text-slate-950 border-transparent translate-x-1'
                       : 'bg-white text-slate-800 border-slate-900/60 hover:border-slate-900 hover:bg-slate-50 shadow-neo-xs hover:shadow-neo-sm'
                   }`}
                 >
@@ -346,7 +397,8 @@ export default function App() {
                   </kbd>
                 </button>
               );
-            })}
+              })}
+            </div>
           </nav>
 
           {/* Quick AI & Tools section */}

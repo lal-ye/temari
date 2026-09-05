@@ -38,6 +38,40 @@ The rules that keep this codebase navigable. The domain language lives in
 6. **ADR-0001 stands.** No per-screen state copies of store data, no
    `currentSubject` prop drilling, no public persistence service.
 
+## Motion budget
+
+Animation is spent, not sprinkled. The tier a interaction falls into decides
+whether it may animate at all — the rule is frequency, not taste. Durations and
+easings live as CSS custom properties in `src/index.css`; components reference
+`var(--dur-*)` and never literal milliseconds.
+
+| Frequency | Examples in Temari | Animation |
+|---|---|---|
+| 100+/day, **any keyboard-initiated action** | Tab keys 1–5, Escape, future shortcuts | **None, ever.** |
+| Tens/day | Sidebar hover highlights, nav item colour | Instant state change; press depress only |
+| Occasional | Modals, drawers, tab clicks, toasts | Standard — `--dur-panel` / `--dur-layout` |
+| Rare / first-run | Ghost-hand swipe hint, celebration | May exceed the budget; this is the novelty spend |
+
+Rules that follow from it:
+
+1. **Keyboard paths skip transitions.** `runViewTransition(update, { origin })`
+   takes `'pointer' | 'keyboard'`; the keyboard origin applies the update
+   synchronously. Any new shortcut must pass its origin through.
+2. **Do not style bare element selectors with transitions.** Transitions attach
+   to opt-in classes (`.btn-kinetic`, `.btn-neo`), never `button`, so the
+   highest-frequency element in the app stays free by default.
+3. **Hover highlights are instant.** A fading highlight trails the cursor and
+   reads as lag.
+4. **Every new animation gets a `prefers-reduced-motion: reduce` override in the
+   same commit.** Non-negotiable; the block at the bottom of `index.css` is the
+   single place for it.
+5. **No animation library.** ADR-0004 chose the platform. FLIP + WAAPI + CSS
+   variables cover what we need; if something genuinely can't be built without a
+   library, write an ADR first.
+
+The full rationale and the remaining workstreams are in
+[docs/ui-plan-spatial-consistency.md](./docs/ui-plan-spatial-consistency.md).
+
 ## How to add a feature
 
 Example: "generate a mindmap from Material".
