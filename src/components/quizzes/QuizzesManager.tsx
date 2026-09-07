@@ -10,6 +10,9 @@ import { GenerationProgress } from '../ui/GenerationProgress';
 import { EmptyState } from '../ui/EmptyState';
 import { SourceMaterialSelector } from '../ui/SourceMaterialSelector';
 import { useModalOrigin } from '../ui/useModalOrigin';
+import { Card, CardContent } from '../ui/card';
+import { Badge } from '../ui/badge';
+import { Button } from '../ui/button';
 import {
   Layers,
   Sparkles,
@@ -144,38 +147,41 @@ export const QuizzesManager: React.FC<QuizzesManagerProps> = ({ onHighlightTerm 
   return (
     <div className="space-y-6">
       {/* Header Bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-5 border-3 border-slate-900 rounded-2xl shadow-neo-md">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-card p-6 border border-border/80 rounded-2xl shadow-xs">
         <div>
           <div className="flex items-center gap-2 mb-1.5 flex-wrap">
-            <span className="badge-chip px-2.5 py-1 bg-yellow-300 text-slate-900 border-2 border-slate-900 rounded-md shadow-neo-sm inline-flex items-center gap-1.5">
-              <span className="font-ethiopic font-bold text-xs normal-case">ተማሪ</span>
-              <span>Active Recall</span>
+            <span className="font-ethiopic font-semibold text-amber-600 dark:text-amber-400 text-sm">
+              ተማሪ
             </span>
-            <span className="text-xs font-bold text-slate-600">{activeSubject.name}</span>
+            <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+              Active Recall
+            </span>
+            <span className="text-xs font-medium text-muted-foreground">·</span>
+            <span className="text-xs font-medium text-foreground">{activeSubject.name}</span>
             {activeSubject.amharicName && (
-              <span className="text-xs font-bold text-slate-600 font-ethiopic border-l-2 border-slate-300 pl-2 hidden md:inline">
-                {activeSubject.amharicName}
+              <span className="text-xs font-medium text-muted-foreground font-ethiopic hidden md:inline">
+                ({activeSubject.amharicName})
               </span>
             )}
           </div>
-          <h2 className="section-heading text-slate-950 flex items-center gap-2">
-            <Layers className="w-5 h-5 text-emerald-600 shrink-0" /> Flashcard Quizzes & Active Recall
+          <h2 className="font-editorial text-2xl font-bold text-foreground tracking-tight flex items-center gap-2">
+            <Layers className="w-5 h-5 text-amber-600 dark:text-amber-400 shrink-0" /> Flashcard Quizzes & Active Recall
           </h2>
-          <p className="text-xs font-bold text-slate-600 mt-1">
-            Test and solidify concepts with interactive 3D flashcards, spaced repetition drills, and AI hints.
+          <p className="text-sm text-muted-foreground mt-1">
+            Test and solidify concepts with interactive flashcards, spaced recall drills, and AI hints.
           </p>
         </div>
 
-        <button
+        <Button
           onClick={(e) => {
             generateOrigin.capture(e);
             setShowGenerateModal(true);
           }}
-          className="flex items-center justify-center gap-2 px-5 py-2.5 bg-yellow-300 hover:bg-yellow-200 text-slate-950 font-black text-xs rounded-xl border-2 border-slate-900 shadow-neo transition-all active:translate-y-0.5 shrink-0"
+          className="shrink-0"
         >
-          <Sparkles className="w-4 h-4 text-slate-900" />
+          <Sparkles className="size-3.5" />
           Generate New Quiz Deck
-        </button>
+        </Button>
       </div>
 
       {generatedOffline && (
@@ -189,76 +195,80 @@ export const QuizzesManager: React.FC<QuizzesManagerProps> = ({ onHighlightTerm 
           title="No Flashcard Decks Yet"
           description="Generate flashcards directly from your saved study notes or any lecture text with Temari AI."
           action={
-            <button
+            <Button
               onClick={(e) => {
                 generateOrigin.capture(e);
                 setShowGenerateModal(true);
               }}
-              className="inline-flex items-center gap-2 px-5 py-2.5 bg-yellow-300 hover:bg-yellow-200 text-slate-950 font-black text-xs rounded-xl border-2 border-slate-900 shadow-neo transition-all active:translate-y-0.5"
             >
-              <Sparkles className="w-4 h-4 text-slate-900" /> Create Flashcard Quiz
-            </button>
+              <Sparkles className="size-3.5" /> Create Flashcard Quiz
+            </Button>
           }
         />
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {quizzes.map((quiz) => (
             <div
               key={quiz.id}
-              className="bg-white border-3 border-slate-900 rounded-2xl p-5 shadow-neo hover:translate-x-0.5 hover:-translate-y-0.5 transition-all flex flex-col justify-between"
+              className="bg-card border border-border/80 rounded-2xl p-5 shadow-xs hover:shadow-sm transition-shadow flex flex-col justify-between"
             >
               <div>
                 <div className="flex items-start justify-between gap-2 mb-2.5">
-                  <span
-                    className={`px-2.5 py-0.5 rounded-lg border-2 border-slate-900 text-[10px] font-black uppercase shadow-neo-sm ${
+                  <Badge
+                    variant="secondary"
+                    className={`text-[10px] font-medium ${
                       quiz.difficulty === 'Easy'
-                        ? 'bg-emerald-300 text-slate-950'
+                        ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/20'
                         : quiz.difficulty === 'Medium'
-                        ? 'bg-amber-300 text-slate-950'
-                        : 'bg-rose-300 text-slate-950'
+                        ? 'bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/20'
+                        : 'bg-rose-500/10 text-rose-700 dark:text-rose-400 border-rose-500/20'
                     }`}
                   >
                     {quiz.difficulty}
-                  </span>
+                  </Badge>
 
                   <button
                     onClick={(e) => handleDeleteQuiz(quiz.id, e)}
-                    className="text-slate-500 hover:text-rose-600 hover:bg-rose-50 p-1 rounded-md transition-colors"
+                    className="p-1 text-muted-foreground hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 rounded-md transition-colors"
                     title="Delete Quiz"
+                    aria-label={`Delete ${quiz.name}`}
                   >
-                    <Trash2 className="w-4 h-4" />
+                    <Trash2 className="w-3.5 h-3.5" />
                   </button>
                 </div>
 
-                <h3 className="text-sm font-black text-slate-950 line-clamp-2 mt-1">{quiz.name}</h3>
+                <h3 className="text-sm font-semibold text-foreground line-clamp-2 mt-1">{quiz.name}</h3>
 
-                <div className="flex items-center gap-2.5 text-[11px] font-bold text-slate-600 mt-3">
-                  <span className="px-2 py-0.5 bg-slate-100 border border-slate-900 rounded-md text-slate-900 font-black">
-                    {quiz.flashcards.length} Cards
+                <div className="flex items-center gap-2 text-[11px] font-medium text-muted-foreground mt-3">
+                  <span className="px-2 py-0.5 bg-muted rounded-md text-foreground font-mono">
+                    {quiz.flashcards.length} cards
                   </span>
-                  <span>•</span>
-                  <span>Practiced {quiz.timesPracticed || 0}x</span>
+                  <span>·</span>
+                  <span>Practiced {quiz.timesPracticed || 0}×</span>
                 </div>
 
                 {quiz.lastScore !== undefined && (
-                  <div className="mt-3 p-2.5 bg-[#FAF8F5] border-2 border-slate-900 rounded-xl flex items-center justify-between text-xs shadow-neo-sm">
-                    <span className="font-bold text-slate-600">Last Drill Score:</span>
-                    <span className="font-black text-cyan-800 text-sm">{quiz.lastScore}%</span>
+                  <div className="mt-3 p-2.5 bg-muted/50 border border-border rounded-lg flex items-center justify-between text-xs">
+                    <span className="font-medium text-muted-foreground">Last drill score</span>
+                    <span className="font-semibold text-foreground font-mono tabular-nums">
+                      {quiz.lastScore}%
+                    </span>
                   </div>
                 )}
               </div>
 
-              <div className="mt-5 pt-3.5 border-t-2 border-slate-200 flex items-center justify-between">
-                <span className="text-[10px] font-bold text-slate-500">
+              <div className="mt-5 pt-3.5 border-t border-border flex items-center justify-between">
+                <span className="text-[11px] font-medium text-muted-foreground">
                   {new Date(quiz.createdAt).toLocaleDateString()}
                 </span>
 
-                <button
+                <Button
+                  size="sm"
+                  variant="outline"
                   onClick={() => setActiveQuizId(quiz.id)}
-                  className="flex items-center gap-1.5 px-4 py-1.5 bg-emerald-300 hover:bg-emerald-200 text-slate-950 font-black text-xs rounded-xl border-2 border-slate-900 shadow-neo-sm transition-all active:translate-y-0.5"
                 >
-                  <Play className="w-3.5 h-3.5 fill-current" /> Practice
-                </button>
+                  <Play className="size-3 fill-current" /> Practice
+                </Button>
               </div>
             </div>
           ))}
@@ -272,12 +282,12 @@ export const QuizzesManager: React.FC<QuizzesManagerProps> = ({ onHighlightTerm 
         originRef={generateOrigin.ref}
         title="Generate AI Flashcard Deck"
         subtitle={`Subject: ${activeSubject.name}`}
-        icon={<Sparkles className="w-5 h-5 text-slate-950" />}
-        iconClassName="bg-yellow-300 text-slate-950"
+        icon={<Sparkles className="w-5 h-5 text-amber-600 dark:text-amber-400" />}
+        iconClassName="bg-amber-500/10 text-amber-600"
         maxWidthClassName="max-w-xl"
       >
         {error && (
-          <div className="p-3 mb-3 bg-rose-50 border-2 border-rose-500 rounded-xl text-xs font-bold text-rose-900">
+          <div className="p-3 mb-3 bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-900/50 rounded-xl text-xs font-medium text-rose-700 dark:text-rose-400">
             {error}
           </div>
         )}
@@ -288,7 +298,7 @@ export const QuizzesManager: React.FC<QuizzesManagerProps> = ({ onHighlightTerm 
           )}
 
               <div>
-                <label className="block text-xs font-black uppercase tracking-wider text-slate-800 mb-1">
+                <label className="block text-xs font-bold uppercase tracking-wider text-foreground mb-1">
                   Quiz Deck Name
                 </label>
                 <input
@@ -296,20 +306,20 @@ export const QuizzesManager: React.FC<QuizzesManagerProps> = ({ onHighlightTerm 
                   value={quizName}
                   onChange={(e) => setQuizName(e.target.value)}
                   placeholder={`e.g. ${activeSubject.name} Key Mechanisms Quiz`}
-                  className="w-full px-3.5 py-2 text-xs bg-[#FAF8F5] border-2 border-slate-900 rounded-xl font-bold focus:outline-hidden focus:ring-2 focus:ring-amber-400 shadow-neo-sm"
+                  className="w-full px-3.5 py-2 text-sm bg-background border border-border rounded-lg font-medium focus:outline-hidden focus:ring-2 focus:ring-ring/50 shadow-2xs"
                   disabled={isGenerating}
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-black uppercase tracking-wider text-slate-800 mb-1">
+                  <label className="block text-xs font-bold uppercase tracking-wider text-foreground mb-1">
                     Difficulty Level
                   </label>
                   <select
                     value={difficulty}
                     onChange={(e: any) => setDifficulty(e.target.value)}
-                    className="w-full px-3.5 py-2 text-xs bg-[#FAF8F5] border-2 border-slate-900 rounded-xl font-bold focus:outline-hidden focus:ring-2 focus:ring-amber-400 shadow-neo-sm"
+                    className="w-full px-3.5 py-2 text-sm bg-background border border-border rounded-lg font-medium focus:outline-hidden focus:ring-2 focus:ring-ring/50 shadow-2xs"
                     disabled={isGenerating}
                   >
                     <option value="Easy">Easy (Core Definitions)</option>
@@ -319,7 +329,7 @@ export const QuizzesManager: React.FC<QuizzesManagerProps> = ({ onHighlightTerm 
                 </div>
 
                 <div>
-                  <label className="block text-xs font-black uppercase tracking-wider text-slate-800 mb-1">
+                  <label className="block text-xs font-bold uppercase tracking-wider text-foreground mb-1">
                     Number of Cards ({quizLength})
                   </label>
                   <input
@@ -328,7 +338,7 @@ export const QuizzesManager: React.FC<QuizzesManagerProps> = ({ onHighlightTerm 
                     max={15}
                     value={quizLength}
                     onChange={(e) => setQuizLength(Number(e.target.value))}
-                    className="w-full accent-slate-900 mt-2"
+                    className="w-full accent-amber-600 mt-2"
                     disabled={isGenerating}
                   />
                 </div>
@@ -349,33 +359,32 @@ export const QuizzesManager: React.FC<QuizzesManagerProps> = ({ onHighlightTerm 
                 customPlaceholder="Paste textbook excerpt or notes text to generate flashcards from..."
               />
 
-              <div className="flex items-center justify-end gap-2.5 pt-3 border-t-2 border-slate-200">
-                <button
+              <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-border">
+                <Button
                   type="button"
+                  variant="outline"
                   onClick={() => setShowGenerateModal(false)}
                   disabled={isGenerating}
-                  className="px-4 py-2 text-xs font-black text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl border-2 border-slate-900 transition-all shadow-neo-sm"
                 >
                   Cancel
-                </button>
+                </Button>
 
-                <button
+                <Button
                   type="submit"
                   disabled={isGenerating}
-                  className="flex items-center gap-2 px-5 py-2 text-xs font-black text-slate-950 bg-yellow-300 hover:bg-yellow-200 rounded-xl border-2 border-slate-900 shadow-neo transition-all active:translate-y-0.5 disabled:opacity-50"
                 >
                   {isGenerating ? (
                     <>
-                      <Loader2 className="w-4 h-4 animate-spin text-slate-900" />
-                      <span>Generating Deck...</span>
+                      <Loader2 className="size-3.5 animate-spin" />
+                      <span>Generating Deck…</span>
                     </>
                   ) : (
                     <>
-                      <Sparkles className="w-4 h-4 text-slate-900" />
+                      <Sparkles className="size-3.5" />
                       <span>Generate Quiz</span>
                     </>
                   )}
-                </button>
+                </Button>
               </div>
             </form>
       </Modal>
