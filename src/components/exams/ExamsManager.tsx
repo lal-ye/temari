@@ -1,5 +1,11 @@
 import React, { useState } from 'react';
-import { StoredAttempt, ExamQuestion } from '../../types';
+import { CognitiveMixId, KnowledgeUnit, StoredAttempt, ExamQuestion } from '../../types';
+import {
+  buildBloomPlan,
+  buildExamBlueprint,
+  previouslySeenStems,
+  COGNITIVE_MIXES,
+} from '../../services/examBlueprint';
 import { studyStore } from '../../hooks/useStudyStore';
 import { useActiveSubject, useAttempts, useNotes } from '../../hooks/useStudyStore';
 import { ai } from '../../services/ai';
@@ -11,6 +17,7 @@ import { EmptyState } from '../ui/EmptyState';
 import { useModalOrigin } from '../ui/useModalOrigin';
 import { SourceMaterialSelector } from '../ui/SourceMaterialSelector';
 import { Badge } from '../ui/badge';
+import { BloomBadge } from '../ui/BloomBadge';
 import { Button } from '../ui/button';
 import {
   GraduationCap,
@@ -37,6 +44,8 @@ export const ExamsManager: React.FC = () => {
     questions: ExamQuestion[];
     timeLimitMinutes: number;
     offlineDraft?: boolean;
+    cognitiveMix?: CognitiveMixId;
+    knowledgeUnitTargeted?: boolean;
   } | null>(null);
   const [showGenerateModal, setShowGenerateModal] = useState(false);
   const generateOrigin = useModalOrigin();
@@ -48,11 +57,22 @@ export const ExamsManager: React.FC = () => {
   const [sourceOption, setSourceOption] = useState<'subjectNotes' | 'customText'>('subjectNotes');
   const [customMaterial, setCustomMaterial] = useState('');
   const [selectedNoteId, setSelectedNoteId] = useState<string>('');
+  const [cognitiveMix, setCognitiveMix] = useState<CognitiveMixId>('balanced');
   const [isGenerating, setIsGenerating] = useState(false);
+  /** Which half of the two-stage pipeline is in flight, for the progress copy. */
+  const [stage, setStage] = useState<'units' | 'questions'>('questions');
   const [error, setError] = useState<string | null>(null);
 
   if (!activeSubject) return null;
 
+  /**
+   * Two-stage generation (docs/adr/0008).
+   *
+   * Stage 1 names the assessable ideas in the Material; stage 2 writes
+   * questions against them at a mandated Bloom distribution. One prompt over a
+   * whole notes library over-samples whatever topic appears first — naming the
+   * units first is what makes coverage planned instead of emergent.
+   */
   const handleGenerateAndStartExam = async (e: React.FormEvent) => {
     e.preventDefault();
     let textToUse = '';
@@ -77,17 +97,56 @@ export const ExamsManager: React.FC = () => {
     setError(null);
 
     try {
+      const plan = buildBloomPlan(questionCount, cognitiveMix);
+
+      // Stage 1 is skipped for short material: below roughly a page there is
+      // nothing to over-sample, and the extra round trip is pure latency.
+      let knowledgeUnits: KnowledgeUnit[] = [];
+      const worthExtracting = questionCount >= 8 && textToUse.length >= 1200;
+      if (worthExtracting) {
+        setStage('units');
+        const extracted = await ai.extractKnowledgeUnits({
+          material: textToUse,
+          maxUnits: Math.min(24, Math.max(6, questionCount)),
+        });
+        knowledgeUnits = extracted.value;
+      }
+
+      setStage('questions');
+
+      // Stems from this subject's earlier exams, so a retake tests transfer
+      // rather than a memorised answer string.
+      const avoidStems = previouslySeenStems(attempts).slice(-40);
+
       const { source: examSource, value: generatedQuestions } = await ai.generateExam({
         material: textToUse,
         numberOfQuestions: questionCount,
+        bloomPlan: plan,
+        knowledgeUnits: knowledgeUnits.length > 0 ? knowledgeUnits : undefined,
+        avoidStems: avoidStems.length > 0 ? avoidStems : undefined,
+      });
+
+      if (generatedQuestions.length === 0) {
+        throw new Error('The Provider returned no questions. Try again or shorten the material.');
+      }
+
+      // Repair what came back: drop near-duplicates, enforce the cognitive
+      // distribution, order for progressive difficulty, shuffle MCQ positions.
+      const blueprint = buildExamBlueprint({
+        generated: generatedQuestions,
+        plan,
+        avoidStems,
+        seed: Date.now() % 2147483647,
       });
 
       setShowGenerateModal(false);
       setTakingExam({
         title: examTitle.trim() || `${activeSubject.name} Comprehensive Mock Exam`,
-        questions: generatedQuestions,
+        questions: blueprint.questions,
         timeLimitMinutes: timeLimit,
         offlineDraft: examSource === 'offline',
+        cognitiveMix,
+        knowledgeUnitTargeted: knowledgeUnits.length > 0,
       });
       // Reset form
       setExamTitle('');
@@ -123,6 +182,8 @@ export const ExamsManager: React.FC = () => {
         questions={takingExam.questions}
         timeLimitMinutes={takingExam.timeLimitMinutes}
         offlineDraft={takingExam.offlineDraft}
+        cognitiveMix={takingExam.cognitiveMix}
+        knowledgeUnitTargeted={takingExam.knowledgeUnitTargeted}
         onCompleted={handleExamCompleted}
         onCancel={() => setTakingExam(null)}
       />
@@ -288,7 +349,14 @@ export const ExamsManager: React.FC = () => {
 
         <form onSubmit={handleGenerateAndStartExam} className="space-y-4">
           {isGenerating && (
-            <GenerationProgress kind="exam" detail={`Subject: ${activeSubject.name}`} />
+            <GenerationProgress
+              kind={stage === 'units' ? 'knowledge-units' : 'exam'}
+              detail={
+                stage === 'units'
+                  ? `Naming assessable ideas in ${activeSubject.name}`
+                  : `Writing ${questionCount} questions for ${activeSubject.name}`
+              }
+            />
           )}
 
               <div>
@@ -338,6 +406,41 @@ export const ExamsManager: React.FC = () => {
                     <option value={25}>25 Minutes</option>
                     <option value={45}>45 Minutes</option>
                   </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wider text-foreground mb-1">
+                  Cognitive Mix
+                </label>
+                <select
+                  value={cognitiveMix}
+                  onChange={(e) => setCognitiveMix(e.target.value as CognitiveMixId)}
+                  className={fieldClass}
+                  disabled={isGenerating}
+                >
+                  {(['recall', 'balanced', 'simulation', 'deep'] as CognitiveMixId[]).map((id) => (
+                    <option key={id} value={id}>
+                      {COGNITIVE_MIXES[id].label}
+                    </option>
+                  ))}
+                </select>
+                <p className="text-[11px] font-medium text-muted-foreground mt-1.5">
+                  {COGNITIVE_MIXES[cognitiveMix].description}
+                </p>
+
+                {/* The exact quota the Provider will be held to, so the choice is
+                    not a vague adjective. */}
+                <div className="flex flex-wrap gap-1.5 mt-2.5">
+                  {buildBloomPlan(questionCount, cognitiveMix).map((slot) => (
+                    <span
+                      key={slot.level}
+                      className="inline-flex items-center gap-1 px-2 py-0.5 bg-muted/50 border border-border rounded-md text-[10px] font-medium text-muted-foreground"
+                    >
+                      <BloomBadge level={slot.level} />
+                      <span className="font-mono tabular-nums text-foreground">×{slot.count}</span>
+                    </span>
+                  ))}
                 </div>
               </div>
 

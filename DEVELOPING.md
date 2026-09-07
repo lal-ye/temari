@@ -10,12 +10,14 @@ The rules that keep this codebase navigable. The domain language lives in
 |---|---|---|
 | `src/services/studyStore.ts` | **Study-Store module** — all study data: persistence, reactive state, subject scoping, cascade deletes, cross-tab sync | Deep module (ADR-0001). Persistence behind an internal `StorageAdapter` seam (localStorage + in-memory adapters). Do not split it back up. |
 | `src/hooks/useStudyStore.ts` | React glue over the store (slice hooks) | Thin by design; stable collection references. |
-| `src/services/ai/` | **AI-Generation module** — notes/quiz/exam generation, exam grading, term explanations | Deep module (ADR-0002). Port = `AiGenerator`; adapters = HTTP + offline; fallback policy in one place; results always attributable via `GenerationResult<T>`. |
+| `src/services/ai/` | **AI-Generation module** — notes/quiz/exam generation, knowledge-unit extraction, exam grading, term explanations | Deep module (ADR-0002). Port = `AiGenerator`; adapters = HTTP + offline; fallback policy in one place; results always attributable via `GenerationResult<T>`. |
+| `src/services/examBlueprint.ts` | **Exam-Blueprint module** — pure planning and repair of exam questions: Bloom quota, distribution enforcement, ordering, dedupe, option shuffling | Deep module (ADR-0008). Feature screens call `buildExamBlueprint`, not the parts. No Provider calls. |
 | `src/services/aiConnection.ts` | Server-only AI ops: connection test, live model discovery, PDF extraction | No offline adapter on purpose (one adapter = hypothetical seam, ADR-0002). |
 | `shared/aiCatalog.ts` | Single source of truth for provider identity + transport facts | Shared by client AND server (ADR-0003). |
 | `src/components/tools/modelPresentation.ts` | Client-only presentation of the provider catalog | Badge colours, copy, curated model lists. Never restate catalog facts. |
 | `src/types.ts` | Domain model + `UserSettings` | `Subject`, `StoredNote`, `StoredQuiz` (a Quiz = flashcard deck), `StoredAttempt`, `StudyTask`. |
-| `src/components/ui/*` | Shared UI primitives | `Modal` (+ `useModalOrigin` for morph origins), `GenerationProgress`, `EmptyState`, `Skeleton`, `CommandPalette`, `SourceMaterialSelector`. Reach for these before hand-rolling a panel. |
+| `src/utils/analytics.ts` | Assessment analytics | Pure functions. Topic accuracy, per-Bloom-level mastery, the spaced-review queue (`computeReviewQueue`) and escalation (`escalatedLevel`). |
+| `src/components/ui/*` | Shared UI primitives | `Modal` (+ `useModalOrigin` for morph origins), `GenerationProgress`, `EmptyState`, `Skeleton`, `CommandPalette`, `SourceMaterialSelector`, `BloomBadge` (one cognitive-level pill, shared by the exam taking, results and analytics screens so a level keeps one colour). Reach for these before hand-rolling a panel. |
 | `src/components/nav/*` | App chrome navigation | `HubTabs` / `HubBottomBar` (desktop header tabs and the mobile bottom bar, sharing the sliding indicator), `SubjectSwitcher`, `StreakPill`. All live in the header; there is no sidebar (ADR-0006). |
 | `src/components/*` | Feature screens | Consume the store + `ai` + `aiConnection`. No fetch calls, no credential logic, no fallback logic in components. |
 | `server.ts` | Express API (`/api/ai/*`) + static serving | Thin transport over `server/aiProvider.ts`; routes own prompts. |

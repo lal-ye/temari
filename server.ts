@@ -152,7 +152,7 @@ Figure rules, all mandatory:
   }
 });
 
-// 3. Generate Flashcard Quiz
+// 4. Generate Flashcard Quiz
 app.post('/api/ai/generate-quiz', async (req: Request, res: Response) => {
   try {
     const {
@@ -209,12 +209,119 @@ You MUST respond strictly with a valid JSON object conforming to this schema:
   }
 });
 
-// 4. Generate Comprehensive Exam
+// 5. Extract Knowledge Units — stage 1 of exam generation (docs/adr/0008)
+//
+// Dumping a whole notes library into one question-writing prompt lets the model
+// over-sample whatever topic happens to appear first. Naming the assessable
+// ideas first, then writing against them, is what makes coverage planned
+// instead of emergent.
+app.post('/api/ai/extract-knowledge-units', async (req: Request, res: Response) => {
+  try {
+    const { material, maxUnits = 12, apiKey, provider, model, baseUrl } = req.body;
+
+    if (!material) {
+      return res.status(400).json({ error: 'Material is required' });
+    }
+
+    const cap = Math.max(1, Math.min(Number(maxUnits) || 12, 24));
+
+    const systemPrompt = `You are a curriculum designer. Read the course material and list the discrete knowledge units a student must master — the ideas an exam should actually assess, not section headings copied verbatim.
+
+For each unit give:
+- "concept": the idea, named in at most 6 words
+- "definition": one sentence stating what it is, grounded in the material
+- "sourceSnippet": a short verbatim passage from the material that supports it
+
+Rules:
+- Return at most ${cap} units, ordered by how central each is to the material.
+- Merge restatements of the same idea; never return two units that are the same concept worded differently.
+- Every unit must be assessable — something a question can be written about and an answer judged against.
+- Invent nothing: if the material does not support a unit, leave it out.
+
+You MUST respond strictly with a valid JSON object matching this schema:
+{
+  "knowledgeUnits": [
+    {
+      "id": "ku-1",
+      "concept": "Glycolysis",
+      "definition": "The ten-step pathway that splits glucose into two pyruvate molecules, yielding net 2 ATP.",
+      "sourceSnippet": "Glycolysis occurs in the cytosol and produces a net gain of two ATP..."
+    }
+  ]
+}`;
+
+    const prompt = `Course Material:\n${material}\n\nList up to ${cap} knowledge units in JSON.`;
+
+    const result = await executeAiRequest({
+      provider,
+      model,
+      apiKey,
+      baseUrl,
+      systemPrompt,
+      prompt,
+      jsonResponse: true,
+    });
+
+    const parsed = parseStructuredJson<{ knowledgeUnits: any[] }>(result.text, { knowledgeUnits: [] });
+
+    // Normalise on the way out: the model owns the wording, the server owns the
+    // shape, so downstream code never has to defend against a missing field.
+    const knowledgeUnits = (Array.isArray(parsed.knowledgeUnits) ? parsed.knowledgeUnits : [])
+      .slice(0, cap)
+      .map((unit, idx) => ({
+        id: typeof unit?.id === 'string' && unit.id.trim() ? unit.id.trim() : `ku-${idx + 1}`,
+        concept: String(unit?.concept ?? '').trim().slice(0, 120),
+        definition: String(unit?.definition ?? '').trim().slice(0, 400),
+        sourceSnippet:
+          typeof unit?.sourceSnippet === 'string' ? unit.sourceSnippet.trim().slice(0, 400) : undefined,
+      }))
+      .filter((unit) => unit.concept.length > 0);
+
+    res.json({ knowledgeUnits, providerUsed: result.provider, modelUsed: result.model });
+  } catch (error: any) {
+    console.error('Error in /api/ai/extract-knowledge-units:', error);
+    res.status(500).json({ error: error?.message || 'Failed to extract knowledge units' });
+  }
+});
+
+/** Bloom level names as the prompt states them, so the model cannot reinterpret the label. */
+const BLOOM_PROMPT_LABELS: Record<string, string> = {
+  remember: 'Remember — recall a specific fact, term or definition',
+  understand: 'Understand — explain, summarise or classify an idea in the student’s own terms',
+  analyze: 'Analyze — break a whole into parts and relate them (compare, contrast, differentiate)',
+  evaluate: 'Evaluate — judge, critique or defend a position with criteria',
+  create: 'Create — produce a new plan, design or formulation from the material',
+  apply: 'Apply — use a rule or method in a situation the material did not spell out',
+};
+
+/**
+ * Render the client-computed cognitive plan (src/services/examBlueprint.ts)
+ * into the prompt lines that demand it. The client owns the quota; this route
+ * owns the words. Keeping them on opposite sides of one request body is what
+ * stops the plan and the prompt from drifting apart.
+ */
+function renderBloomPlan(plan: Array<{ level: string; verb?: string; count: number }>): string {
+  return plan
+    .filter((slot) => slot && slot.count > 0)
+    .map((slot) => {
+      const label = BLOOM_PROMPT_LABELS[slot.level] ?? slot.level;
+      const verbs = typeof slot.verb === 'string' && slot.verb ? slot.verb : '';
+      return `- ${slot.count} question${slot.count === 1 ? '' : 's'} at "${slot.level}": ${label}${
+        verbs ? `. Start the stem with a verb such as: ${verbs}.` : '.'
+      }`;
+    })
+    .join('\n');
+}
+
+// 6. Generate Comprehensive Exam
 app.post('/api/ai/generate-exam', async (req: Request, res: Response) => {
   try {
     const {
       material,
       numberOfQuestions = 15,
+      bloomPlan,
+      knowledgeUnits,
+      avoidStems,
       apiKey,
       provider,
       model,
@@ -225,12 +332,57 @@ app.post('/api/ai/generate-exam', async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'Material is required' });
     }
 
-    const systemPrompt = `You are a university professor creating an exam.
-Generate an exam with ${numberOfQuestions} questions based on this course material.
-Mix question types:
-- Multiple choice (type: "multiple_choice", options: 4 distinct strings)
-- True / False (type: "true_false", options: ["true", "false"])
-- Short Answer (type: "short_answer", options omitted)
+    const total = Math.max(1, Math.min(Number(numberOfQuestions) || 15, 40));
+    const plan = Array.isArray(bloomPlan) ? bloomPlan : [];
+    const units = Array.isArray(knowledgeUnits) ? knowledgeUnits : [];
+    const avoid = Array.isArray(avoidStems) ? avoidStems.slice(0, 60) : [];
+
+    // A format is not a cognitive level: an MCQ can be pure recall or deep
+    // analysis. The distribution below is the part of this prompt that decides
+    // what the learner actually practises.
+    const distributionSection = plan.length
+      ? `Cognitive level distribution — this is mandatory, not advisory:
+${renderBloomPlan(plan)}
+
+Write each question at its assigned level and nowhere else. A "remember" question must not ask the student to justify anything; a "create" question must not be answerable by reciting a definition. If a knowledge unit will not support a high level, pick another unit — do not quietly downgrade the question.`
+      : `Spread the ${total} questions across cognitive levels rather than asking ${total} recall questions.`;
+
+    const unitsSection = units.length
+      ? `Knowledge units to assess (write against these, and cover as many as the question count allows):
+${units
+  .map((u: any, i: number) => `${i + 1}. [${u.id}] ${u.concept} — ${u.definition ?? ''}`)
+  .join('\n')}
+
+Set "knowledgeUnitId" on every question to the unit it was written against. Do not write two questions about the same unit unless the question count forces it, and never let one unit dominate the exam just because it appears most often in the material.`
+      : '';
+
+    const avoidSection = avoid.length
+      ? `The student has already answered questions like these. Do not repeat them or reword them — write about different material or ask at a different cognitive level:
+${avoid.map((s: string) => `- ${String(s).slice(0, 160)}`).join('\n')}`
+      : '';
+
+    const systemPrompt = `You are a university professor writing a mock exam that tests understanding, not memorisation.
+
+Write exactly ${total} questions.
+
+${distributionSection}
+
+${unitsSection}
+
+${avoidSection}
+
+Question formats:
+- Multiple choice (type: "multiple_choice", "options": exactly 4 distinct strings)
+- True / False (type: "true_false", "options": ["true", "false"])
+- Short Answer (type: "short_answer", "options" omitted)
+
+For every question:
+- "topic" is the knowledge unit's concept, or the closest heading in the material. Never invent a topic the material does not contain.
+- "explanation" must say why the answer is correct AND quote or name the specific passage in the material it comes from, so the student can find it in their own notes.
+- For "short_answer", add "rubric": 2-4 short statements naming the points that earn full credit. Grading is done against this rubric, so make the points checkable, not vibes.
+- For "multiple_choice", make distractors plausible misconceptions a real student would hold, not obviously wrong filler. Exactly one option may be correct.
+- Vary which option position holds the correct answer across the exam. Do not default to the first or second option.
+- No two questions may ask the same thing, even worded differently.
 
 You MUST respond strictly with a valid JSON object matching this schema:
 {
@@ -241,13 +393,18 @@ You MUST respond strictly with a valid JSON object matching this schema:
       "type": "multiple_choice" | "true_false" | "short_answer",
       "options": ["Option A", "Option B", "Option C", "Option D"],
       "correctAnswer": "Exact string of correct answer",
-      "explanation": "Why this answer is correct",
-      "topic": "Topic Name"
+      "explanation": "Why this answer is correct, citing the passage in the material",
+      "topic": "Topic Name",
+      "bloomLevel": "remember" | "understand" | "apply" | "analyze" | "evaluate" | "create",
+      "knowledgeUnitId": "ku-1",
+      "rubric": ["Point 1", "Point 2"]
     }
   ]
-}`;
+}
 
-    const prompt = `Course Material:\n${material}\n\nGenerate ${numberOfQuestions} exam questions in JSON.`;
+"bloomLevel" is required on every question and must match the level you were assigned for it. "rubric" is required on short_answer questions and omitted elsewhere.`;
+
+    const prompt = `Course Material:\n${material}\n\nWrite the ${total} exam questions in JSON.`;
 
     const result = await executeAiRequest({
       provider,
@@ -271,7 +428,7 @@ You MUST respond strictly with a valid JSON object matching this schema:
   }
 });
 
-// 5. Grade Exam & Analyze
+// 7. Grade Exam & Analyze
 app.post('/api/ai/grade-exam', async (req: Request, res: Response) => {
   try {
     const { exam, userAnswers, apiKey, provider, model, baseUrl } = req.body;
@@ -282,8 +439,15 @@ app.post('/api/ai/grade-exam', async (req: Request, res: Response) => {
     const systemPrompt = `You are an expert exam grader.
 Grade the student answers against the exam questions.
 
+Grading rules:
+- Multiple choice and true/false: correct only if the answer matches "correctAnswer".
+- Short answer: grade against that question's "rubric", point by point. List the points the answer actually earned in "rubricEarned". The answer is "isCorrect" when it earns at least half the rubric points. Do not award a point for wording that merely resembles the rubric - the student must state the idea.
+- Judge the answer at the cognitive level the question asks for ("bloomLevel"). A recall-level answer that recites a definition does not earn credit on an "analyze" or "evaluate" question.
+
+Carry "topic", "bloomLevel" and "knowledgeUnitId" through verbatim from the question object - do not restate, rename or invent them. Mastery is measured per topic and per cognitive level, so a changed string corrupts the student's history.
+
 Return a strict JSON object with:
-1. results: Array of results for each question with { question, type, correctAnswer, userAnswer, isCorrect: boolean, explanation, topic }
+1. results: Array of results for each question, one per question, in the same order
 2. overallScore: integer percentage 0-100
 3. topicsToReview: array of topic strings where student made mistakes
 4. extraReadings: array of 2-4 recommended article objects { title: string, url: string, snippet: string }
@@ -298,7 +462,10 @@ Schema:
       "userAnswer": "string",
       "isCorrect": boolean,
       "explanation": "string",
-      "topic": "string"
+      "topic": "string",
+      "bloomLevel": "remember" | "understand" | "apply" | "analyze" | "evaluate" | "create",
+      "knowledgeUnitId": "string",
+      "rubricEarned": ["string"]
     }
   ],
   "overallScore": 85,
@@ -344,7 +511,7 @@ Grade and return JSON evaluation.`;
   }
 });
 
-// 6. Explain Term
+// 8. Explain Term
 app.post('/api/ai/explain-term', async (req: Request, res: Response) => {
   try {
     const { term, context, apiKey, provider, model, baseUrl } = req.body;
@@ -409,7 +576,7 @@ async function extractTextLocally(dataUri: string): Promise<string> {
   }
 }
 
-// 7. Extract Text from PDF (Multimodal with local PDFParse fallback)
+// 9. Extract Text from PDF (Multimodal with local PDFParse fallback)
 app.post('/api/ai/extract-pdf', async (req: Request, res: Response) => {
   try {
     const { pdfDataUri, apiKey, provider, model, baseUrl } = req.body;

@@ -1,6 +1,7 @@
-import { Flashcard, ExamQuestion, Article } from '../../types';
+import { Flashcard, ExamQuestion, Article, KnowledgeUnit } from '../../types';
 import {
   GenerationAdapter,
+  ExtractKnowledgeUnitsParams,
   GenerateExamParams,
   GenerateNotesParams,
   GenerateQuizParams,
@@ -9,6 +10,62 @@ import {
   GradeExamResult,
   ExplainTermResult,
 } from './contracts';
+
+/**
+ * Offline knowledge-unit extraction: Markdown headings first, then the longest
+ * sentences as a fallback. Purely structural — it finds *where* the material
+ * makes claims, it cannot judge which claims matter. That limit is why every
+ * offline exam question is labelled Remember (see generateExam below).
+ */
+export function extractKnowledgeUnitsFromText(
+  material: string,
+  maxUnits = 12
+): KnowledgeUnit[] {
+  const cap = Math.max(1, Math.min(maxUnits, 20));
+  const units: KnowledgeUnit[] = [];
+  const lines = material.split(/\r?\n/);
+
+  // Headings are the author's own statement of what a section is about.
+  lines.forEach((line, idx) => {
+    if (units.length >= cap) return;
+    const heading = line.match(/^\s{0,3}#{1,6}\s+(.+?)\s*#*\s*$/);
+    if (!heading) return;
+    const concept = heading[1].replace(/[*_`]/g, '').trim();
+    if (concept.length < 3) return;
+
+    // Take the first substantive line after the heading as its definition.
+    const body = lines
+      .slice(idx + 1)
+      .find((l) => l.trim().length > 30 && !/^\s{0,3}#{1,6}\s/.test(l));
+
+    units.push({
+      id: `ku-${units.length + 1}`,
+      concept,
+      definition: (body ?? concept).trim().slice(0, 280),
+      sourceSnippet: body?.trim().slice(0, 280),
+    });
+  });
+
+  // No headings at all (pasted plain text): fall back to declarative sentences.
+  if (units.length === 0) {
+    material
+      .split(/(?<=[.!?])\s+/)
+      .map((s) => s.trim())
+      .filter((s) => s.length > 40 && s.length < 320)
+      .slice(0, cap)
+      .forEach((sentence, idx) => {
+        const words = sentence.split(/\s+/);
+        units.push({
+          id: `ku-${idx + 1}`,
+          concept: words.slice(0, 6).join(' ').replace(/[,;:]+$/, ''),
+          definition: sentence,
+          sourceSnippet: sentence,
+        });
+      });
+  }
+
+  return units;
+}
 
 /**
  * Offline adapter: placeholder study content assembled on the learner's device
@@ -85,9 +142,24 @@ test the boundaries and transitions between them.`;
       return cards;
     },
 
+    async extractKnowledgeUnits(params: ExtractKnowledgeUnitsParams): Promise<KnowledgeUnit[]> {
+      return extractKnowledgeUnitsFromText(params.material, params.maxUnits);
+    },
+
+    /**
+     * Offline exams are recall-only, and say so.
+     *
+     * Every item is tagged `bloomLevel: 'remember'` regardless of the requested
+     * plan: sentence extraction can produce "what does the material say", never
+     * "justify this design". Claiming a higher level would make the mastery
+     * dashboard lie about what was practised, which is worse than admitting the
+     * draft is shallow (CONTEXT.md: Offline generation).
+     */
     async generateExam(params: GenerateExamParams): Promise<ExamQuestion[]> {
       const questions: ExamQuestion[] = [];
-      const total = params.numberOfQuestions || 15;
+      const planTotal = params.bloomPlan?.reduce((sum, slot) => sum + slot.count, 0) ?? 0;
+      const total = planTotal || params.numberOfQuestions || 15;
+      const units = extractKnowledgeUnitsFromText(params.material, Math.max(6, total));
       const lines = params.material
         .split(/\n+/)
         .map((l) => l.trim())
@@ -95,9 +167,17 @@ test the boundaries and transitions between them.`;
 
       for (let i = 0; i < total; i++) {
         const sourceLine = lines[i % Math.max(1, lines.length)] || sampleTopics[i % sampleTopics.length];
-        const currentTopic = sampleTopics[i % sampleTopics.length];
+        // Prefer the extracted unit over the rotating sample topic, so the
+        // offline draft at least names real ideas from the learner's material.
+        const unit = units[i % Math.max(1, units.length)];
+        const currentTopic = unit?.concept || sampleTopics[i % sampleTopics.length];
         const type: 'multiple_choice' | 'true_false' | 'short_answer' =
           i % 3 === 0 ? 'multiple_choice' : i % 3 === 1 ? 'true_false' : 'short_answer';
+
+        const shared = {
+          bloomLevel: 'remember' as const,
+          knowledgeUnitId: unit?.id,
+        };
 
         if (type === 'multiple_choice') {
           questions.push({
@@ -108,6 +188,7 @@ test the boundaries and transitions between them.`;
             correctAnswer: currentTopic,
             explanation: `The material explicitly links this scenario to ${currentTopic}.`,
             topic: currentTopic,
+            ...shared,
           });
         } else if (type === 'true_false') {
           questions.push({
@@ -117,6 +198,7 @@ test the boundaries and transitions between them.`;
             correctAnswer: 'False',
             explanation: `Key points to include: energy transfer, regulatory checkpoints, and operational fidelity.`,
             topic: currentTopic,
+            ...shared,
           });
         } else {
           // Short Answer
@@ -127,6 +209,12 @@ test the boundaries and transitions between them.`;
             correctAnswer: `It provides the critical catalytic or structural transition needed for downstream efficiency.`,
             explanation: `Key points to include: energy transfer, regulatory checkpoints, and operational fidelity.`,
             topic: currentTopic,
+            rubric: [
+              'Names the process or structure involved.',
+              'States its functional outcome.',
+              'Links it to the surrounding system.',
+            ],
+            ...shared,
           });
         }
       }
@@ -141,11 +229,29 @@ test the boundaries and transitions between them.`;
       params.exam.forEach((q, idx) => {
         const userAns = (params.userAnswers[idx] || '').trim();
         let isCorrect = false;
+        let rubricEarned: string[] | undefined;
 
         if (q.type === 'multiple_choice' || q.type === 'true_false') {
           isCorrect = userAns.toLowerCase() === q.correctAnswer.toLowerCase();
+        } else if (q.rubric && q.rubric.length > 0) {
+          // Rubric-scored heuristic: a rubric point counts as earned when the
+          // answer shares a distinctive word with it (words of 5+ letters, so
+          // "the" and "and" cannot carry a point). Pass = half the rubric.
+          const answerWords = new Set(
+            userAns
+              .toLowerCase()
+              .split(/[^a-z0-9]+/)
+              .filter((w) => w.length >= 5)
+          );
+          rubricEarned = q.rubric.filter((point) =>
+            point
+              .toLowerCase()
+              .split(/[^a-z0-9]+/)
+              .some((w) => w.length >= 5 && answerWords.has(w))
+          );
+          isCorrect = rubricEarned.length >= Math.ceil(q.rubric.length / 2);
         } else {
-          // Short answer heuristic
+          // No rubric: fall back to the old "they wrote something" heuristic.
           isCorrect = userAns.length > 10;
         }
 
@@ -160,6 +266,11 @@ test the boundaries and transitions between them.`;
           isCorrect,
           explanation: q.explanation || `The standard verified answer is: ${q.correctAnswer}`,
           topic: q.topic,
+          // Carried through so mastery is measurable per topic × level even
+          // when a Provider was never reachable.
+          bloomLevel: q.bloomLevel,
+          knowledgeUnitId: q.knowledgeUnitId,
+          rubricEarned,
         });
       });
 

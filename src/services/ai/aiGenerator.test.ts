@@ -121,6 +121,131 @@ describe('AiGenerator', () => {
     expect(result.value.relatedLinks?.length).toBeGreaterThan(0);
   });
 
+  it('sends the cognitive plan and knowledge units to the server, not just a count', async () => {
+    const fetchMock = fetchOk({ exam: [] });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const plan = [
+      { level: 'remember' as const, verb: 'define, list', count: 3 },
+      { level: 'analyze' as const, verb: 'compare, contrast', count: 2 },
+    ];
+    const units = [
+      { id: 'ku-1', concept: 'Glycolysis', definition: 'Splits glucose into pyruvate.' },
+    ];
+
+    await makeGenerator().generateExam({
+      material,
+      numberOfQuestions: 5,
+      bloomPlan: plan,
+      knowledgeUnits: units,
+      avoidStems: ['Define glycolysis.'],
+    });
+
+    const [path, init] = fetchMock.mock.calls[0];
+    expect(path).toBe('/api/ai/generate-exam');
+    const body = JSON.parse(init.body);
+    // The quota and the units travel with the request, so the server prompt can
+    // hold the model to a distribution instead of hoping for one.
+    expect(body.bloomPlan).toEqual(plan);
+    expect(body.knowledgeUnits).toEqual(units);
+    expect(body.avoidStems).toEqual(['Define glycolysis.']);
+  });
+
+  it('extracts knowledge units through the server when it is reachable', async () => {
+    const fetchMock = fetchOk({
+      knowledgeUnits: [{ id: 'ku-1', concept: 'Photosynthesis', definition: 'Light to chemical energy.' }],
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const result = await makeGenerator().extractKnowledgeUnits({ material, maxUnits: 8 });
+
+    expect(result.source).toBe('model');
+    expect(result.value).toHaveLength(1);
+    const [path, init] = fetchMock.mock.calls[0];
+    expect(path).toBe('/api/ai/extract-knowledge-units');
+    expect(JSON.parse(init.body).maxUnits).toBe(8);
+  });
+
+  it('falls back to structural extraction when no Provider is reachable', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('network down')));
+
+    const result = await makeGenerator().extractKnowledgeUnits({
+      material: [
+        '# Glycolysis',
+        '',
+        'Glycolysis splits one glucose molecule into two pyruvate molecules in the cytosol.',
+        '',
+        '## Krebs Cycle',
+        '',
+        'The Krebs cycle oxidises acetyl-CoA and releases carbon dioxide as waste.',
+      ].join('\n'),
+    });
+
+    expect(result.source).toBe('offline');
+    expect(result.value.map((u) => u.concept)).toEqual(['Glycolysis', 'Krebs Cycle']);
+    // Each unit carries the passage it came from, so a question can cite it.
+    expect(result.value[0].sourceSnippet).toContain('pyruvate');
+  });
+
+  it('extracts units from heading-less pasted text by falling back to sentences', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('network down')));
+
+    const result = await makeGenerator().extractKnowledgeUnits({
+      material:
+        'Glycolysis occurs in the cytosol and yields a net gain of two ATP molecules per glucose. ' +
+        'The Krebs cycle takes place in the mitochondrial matrix and releases carbon dioxide.',
+    });
+
+    expect(result.value).toHaveLength(2);
+    expect(result.value[0].id).toBe('ku-1');
+  });
+
+  it('labels every offline exam question as recall rather than claiming a level it cannot reach', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('network down')));
+
+    const result = await makeGenerator().generateExam({
+      material: 'Glycolysis occurs in the cytosol and yields a net gain of two ATP molecules per glucose molecule.',
+      numberOfQuestions: 6,
+    });
+
+    expect(result.source).toBe('offline');
+    expect(result.value.length).toBe(6);
+    // Sentence extraction cannot produce analysis or synthesis. Claiming it can
+    // would make the mastery dashboard lie about what was practised.
+    result.value.forEach((q) => expect(q.bloomLevel).toBe('remember'));
+  });
+
+  it('scores offline short answers against the rubric, point by point', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('network down')));
+
+    const exam = [
+      {
+        question: 'Explain glycolysis.',
+        type: 'short_answer' as const,
+        correctAnswer: 'It splits glucose into pyruvate, yielding ATP.',
+        topic: 'Glycolysis',
+        bloomLevel: 'remember' as const,
+        rubric: ['Names glucose as the substrate', 'States that pyruvate is produced', 'Mentions the ATP yield'],
+      },
+    ];
+
+    const partial = await makeGenerator().gradeExam({
+      exam,
+      userAnswers: ['Glucose is broken down to produce pyruvate.'],
+    });
+    expect(partial.value.results[0].rubricEarned).toEqual([
+      'Names glucose as the substrate',
+      'States that pyruvate is produced',
+    ]);
+    expect(partial.value.results[0].isCorrect).toBe(true);
+    // The level survives grading, or the mastery grid loses its second axis.
+    expect(partial.value.results[0].bloomLevel).toBe('remember');
+
+    const empty = await makeGenerator().gradeExam({ exam, userAnswers: ['hmm'] });
+    expect(empty.value.results[0].rubricEarned).toEqual([]);
+    expect(empty.value.results[0].isCorrect).toBe(false);
+  });
+
   it('applies the offline quiz length clamp (min 3)', async () => {
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('network down')));
 

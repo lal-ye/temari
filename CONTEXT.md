@@ -53,6 +53,22 @@ _Avoid_: todo, reminder
 Producing Notes, Quiz Flashcards, Exam questions, Exam grading, or term explanations from Material via a Provider.
 _Avoid_: synthesis, completion
 
+**Knowledge Unit**:
+One assessable idea extracted from Material before questions are written — a concept, its definition, and the passage it came from. Exam coverage is planned over Knowledge Units rather than left to whatever the Material emphasises (ADR-0008).
+_Avoid_: topic tag, key point, learning objective
+
+**Cognitive Level**:
+Where a question sits on Bloom's Taxonomy — Remember, Understand, Apply, Analyze, Evaluate, Create. Recorded on every Question and every graded Answer, so mastery is measurable per Subject topic *and* per level. A question's format (multiple choice, short answer) says nothing about its level.
+_Avoid_: difficulty, Bloom level (in prose; `bloomLevel` in code)
+
+**Rubric**:
+The 2–4 checkable points a Short Answer question is graded against, emitted when the question is generated. Makes partial credit legible instead of a free semantic comparison.
+_Avoid_: marking scheme, answer key
+
+**Review Queue**:
+The set of (topic × Cognitive Level) cells whose most recent answer was wrong, each scheduled to resurface at an expanding interval.
+_Avoid_: revision list, weak topics
+
 **Provider**:
 An AI vendor or endpoint (Gemini, OpenAI, Anthropic, Groq, DeepSeek, OpenRouter, Custom/Ollama) able to generate.
 _Avoid_: vendor, backend, engine

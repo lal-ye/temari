@@ -47,6 +47,58 @@ export interface StoredQuiz {
 
 export type QuestionType = 'multiple_choice' | 'true_false' | 'short_answer';
 
+/**
+ * The six revised Bloom levels, lowest → highest cognitive demand.
+ *
+ * Order is meaningful: it drives exam ordering (progressive difficulty) and
+ * adaptive escalation. Keep it sorted — several modules iterate it by index.
+ */
+export const BLOOM_LEVELS = [
+  'remember',
+  'understand',
+  'apply',
+  'analyze',
+  'evaluate',
+  'create',
+] as const;
+
+export type BloomLevel = (typeof BLOOM_LEVELS)[number];
+
+/**
+ * Named Bloom distributions offered to the learner. Weights live in the
+ * Exam-Blueprint module (`src/services/examBlueprint.ts`); only the identity
+ * is domain vocabulary, so it lives here where the store can persist it.
+ */
+export const COGNITIVE_MIXES = ['recall', 'balanced', 'simulation', 'deep'] as const;
+
+export type CognitiveMixId = (typeof COGNITIVE_MIXES)[number];
+
+/**
+ * One row of an exam's cognitive plan: how many questions at one Bloom level.
+ * The client computes the plan (src/services/examBlueprint.ts) and sends it to
+ * the server, which renders it into the generation prompt — so the quota and
+ * the words that ask for it cannot drift apart.
+ */
+export interface BloomSlot {
+  level: BloomLevel;
+  /** Level-appropriate directive verbs, e.g. "compare, contrast, examine". */
+  verb: string;
+  count: number;
+}
+
+/**
+ * A Knowledge Unit: one assessable idea extracted from Material before
+ * questions are written, so coverage is planned rather than emergent.
+ * See docs/adr/0008.
+ */
+export interface KnowledgeUnit {
+  id: string;
+  concept: string;
+  definition: string;
+  /** The passage in the Material this unit was drawn from, verbatim if possible. */
+  sourceSnippet?: string;
+}
+
 export interface ExamQuestion {
   id?: string;
   question: string;
@@ -55,6 +107,20 @@ export interface ExamQuestion {
   correctAnswer: string;
   explanation?: string;
   topic: string;
+  /**
+   * Target cognitive level. Absent on attempts recorded before cognitive-level
+   * awareness landed; readers must treat `undefined` as unlevelled, never guess.
+   */
+  bloomLevel?: BloomLevel;
+  /** The KnowledgeUnit this question was written against, when one was planned. */
+  knowledgeUnitId?: string;
+  /**
+   * Short-answer grading rubric: the 2-4 points that earn full credit. Graders
+   * score against this instead of free semantic comparison.
+   */
+  rubric?: string[];
+  /** Note this question was sourced from, so results can deep-link back. */
+  sourceNoteId?: string;
 }
 
 export interface ExamResult {
@@ -65,6 +131,11 @@ export interface ExamResult {
   isCorrect: boolean;
   explanation?: string;
   topic: string;
+  /** Carried from the question so mastery can be measured per (topic × level). */
+  bloomLevel?: BloomLevel;
+  knowledgeUnitId?: string;
+  /** Which rubric points the answer earned, for short answers. */
+  rubricEarned?: string[];
 }
 
 export interface Article {
@@ -90,6 +161,14 @@ export interface StoredAttempt {
   correctQuestions: number;
   topicsToReview?: string[];
   extraReadings?: Article[];
+  /** Which Bloom distribution this exam was generated with, if the learner chose one. */
+  cognitiveMix?: CognitiveMixId;
+  /**
+   * True when the exam was generated from extracted Knowledge Units rather than
+   * the whole concatenated Material (docs/adr/0008). Lets the UI be honest about
+   * why one exam covered a subject more evenly than another.
+   */
+  knowledgeUnitTargeted?: boolean;
 }
 
 export interface TopicPerformance {
