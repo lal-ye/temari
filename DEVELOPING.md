@@ -18,6 +18,8 @@ The rules that keep this codebase navigable. The domain language lives in
 | `src/types.ts` | Domain model + `UserSettings` | `Subject`, `StoredNote`, `StoredQuiz` (a Quiz = flashcard deck), `StoredAttempt`, `StudyTask`. |
 | `src/utils/analytics.ts` | Assessment analytics | Pure functions. Topic accuracy, per-Bloom-level mastery, the spaced-review queue (`computeReviewQueue`) and escalation (`escalatedLevel`). |
 | `src/components/ui/*` | Shared UI primitives | `Modal` (+ `useModalOrigin` for morph origins), `GenerationProgress`, `EmptyState`, `Skeleton`, `CommandPalette`, `SourceMaterialSelector`, `BloomBadge` (one cognitive-level pill, shared by the exam taking, results and analytics screens so a level keeps one colour). Reach for these before hand-rolling a panel. |
+| `src/Root.tsx` | Entry: `/app` mounts the study shell, everything else the landing page | `pushState` + `popstate`, no router (ADR-0009). `App` is lazy so `/` never downloads study code. |
+| `src/components/landing/*` | Public landing page + the `AsciiField` canvas hero | Must not import the store, the AI module or `App.tsx`. Copy uses CONTEXT.md nouns; every number comes from code (`BLOOM_LEVELS`, `AI_PROVIDERS`). Maths in `asciiFieldMath.ts` is pure and tested. |
 | `src/components/nav/*` | App chrome navigation | `HubTabs` / `HubBottomBar` (desktop header tabs and the mobile bottom bar, sharing the sliding indicator), `SubjectSwitcher`, `StreakPill`. All live in the header; there is no sidebar (ADR-0006). |
 | `src/components/*` | Feature screens | Consume the store + `ai` + `aiConnection`. No fetch calls, no credential logic, no fallback logic in components. |
 | `server.ts` | Express API (`/api/ai/*`) + static serving | Thin transport over `server/aiProvider.ts`; routes own prompts. |
@@ -54,7 +56,7 @@ easings live as CSS custom properties in `src/index.css`; components reference
 | 100+/day, **any keyboard-initiated action** | Tab keys 1–5, Escape, future shortcuts | **None, ever.** |
 | Tens/day | Hub tab hover, header control colour | Instant state change; press depress only |
 | Occasional | Modals, drawers, tab clicks, toasts | Standard — `--dur-panel` / `--dur-layout` |
-| Rare / first-run | Ghost-hand swipe hint, celebration | May exceed the budget; this is the novelty spend |
+| Rare / first-run | Ghost-hand swipe hint, celebration, landing-page hero field | May exceed the budget; this is the novelty spend. The hero field still stops when hidden, off-screen or under reduced motion. |
 
 Rules that follow from it:
 

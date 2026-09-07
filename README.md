@@ -15,12 +15,20 @@ reachable.
   - [ADR-0003](./docs/adr/0003-shared-ai-provider-catalog.md) — shared AI provider catalog
   - [ADR-0004](./docs/adr/0004-native-css-view-transitions.md) — native CSS View Transitions instead of react@canary
   - [ADR-0007](./docs/adr/0007-source-material-resolver.md) — pure source-material resolver shared by Quiz and Exam generation
+  - [ADR-0009](./docs/adr/0009-landing-page-route-split.md) — landing page at `/`, study shell at `/app`, no router
+- [docs/ui-plan-landing-page.md](./docs/ui-plan-landing-page.md) — the landing page plan and its guardrails.
 
 ## Stack
 
 React 19 + Vite + Tailwind 4 client · Express server (`server.ts`) ·
 multi-provider AI (Gemini, OpenAI, Anthropic, Groq, DeepSeek, OpenRouter,
 Ollama) · localStorage persistence · Vitest.
+
+## Routes
+
+- `/` — the landing page (`src/components/landing/`). Static copy over a
+  cursor-reactive ASCII field; imports no study code and touches no storage.
+- `/app` — the study shell (`src/App.tsx`), loaded lazily on the CTA click.
 
 ## Commands
 
