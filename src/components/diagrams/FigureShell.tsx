@@ -12,10 +12,10 @@ interface FigureShellProps {
 /**
  * Frame and caption around a figure.
  *
- * The chrome/figure boundary is this frame: the border and its shadow belong
- * to the app's neo-brutalist chrome, and everything inside is flat printed
- * illustration. That line is why figures read as textbook plates rather than
- * as another dashboard card.
+ * The chrome/figure boundary is this frame: the border is drawn from the
+ * figure palette (FIGURE.ink on FIGURE.paper) rather than from the app's card
+ * tokens, and everything inside is flat printed illustration. That line is why
+ * figures read as textbook plates rather than as another dashboard card.
  *
  * The caption is a real <figcaption> under a real <figure>, so the numbering
  * and title are available to assistive tech and to print, rather than being a
@@ -33,13 +33,13 @@ const FigureShellBase: React.FC<FigureShellProps> = ({ doc, figIndex, children }
     <figcaption className="mt-2.5 flex flex-wrap items-baseline gap-x-2 gap-y-1 px-1">
       {figIndex !== undefined && (
         <span
-          className="text-[10px] font-mono font-black uppercase tracking-wider"
+          className="text-[10px] font-mono font-semibold uppercase tracking-wider"
           style={{ color: FIGURE.accent }}
         >
           Fig. {figIndex}
         </span>
       )}
-      <span className="text-xs font-bold" style={{ color: FIGURE.ink }}>
+      <span className="text-xs font-semibold" style={{ color: FIGURE.ink }}>
         {doc.title}
       </span>
       {doc.subtitle && (
@@ -70,22 +70,22 @@ const FigureError: React.FC<FigureErrorProps> = ({ errors, raw, figIndex }) => {
 
   return (
     <figure className="my-6">
-      <div className="rounded-2xl border-2 border-dashed border-amber-600 bg-amber-50 p-4">
+      <div className="rounded-2xl border border-dashed border-amber-500/30 bg-amber-500/10 p-4">
         <div className="flex items-start gap-2.5">
-          <AlertTriangle className="w-4 h-4 text-amber-700 shrink-0 mt-0.5" aria-hidden="true" />
+          <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" aria-hidden="true" />
           <div className="min-w-0 flex-1">
-            <p className="text-xs font-black text-amber-950">
+            <p className="text-xs font-semibold text-amber-800 dark:text-amber-300">
               {figIndex !== undefined ? `Figure ${figIndex} ` : 'A figure '}
               could not be drawn
             </p>
             <ul className="mt-1.5 space-y-0.5">
               {errors.slice(0, 4).map((e, i) => (
-                <li key={i} className="text-[11px] font-medium text-amber-900 text-pretty">
+                <li key={i} className="text-[11px] font-medium text-amber-700 dark:text-amber-400 text-pretty">
                   {e}
                 </li>
               ))}
               {errors.length > 4 && (
-                <li className="text-[11px] font-bold text-amber-800">
+                <li className="text-[11px] font-semibold text-amber-700 dark:text-amber-400">
                   and {errors.length - 4} more
                 </li>
               )}
@@ -94,7 +94,7 @@ const FigureError: React.FC<FigureErrorProps> = ({ errors, raw, figIndex }) => {
             <button
               type="button"
               onClick={() => setOpen((v) => !v)}
-              className="mt-2 inline-flex items-center gap-1 text-[11px] font-black text-amber-900 hover:text-amber-950"
+              className="mt-2 inline-flex items-center gap-1 text-[11px] font-semibold text-amber-700 dark:text-amber-400 hover:text-amber-800 dark:hover:text-amber-300"
               aria-expanded={open}
             >
               <ChevronDown
@@ -105,7 +105,7 @@ const FigureError: React.FC<FigureErrorProps> = ({ errors, raw, figIndex }) => {
             </button>
 
             {open && (
-              <pre className="mt-2 p-2.5 bg-white border border-amber-300 rounded-lg text-[10px] font-mono text-slate-700 overflow-x-auto max-h-48">
+              <pre className="mt-2 p-2.5 bg-card border border-border rounded-lg text-[10px] font-mono text-muted-foreground overflow-x-auto max-h-48">
                 {raw}
               </pre>
             )}

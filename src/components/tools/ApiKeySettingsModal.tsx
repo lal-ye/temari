@@ -24,6 +24,7 @@ import { diagnoseConnectionError, type Diagnosis } from '../../services/ai/diagn
 import { ModelPicker } from './ModelPicker';
 import { aiConnection } from '../../services/aiConnection';
 import { Modal, type MorphOrigin } from '../ui/Modal';
+import { Button } from '../ui/button';
 
 interface ApiKeySettingsModalProps {
   isOpen: boolean;
@@ -222,14 +223,14 @@ export const ApiKeySettingsModal: React.FC<ApiKeySettingsModalProps> = ({
       onClose={onClose}
       title="AI provider and model"
       subtitle="Choose who generates your notes, and with which model"
-      icon={<Cpu className="w-5 h-5 text-slate-900" />}
-      iconClassName="bg-[#FEF08A] text-slate-950"
+      icon={<Cpu className="w-5 h-5" />}
+      iconClassName="bg-amber-500/10 text-amber-600 dark:text-amber-400"
       maxWidthClassName="max-w-2xl"
       originRef={originRef}
     >
       <div className="space-y-4">
         {/* Detailed Provider and Model Picker */}
-          <div className="bg-[#FAF8F5] border-2 border-slate-900 rounded-xl p-3.5 shadow-neo-sm">
+          <div className="bg-muted/40 border border-border rounded-xl p-3.5">
             <ModelPicker
               variant="detailed"
               onModelChanged={(providerId, modelId) => {
@@ -240,15 +241,15 @@ export const ApiKeySettingsModal: React.FC<ApiKeySettingsModalProps> = ({
           </div>
 
           {/* Provider Specific Configuration & Credentials */}
-          <div className="bg-white border-2 border-slate-900 rounded-xl p-4 shadow-neo-sm space-y-3">
+          <div className="bg-card border border-border rounded-xl p-4 space-y-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <Key className="w-4 h-4 text-purple-600" />
-                <span className="text-xs font-black text-slate-900 uppercase tracking-wider">
+                <Key className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+                <span className="text-xs font-bold text-foreground uppercase tracking-wider">
                   {activeProviderConfig.name} key
                 </span>
               </div>
-              <span className="text-[10px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded border border-slate-300">
+              <span className="text-[10px] font-medium text-muted-foreground bg-muted px-2 py-0.5 rounded border border-border">
                 {selectedProvider === 'gemini'
                   ? 'Server key available'
                   : selectedProvider === 'custom'
@@ -261,7 +262,7 @@ export const ApiKeySettingsModal: React.FC<ApiKeySettingsModalProps> = ({
             {selectedProvider === 'custom' ? (
               <div className="space-y-3 pt-1">
                 <div>
-                  <label className="block text-[11px] font-black text-slate-800 uppercase mb-1">
+                  <label className="block text-[11px] font-medium uppercase tracking-wider text-muted-foreground mb-1">
 Base URL
                   </label>
                   <input
@@ -269,28 +270,28 @@ Base URL
                     value={customBaseUrl}
                     onChange={(e) => setCustomBaseUrl(e.target.value)}
                     placeholder="http://localhost:11434/v1"
-                    className="w-full px-3 py-2 bg-slate-50 border-2 border-slate-900 rounded-xl text-xs font-mono text-slate-900 focus:outline-none focus:bg-white focus:ring-2 focus:ring-yellow-400"
+                    className="w-full px-3 py-2 bg-background border border-border rounded-lg text-xs font-mono text-foreground focus:outline-hidden focus:ring-2 focus:ring-ring/50 shadow-2xs"
                   />
                   <div className="flex items-center gap-2 mt-1.5">
-                    <span className="text-[10px] font-bold text-slate-500">Presets:</span>
+                    <span className="text-[10px] font-medium text-muted-foreground">Presets:</span>
                     <button
                       type="button"
                       onClick={() => setCustomBaseUrl('http://localhost:11434/v1')}
-                      className="text-[10px] font-bold px-2 py-0.5 bg-slate-100 hover:bg-slate-200 border border-slate-300 rounded text-slate-800"
+                      className="text-[10px] font-medium px-2 py-0.5 bg-muted hover:bg-muted/70 border border-border rounded text-foreground transition-colors"
                     >
                       Ollama (:11434)
                     </button>
                     <button
                       type="button"
                       onClick={() => setCustomBaseUrl('http://localhost:1234/v1')}
-                      className="text-[10px] font-bold px-2 py-0.5 bg-slate-100 hover:bg-slate-200 border border-slate-300 rounded text-slate-800"
+                      className="text-[10px] font-medium px-2 py-0.5 bg-muted hover:bg-muted/70 border border-border rounded text-foreground transition-colors"
                     >
                       LM Studio (:1234)
                     </button>
                     <button
                       type="button"
                       onClick={() => setCustomBaseUrl('http://localhost:8000/v1')}
-                      className="text-[10px] font-bold px-2 py-0.5 bg-slate-100 hover:bg-slate-200 border border-slate-300 rounded text-slate-800"
+                      className="text-[10px] font-medium px-2 py-0.5 bg-muted hover:bg-muted/70 border border-border rounded text-foreground transition-colors"
                     >
                       vLLM (:8000)
                     </button>
@@ -298,7 +299,7 @@ Base URL
                 </div>
 
                 <div>
-                  <label className="block text-[11px] font-black text-slate-800 uppercase mb-1">
+                  <label className="block text-[11px] font-medium uppercase tracking-wider text-muted-foreground mb-1">
 Model name
                   </label>
                   <input
@@ -306,12 +307,12 @@ Model name
                     value={customModelName}
                     onChange={(e) => setCustomModelName(e.target.value)}
                     placeholder="llama3.2, mistral, qwen2.5:7b, deepseek-r1:8b"
-                    className="w-full px-3 py-2 bg-slate-50 border-2 border-slate-900 rounded-xl text-xs font-mono text-slate-900 focus:outline-none focus:bg-white focus:ring-2 focus:ring-yellow-400"
+                    className="w-full px-3 py-2 bg-background border border-border rounded-lg text-xs font-mono text-foreground focus:outline-hidden focus:ring-2 focus:ring-ring/50 shadow-2xs"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-[11px] font-black text-slate-800 uppercase mb-1">
+                  <label className="block text-[11px] font-medium uppercase tracking-wider text-muted-foreground mb-1">
 API key (optional for local)
                   </label>
                   <input
@@ -319,14 +320,14 @@ API key (optional for local)
                     value={currentKeyForProvider}
                     onChange={(e) => handleKeyChange(e.target.value)}
                     placeholder="Optional for local instances"
-                    className="w-full px-3 py-2 bg-slate-50 border-2 border-slate-900 rounded-xl text-xs font-mono text-slate-900 focus:outline-none focus:bg-white focus:ring-2 focus:ring-yellow-400"
+                    className="w-full px-3 py-2 bg-background border border-border rounded-lg text-xs font-mono text-foreground focus:outline-hidden focus:ring-2 focus:ring-ring/50 shadow-2xs"
                   />
                 </div>
               </div>
             ) : (
               /* Cloud Providers (Gemini, OpenAI, Claude, Groq, DeepSeek, OpenRouter) */
               <div className="space-y-2 pt-1">
-                <p className="text-[11px] text-slate-600 leading-relaxed font-medium">
+                <p className="text-[11px] text-muted-foreground leading-relaxed font-medium">
                   {selectedProvider === 'gemini'
                     ? 'This deployment ships a shared Gemini key, so you can start without one. Add your own to avoid the shared rate limit.'
                     : `Stored in this browser only, and sent to ${activeProviderConfig.name} through Temari's server when you generate.`}
@@ -342,19 +343,19 @@ API key (optional for local)
                     autoComplete="off"
                     spellCheck={false}
                     placeholder={activeProviderConfig.keyPlaceholder}
-                    className="w-full pl-3 pr-20 py-2 bg-slate-50 border-2 border-slate-900 rounded-xl text-xs font-mono text-slate-900 focus:outline-hidden focus:bg-white focus:ring-2 focus:ring-amber-400"
+                    className="w-full pl-3 pr-20 py-2 bg-background border border-border rounded-lg text-xs font-mono text-foreground focus:outline-hidden focus:ring-2 focus:ring-ring/50 shadow-2xs"
                   />
                   <div className="absolute right-1.5 top-1/2 -translate-y-1/2 flex items-center gap-1">
                     {/* Confirms a paste landed without revealing the secret. */}
                     {currentKeyForProvider && (
-                      <span className="text-[10px] font-mono font-bold text-slate-500 tabular-nums">
+                      <span className="text-[10px] font-mono font-medium text-muted-foreground tabular-nums">
                         {currentKeyForProvider.length}
                       </span>
                     )}
                     <button
                       type="button"
                       onClick={() => setShowKey((v) => !v)}
-                      className="p-1 text-slate-600 hover:text-slate-900 rounded"
+                      className="p-1 text-muted-foreground hover:text-foreground rounded transition-colors"
                       aria-label={showKey ? 'Hide key' : 'Show key'}
                       title={showKey ? 'Hide key' : 'Show key'}
                     >
@@ -377,7 +378,7 @@ API key (optional for local)
                   const rule = expected[selectedProvider];
                   if (!rule || currentKeyForProvider.startsWith(rule.prefix)) return null;
                   return (
-                    <p id="key-shape-hint" className="text-[10px] font-bold text-amber-700">
+                    <p id="key-shape-hint" className="text-[10px] font-medium text-amber-700 dark:text-amber-400">
                       {activeProviderConfig.name} keys usually start with{' '}
                       <span className="font-mono">{rule.label}</span>. This may be a key for a
                       different provider.
@@ -391,7 +392,7 @@ API key (optional for local)
                       href={helpLink.url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1 text-blue-700 font-bold hover:underline text-[11px]"
+                      className="inline-flex items-center gap-1 text-amber-600 dark:text-amber-400 font-medium hover:underline text-[11px]"
                     >
                       {helpLink.text} <ExternalLink className="w-3 h-3" />
                     </a>
@@ -403,7 +404,7 @@ API key (optional for local)
                     <button
                       type="button"
                       onClick={handleClearCurrentKey}
-                      className="inline-flex items-center gap-1 text-rose-600 hover:text-rose-800 font-bold hover:underline text-[11px]"
+                      className="inline-flex items-center gap-1 text-rose-600 dark:text-rose-400 hover:text-rose-700 font-medium hover:underline text-[11px]"
                     >
                       <Trash2 className="w-3 h-3" />
                       Clear Key for {activeProviderConfig.name.split(' ')[0]}
@@ -417,27 +418,29 @@ API key (optional for local)
           {/* Retired-model notice. Shown before any test, because the test
               would fail with a 404 that looks like a Temari bug. */}
           {retiredReplacement && (
-            <div className="p-3 rounded-xl border-2 border-amber-600 bg-amber-50 flex items-start gap-2.5">
-              <AlertCircle className="w-4 h-4 text-amber-700 shrink-0 mt-0.5" aria-hidden="true" />
+            <div className="p-3 rounded-xl border border-amber-500/20 bg-amber-500/10 flex items-start gap-2.5">
+              <AlertCircle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" aria-hidden="true" />
               <div className="flex-1 min-w-0">
-                <p className="text-[11px] font-black text-amber-950">
+                <p className="text-[11px] font-semibold text-amber-800 dark:text-amber-300">
                   {activeProviderConfig.name} has retired this model
                 </p>
-                <p className="mt-0.5 text-[11px] font-medium text-amber-900 text-pretty">
+                <p className="mt-0.5 text-[11px] font-medium text-amber-700 dark:text-amber-400 text-pretty">
                   <span className="font-mono">{selectedModel}</span> no longer accepts requests.
                   Switch to <span className="font-mono">{retiredReplacement}</span> to keep
                   generating.
                 </p>
-                <button
+                <Button
                   type="button"
+                  size="xs"
+                  variant="secondary"
                   onClick={() => {
                     setSelectedModel(retiredReplacement);
                     setTestResult(null);
                   }}
-                  className="btn-kinetic mt-2 px-2.5 py-1 bg-amber-200 hover:bg-amber-300 text-amber-950 rounded-lg border-2 border-slate-900 text-[10px] font-black shadow-neo-xs"
+                  className="mt-2 bg-amber-500/15 text-amber-800 dark:text-amber-300"
                 >
                   Use {retiredReplacement}
-                </button>
+                </Button>
               </div>
             </div>
           )}
@@ -450,43 +453,45 @@ API key (optional for local)
             <div
               role="status"
               aria-live="polite"
-              className={`p-3 rounded-xl border-2 border-slate-900 text-xs flex items-start gap-2.5 shadow-neo-sm ${
-                testResult.success ? 'bg-emerald-50' : 'bg-rose-50'
+              className={`p-3 rounded-xl border text-xs flex items-start gap-2.5 ${
+                testResult.success
+                  ? 'bg-emerald-500/10 border-emerald-500/20'
+                  : 'bg-rose-500/10 border-rose-500/20'
               }`}
             >
               {testResult.success ? (
-                <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" aria-hidden="true" />
+                <CheckCircle className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" aria-hidden="true" />
               ) : (
-                <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" aria-hidden="true" />
+                <AlertCircle className="w-4 h-4 text-rose-600 dark:text-rose-400 shrink-0 mt-0.5" aria-hidden="true" />
               )}
 
               <div className="flex-1 min-w-0 space-y-1">
                 {testResult.success ? (
                   <>
-                    <p className="font-black text-[11px] text-emerald-950">
+                    <p className="font-semibold text-[11px] text-emerald-800 dark:text-emerald-300">
                       Working
                       {testResult.latencyMs !== undefined && (
-                        <span className="font-bold tabular-nums"> · replied in {testResult.latencyMs}ms</span>
+                        <span className="font-medium tabular-nums"> · replied in {testResult.latencyMs}ms</span>
                       )}
                     </p>
-                    <p className="text-[11px] font-medium text-emerald-900">{testResult.message}</p>
+                    <p className="text-[11px] font-medium text-emerald-700 dark:text-emerald-400">{testResult.message}</p>
                   </>
                 ) : (
                   <>
-                    <p className="font-black text-[11px] text-rose-950">
+                    <p className="font-semibold text-[11px] text-rose-800 dark:text-rose-300">
                       {testResult.diagnosis?.title ?? 'The connection test failed'}
                     </p>
-                    <p className="text-[11px] font-medium text-rose-900 text-pretty">
+                    <p className="text-[11px] font-medium text-rose-700 dark:text-rose-400 text-pretty">
                       {testResult.diagnosis?.fix}
                     </p>
                     {/* Raw provider text kept available but demoted: useful
                         when searching for the error, noise otherwise. */}
                     {testResult.diagnosis?.kind !== 'unknown' && testResult.message && (
                       <details className="pt-0.5">
-                        <summary className="text-[10px] font-black text-rose-800 cursor-pointer">
+                        <summary className="text-[10px] font-semibold text-rose-700 dark:text-rose-400 cursor-pointer">
                           Provider response
                         </summary>
-                        <p className="mt-1 p-2 bg-white/70 rounded-lg border border-rose-200 text-[10px] font-mono text-slate-700 break-words">
+                        <p className="mt-1 p-2 bg-card/70 rounded-lg border border-border text-[10px] font-mono text-muted-foreground break-words">
                           {testResult.message}
                         </p>
                       </details>
@@ -498,41 +503,28 @@ API key (optional for local)
           )}
 
           {/* Action Buttons */}
-          <div className="flex items-center justify-between pt-2 border-t-2 border-slate-200">
-            <button
-              type="button"
-              onClick={testConnection}
-              disabled={testing}
-              className="px-3.5 py-2 text-xs font-black text-slate-900 bg-white hover:bg-slate-100 rounded-xl border-2 border-slate-900 shadow-neo-sm active:translate-y-0.5 transition-all disabled:opacity-50 flex items-center gap-1.5"
-            >
+          <div className="flex items-center justify-between pt-3 border-t border-border">
+            <Button type="button" variant="outline" onClick={testConnection} disabled={testing}>
               {testing ? (
                 <>
-                  <RotateCw className="w-3.5 h-3.5 animate-spin" />
-                  Testing...
+                  <RotateCw className="size-3.5 animate-spin" />
+                  Testing…
                 </>
               ) : (
                 <>
-                  <Zap className="w-3.5 h-3.5 text-amber-500 fill-amber-400" />
+                  <Zap className="size-3.5 text-amber-600 dark:text-amber-400 fill-amber-500/40" />
                   Test this key
                 </>
               )}
-            </button>
+            </Button>
 
             <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={onClose}
-                className="px-4 py-2 text-xs font-black text-slate-600 hover:text-slate-900"
-              >
+              <Button type="button" variant="ghost" onClick={onClose}>
                 Cancel
-              </button>
-              <button
-                type="button"
-                onClick={handleSave}
-                className="px-5 py-2 text-xs font-black text-slate-900 bg-[#FEF08A] hover:bg-yellow-300 rounded-xl border-2 border-slate-900 shadow-neo-sm hover:shadow-neo active:translate-y-0.5 transition-all"
-              >
-Save
-              </button>
+              </Button>
+              <Button type="button" onClick={handleSave}>
+                Save
+              </Button>
             </div>
           </div>
         </div>

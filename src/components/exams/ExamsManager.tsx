@@ -10,6 +10,8 @@ import { GenerationProgress } from '../ui/GenerationProgress';
 import { EmptyState } from '../ui/EmptyState';
 import { useModalOrigin } from '../ui/useModalOrigin';
 import { SourceMaterialSelector } from '../ui/SourceMaterialSelector';
+import { Badge } from '../ui/badge';
+import { Button } from '../ui/button';
 import {
   GraduationCap,
   Sparkles,
@@ -18,6 +20,10 @@ import {
   Loader2,
   FileCheck
 } from 'lucide-react';
+
+/** One class string for every text field, shared with the Quizzes modal. */
+const fieldClass =
+  'w-full px-3.5 py-2 text-sm bg-background border border-border rounded-lg font-medium focus:outline-hidden focus:ring-2 focus:ring-ring/50 shadow-2xs';
 
 export const ExamsManager: React.FC = () => {
   const activeAttempts = useAttempts();
@@ -144,39 +150,42 @@ export const ExamsManager: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      {/* Top Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-5 border-3 border-slate-900 rounded-2xl shadow-neo-md">
+      {/* Header Bar */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-card p-6 border border-border/80 rounded-2xl shadow-xs">
         <div>
           <div className="flex items-center gap-2 mb-1.5 flex-wrap">
-            <span className="badge-chip px-2.5 py-1 bg-yellow-300 text-slate-900 border-2 border-slate-900 rounded-md shadow-neo-sm inline-flex items-center gap-1.5">
-              <span className="font-ethiopic font-bold text-xs normal-case">ተማሪ</span>
-              <span>Exam Simulator</span>
+            <span className="font-ethiopic font-semibold text-amber-600 dark:text-amber-400 text-sm">
+              ተማሪ
             </span>
-            <span className="text-xs font-bold text-slate-600">{activeSubject.name}</span>
+            <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+              Exam Simulator
+            </span>
+            <span className="text-xs font-medium text-muted-foreground">·</span>
+            <span className="text-xs font-medium text-foreground">{activeSubject.name}</span>
             {activeSubject.amharicName && (
-              <span className="text-xs font-bold text-slate-600 font-ethiopic border-l-2 border-slate-300 pl-2 hidden md:inline">
-                {activeSubject.amharicName}
+              <span className="text-xs font-medium text-muted-foreground font-ethiopic hidden md:inline">
+                ({activeSubject.amharicName})
               </span>
             )}
           </div>
-          <h2 className="section-heading text-slate-950 flex items-center gap-2">
-            <GraduationCap className="w-5 h-5 text-indigo-600 shrink-0" /> Comprehensive Mock Exams & Diagnostics
+          <h2 className="font-editorial text-2xl font-bold text-foreground tracking-tight flex items-center gap-2">
+            <GraduationCap className="w-5 h-5 text-amber-600 dark:text-amber-400 shrink-0" /> Comprehensive Mock Exams & Diagnostics
           </h2>
-          <p className="text-xs font-bold text-slate-600 mt-1">
+          <p className="text-sm text-muted-foreground mt-1">
             Test yourself with timed mock exams featuring multiple-choice, true/false, and short answer questions with automated AI grading.
           </p>
         </div>
 
-        <button
+        <Button
           onClick={(e) => {
             generateOrigin.capture(e);
             setShowGenerateModal(true);
           }}
-          className="flex items-center justify-center gap-2 px-5 py-2.5 bg-yellow-300 hover:bg-yellow-200 text-slate-950 font-black text-xs rounded-xl border-2 border-slate-900 shadow-neo transition-all active:translate-y-0.5 shrink-0"
+          className="shrink-0"
         >
-          <Sparkles className="w-4 h-4 text-slate-900" />
+          <Sparkles className="size-3.5" />
           Generate Mock Exam
-        </button>
+        </Button>
       </div>
 
       {/* Attempts Grid */}
@@ -186,68 +195,71 @@ export const ExamsManager: React.FC = () => {
           title="No Exam Attempts Yet"
           description="Generate your first timed mock exam to test your mastery and receive automated diagnostic reports from Temari AI."
           action={
-            <button
+            <Button
               onClick={(e) => {
                 generateOrigin.capture(e);
                 setShowGenerateModal(true);
               }}
-              className="inline-flex items-center gap-2 px-5 py-2.5 bg-yellow-300 hover:bg-yellow-200 text-slate-950 font-black text-xs rounded-xl border-2 border-slate-900 shadow-neo transition-all active:translate-y-0.5"
             >
-              <Sparkles className="w-4 h-4 text-slate-900" /> Create First Exam
-            </button>
+              <Sparkles className="size-3.5" /> Create First Exam
+            </Button>
           }
         />
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {attempts.map((att) => {
             const isPassed = att.overallScore >= 70;
             return (
               <div
                 key={att.id}
                 onClick={() => setViewingAttempt(att)}
-                className="bg-white border-3 border-slate-900 rounded-2xl p-5 shadow-neo hover:translate-x-0.5 hover:-translate-y-0.5 transition-all cursor-pointer flex flex-col justify-between"
+                className="bg-card border border-border/80 rounded-2xl p-5 shadow-xs hover:shadow-sm transition-shadow cursor-pointer flex flex-col justify-between"
               >
                 <div>
                   <div className="flex items-start justify-between gap-2 mb-2.5">
-                    <span
-                      className={`px-2.5 py-0.5 rounded-lg border-2 border-slate-900 text-[10px] font-black uppercase shadow-neo-sm ${
+                    <Badge
+                      variant="secondary"
+                      className={`text-[10px] font-medium ${
                         isPassed
-                          ? 'bg-emerald-300 text-slate-950'
-                          : 'bg-amber-300 text-slate-950'
+                          ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/20'
+                          : 'bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/20'
                       }`}
                     >
                       Score: {att.overallScore}%
-                    </span>
+                    </Badge>
 
                     <button
                       onClick={(e) => handleDeleteAttempt(att.id, e)}
-                      className="text-slate-500 hover:text-rose-600 hover:bg-rose-50 p-1 rounded-md transition-colors"
+                      className="p-1 text-muted-foreground hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 rounded-md transition-colors"
                       title="Delete attempt"
+                      aria-label={`Delete ${att.name}`}
                     >
-                      <Trash2 className="w-4 h-4" />
+                      <Trash2 className="w-3.5 h-3.5" />
                     </button>
                   </div>
 
-                  <h3 className="text-sm font-black text-slate-950 line-clamp-2 mt-1">{att.name}</h3>
+                  <h3 className="text-sm font-semibold text-foreground line-clamp-2 mt-1">{att.name}</h3>
 
-                  <div className="flex items-center gap-2.5 text-[11px] font-bold text-slate-600 mt-3">
-                    <span className="px-2 py-0.5 bg-slate-100 border border-slate-900 rounded-md text-slate-900 font-black">
+                  <div className="flex items-center gap-2 text-[11px] font-medium text-muted-foreground mt-3">
+                    <span className="px-2 py-0.5 bg-muted rounded-md text-foreground font-mono">
                       {att.correctQuestions} / {att.totalQuestions} Correct
                     </span>
-                    <span>•</span>
+                    <span>·</span>
                     <span>{new Date(att.date).toLocaleDateString()}</span>
                   </div>
 
                   {att.topicsToReview && att.topicsToReview.length > 0 && (
-                    <div className="mt-3 p-2.5 bg-rose-100 border-2 border-slate-900 rounded-xl text-[11px] font-bold text-rose-950 line-clamp-1 shadow-neo-sm">
+                    <div className="mt-3 p-2.5 bg-rose-500/10 border border-rose-500/20 rounded-lg text-[11px] font-medium text-rose-700 dark:text-rose-400 line-clamp-1">
                       Review: {att.topicsToReview.join(', ')}
                     </div>
                   )}
                 </div>
 
-                <div className="mt-5 pt-3.5 border-t-2 border-slate-200 flex items-center justify-between">
-                  <span className="text-xs font-black text-cyan-800 hover:underline">View Diagnostic Report →</span>
-                  <div className="w-7 h-7 rounded-lg bg-yellow-300 border border-slate-900 flex items-center justify-center text-slate-950 shadow-neo-sm">
+                <div className="mt-5 pt-3.5 border-t border-border flex items-center justify-between">
+                  <span className="text-[11px] font-medium text-amber-600 dark:text-amber-400 font-semibold">
+                    View Diagnostic Report →
+                  </span>
+                  <div className="w-7 h-7 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-600 dark:text-amber-400">
                     <FileCheck className="w-4 h-4" />
                   </div>
                 </div>
@@ -264,12 +276,12 @@ export const ExamsManager: React.FC = () => {
         originRef={generateOrigin.ref}
         title="Generate Practice Mock Exam"
         subtitle={`Subject: ${activeSubject.name}`}
-        icon={<Sparkles className="w-5 h-5 text-slate-950" />}
-        iconClassName="bg-yellow-300 text-slate-950"
+        icon={<Sparkles className="w-5 h-5" />}
+        iconClassName="bg-amber-500/10 text-amber-600 dark:text-amber-400"
         maxWidthClassName="max-w-xl"
       >
         {error && (
-          <div className="p-3 mb-3 bg-rose-50 border-2 border-rose-500 rounded-xl text-xs font-bold text-rose-900">
+          <div className="p-3 mb-3 bg-rose-500/10 border border-rose-500/20 rounded-xl text-xs font-medium text-rose-700 dark:text-rose-400">
             {error}
           </div>
         )}
@@ -280,7 +292,7 @@ export const ExamsManager: React.FC = () => {
           )}
 
               <div>
-                <label className="block text-xs font-black uppercase tracking-wider text-slate-800 mb-1">
+                <label className="block text-xs font-bold uppercase tracking-wider text-foreground mb-1">
                   Exam Title
                 </label>
                 <input
@@ -288,20 +300,20 @@ export const ExamsManager: React.FC = () => {
                   value={examTitle}
                   onChange={(e) => setExamTitle(e.target.value)}
                   placeholder={`e.g. ${activeSubject.name} Midterm Mock Simulator`}
-                  className="w-full px-3.5 py-2 text-xs bg-[#FAF8F5] border-2 border-slate-900 rounded-xl font-bold focus:outline-hidden focus:ring-2 focus:ring-amber-400 shadow-neo-sm"
+                  className={fieldClass}
                   disabled={isGenerating}
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-black uppercase tracking-wider text-slate-800 mb-1">
+                  <label className="block text-xs font-bold uppercase tracking-wider text-foreground mb-1">
                     Questions ({questionCount})
                   </label>
                   <select
                     value={questionCount}
                     onChange={(e) => setQuestionCount(Number(e.target.value))}
-                    className="w-full px-3.5 py-2 text-xs bg-[#FAF8F5] border-2 border-slate-900 rounded-xl font-bold focus:outline-hidden focus:ring-2 focus:ring-amber-400 shadow-neo-sm"
+                    className={fieldClass}
                     disabled={isGenerating}
                   >
                     <option value={5}>5 Questions (Quick Test)</option>
@@ -312,13 +324,13 @@ export const ExamsManager: React.FC = () => {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-black uppercase tracking-wider text-slate-800 mb-1">
+                  <label className="block text-xs font-bold uppercase tracking-wider text-foreground mb-1">
                     Time Limit (Minutes)
                   </label>
                   <select
                     value={timeLimit}
                     onChange={(e) => setTimeLimit(Number(e.target.value))}
-                    className="w-full px-3.5 py-2 text-xs bg-[#FAF8F5] border-2 border-slate-900 rounded-xl font-bold focus:outline-hidden focus:ring-2 focus:ring-amber-400 shadow-neo-sm"
+                    className={fieldClass}
                     disabled={isGenerating}
                   >
                     <option value={10}>10 Minutes</option>
@@ -344,33 +356,29 @@ export const ExamsManager: React.FC = () => {
                 customPlaceholder="Paste textbook or syllabus content to generate exam from..."
               />
 
-              <div className="flex items-center justify-end gap-2.5 pt-3 border-t-2 border-slate-200">
-                <button
+              <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-border">
+                <Button
                   type="button"
+                  variant="outline"
                   onClick={() => setShowGenerateModal(false)}
                   disabled={isGenerating}
-                  className="px-4 py-2 text-xs font-black text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl border-2 border-slate-900 transition-all shadow-neo-sm"
                 >
                   Cancel
-                </button>
+                </Button>
 
-                <button
-                  type="submit"
-                  disabled={isGenerating}
-                  className="flex items-center gap-2 px-5 py-2 text-xs font-black text-slate-950 bg-yellow-300 hover:bg-yellow-200 rounded-xl border-2 border-slate-900 shadow-neo transition-all active:translate-y-0.5 disabled:opacity-50"
-                >
+                <Button type="submit" disabled={isGenerating}>
                   {isGenerating ? (
                     <>
-                      <Loader2 className="w-4 h-4 animate-spin text-slate-900" />
-                      <span>Generating Mock Exam Questions...</span>
+                      <Loader2 className="size-3.5 animate-spin" />
+                      <span>Generating Questions…</span>
                     </>
                   ) : (
                     <>
-                      <Play className="w-4 h-4 fill-current text-slate-900" />
+                      <Play className="size-3 fill-current" />
                       <span>Start Timed Exam</span>
                     </>
                   )}
-                </button>
+                </Button>
               </div>
             </form>
       </Modal>

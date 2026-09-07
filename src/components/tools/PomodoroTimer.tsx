@@ -1,12 +1,29 @@
-import React, { useMemo } from 'react';
+import React from 'react';
 import { Play, Pause, RotateCcw, Flame, X, Coffee, Brain } from 'lucide-react';
 import { useSettings } from '../../hooks/useStudyStore';
 import { usePomodoro } from '../../hooks/usePomodoro';
+import { Button } from '../ui/button';
 
 interface PomodoroTimerProps {
   isOpen: boolean;
   onClose: () => void;
 }
+
+/** Accent per timer mode, used for both the segmented control and the progress fill. */
+const MODE_ACCENT = {
+  work: {
+    active: 'text-amber-700 dark:text-amber-400',
+    fill: 'bg-amber-500',
+  },
+  break: {
+    active: 'text-emerald-700 dark:text-emerald-400',
+    fill: 'bg-emerald-500',
+  },
+  longBreak: {
+    active: 'text-sky-700 dark:text-sky-400',
+    fill: 'bg-sky-500',
+  },
+} as const;
 
 export const PomodoroTimer: React.FC<PomodoroTimerProps> = ({ isOpen, onClose }) => {
   const settings = useSettings();
@@ -23,105 +40,87 @@ export const PomodoroTimer: React.FC<PomodoroTimerProps> = ({ isOpen, onClose })
 
   if (!isOpen) return null;
 
+  const accent = MODE_ACCENT[mode];
+
   return (
-    <div className="fixed bottom-6 right-6 z-40 w-84 bg-white border-3 border-slate-900 rounded-2xl p-5 shadow-neo-xl animate-in slide-in-from-bottom-5 duration-150">
-      <div className="flex items-center justify-between pb-3 border-b-2 border-slate-900">
+    <div className="fixed bottom-6 right-6 z-40 w-84 bg-card border border-border rounded-2xl p-5 shadow-lg animate-in slide-in-from-bottom-5 duration-150">
+      <div className="flex items-center justify-between pb-3 border-b border-border">
         <div className="flex items-center gap-2.5">
-          <div className="p-2 bg-yellow-300 border-2 border-slate-900 text-slate-950 rounded-xl shadow-neo-sm">
+          <div className="p-2 bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400 rounded-lg">
             <Flame className="w-4 h-4 fill-current" />
           </div>
           <div>
-            <h4 className="text-xs font-black text-slate-950 uppercase tracking-wider leading-tight flex items-center gap-1">
-              <span className="font-ethiopic font-bold normal-case text-sm">ተማሪ</span> Focus Timer
+            <h4 className="text-xs font-semibold text-foreground uppercase tracking-wider leading-tight flex items-center gap-1">
+              <span className="font-ethiopic font-semibold normal-case text-sm text-amber-600 dark:text-amber-400">ተማሪ</span> Focus Timer
             </h4>
-            <span className="text-[10px] font-bold text-slate-600">Streak: {sessionsCompleted} sessions</span>
+            <span className="text-[10px] font-medium text-muted-foreground">
+              Streak: <span className="font-mono tabular-nums">{sessionsCompleted}</span> sessions
+            </span>
           </div>
         </div>
         <button
           onClick={onClose}
-          className="p-1.5 text-slate-700 hover:text-slate-950 rounded-lg hover:bg-slate-100 border border-transparent hover:border-slate-900 transition-colors"
-          aria-label="Close"
+          className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg border border-border transition-colors"
+          aria-label="Close focus timer"
         >
           <X className="w-4 h-4" />
         </button>
       </div>
 
-      <div className="flex justify-center gap-1.5 my-4 p-1.5 bg-slate-100 border-2 border-slate-900 rounded-xl">
-        <button
-          onClick={() => setMode('work')}
-          className={`flex items-center gap-1 px-3 py-1.5 text-xs font-black rounded-lg transition-all ${
-            mode === 'work'
-              ? 'bg-yellow-300 text-slate-950 border-2 border-slate-900 shadow-neo-sm'
-              : 'text-slate-600 hover:text-slate-950'
-          }`}
-        >
-          <Brain className="w-3.5 h-3.5" /> Focus
-        </button>
-        <button
-          onClick={() => setMode('break')}
-          className={`flex items-center gap-1 px-3 py-1.5 text-xs font-black rounded-lg transition-all ${
-            mode === 'break'
-              ? 'bg-emerald-300 text-slate-950 border-2 border-slate-900 shadow-neo-sm'
-              : 'text-slate-600 hover:text-slate-950'
-          }`}
-        >
-          <Coffee className="w-3.5 h-3.5" /> Short
-        </button>
-        <button
-          onClick={() => setMode('longBreak')}
-          className={`flex items-center gap-1 px-3 py-1.5 text-xs font-black rounded-lg transition-all ${
-            mode === 'longBreak'
-              ? 'bg-cyan-300 text-slate-950 border-2 border-slate-900 shadow-neo-sm'
-              : 'text-slate-600 hover:text-slate-950'
-          }`}
-        >
-          <Coffee className="w-3.5 h-3.5" /> Long
-        </button>
+      <div className="flex justify-center gap-1 my-4 p-1 bg-muted/60 border border-border rounded-xl">
+        {(
+          [
+            ['work', <Brain key="i" className="w-3.5 h-3.5" />, 'Focus'],
+            ['break', <Coffee key="i" className="w-3.5 h-3.5" />, 'Short'],
+            ['longBreak', <Coffee key="i" className="w-3.5 h-3.5" />, 'Long'],
+          ] as const
+        ).map(([value, icon, label]) => {
+          const isActive = mode === value;
+          return (
+            <button
+              key={value}
+              onClick={() => setMode(value)}
+              aria-pressed={isActive}
+              className={`flex-1 flex items-center justify-center gap-1 px-2 py-1.5 text-xs font-medium rounded-lg transition-colors outline-hidden focus-visible:ring-2 focus-visible:ring-ring ${
+                isActive
+                  ? `bg-card border border-border shadow-2xs font-semibold ${MODE_ACCENT[value].active}`
+                  : 'border border-transparent text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              {icon} {label}
+            </button>
+          );
+        })}
       </div>
 
       <div className="my-4 text-center">
-        <div className="relative inline-flex items-center justify-center p-3 bg-[#FAF8F5] border-2 border-slate-900 rounded-2xl w-full shadow-neo-sm">
+        <div className="relative inline-flex items-center justify-center p-3 bg-muted/40 border border-border rounded-2xl w-full">
           <div
-            className="text-4xl font-black text-slate-950 font-mono tracking-tight tabular-nums"
+            className="text-4xl font-bold text-foreground font-mono tracking-tight tabular-nums"
             role="timer"
             aria-live="off"
           >
             {formattedTime}
           </div>
         </div>
-        <div className="w-full bg-slate-200 h-2.5 rounded-full mt-3 overflow-hidden border-2 border-slate-900">
+        <div className="w-full bg-muted h-2.5 rounded-full mt-3 overflow-hidden">
           <div
-            className={`h-full transition-all duration-500 ${
-              mode === 'work' ? 'bg-yellow-400' : mode === 'break' ? 'bg-emerald-400' : 'bg-cyan-400'
-            }`}
+            className={`h-full transition-all duration-500 ${accent.fill}`}
             style={{ width: `${progressPercent}%` }}
           />
         </div>
       </div>
 
-      <div className="flex items-center justify-center gap-3 pt-1">
-        <button
-          onClick={toggleTimer}
-          className={`flex-1 flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl text-xs font-black border-2 border-slate-900 shadow-neo transition-all active:translate-y-0.5 ${
-            isRunning
-              ? 'bg-rose-300 text-slate-950 hover:bg-rose-200'
-              : 'bg-yellow-300 text-slate-950 hover:bg-yellow-200'
-          }`}
-        >
-          {isRunning ? <Pause className="w-4 h-4 fill-current" /> : <Play className="w-4 h-4 fill-current" />}
+      <div className="flex items-center justify-center gap-2 pt-1">
+        <Button onClick={toggleTimer} className="flex-1 h-9">
+          {isRunning ? <Pause className="size-4 fill-current" /> : <Play className="size-4 fill-current" />}
           {isRunning ? 'Pause' : 'Start Focus'}
-        </button>
+        </Button>
 
-        <button
-          onClick={resetTimer}
-          className="p-2.5 bg-slate-100 hover:bg-slate-200 rounded-xl border-2 border-slate-900 text-slate-900 shadow-neo-sm transition-all active:translate-y-0.5"
-          title="Reset timer"
-          aria-label="Reset timer"
-        >
-          <RotateCcw className="w-4 h-4" />
-        </button>
+        <Button variant="outline" size="icon-lg" onClick={resetTimer} title="Reset timer" aria-label="Reset timer">
+          <RotateCcw className="size-4" />
+        </Button>
       </div>
     </div>
   );
 };
-

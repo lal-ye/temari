@@ -31,6 +31,7 @@ import { ApiKeySettingsModal } from './components/tools/ApiKeySettingsModal';
 import { ModelPicker } from './components/tools/ModelPicker';
 import { Modal, type MorphOrigin } from './components/ui/Modal';
 import { useModalOrigin } from './components/ui/useModalOrigin';
+import { Button } from './components/ui/button';
 import {
   prefersReducedMotion,
   runViewTransition,
@@ -59,6 +60,10 @@ type TabType = 'notes' | 'quizzes' | 'exams' | 'analytics' | 'planner';
 
 /** Which app-level modal is open — one state instead of one boolean per modal. */
 type OpenModal = 'api-key' | 'pomodoro' | 'add-subject' | null;
+
+/** One class string for every text field, shared with the generation modals. */
+const fieldClass =
+  'w-full px-3.5 py-2 text-sm bg-background border border-border rounded-lg font-medium focus:outline-hidden focus:ring-2 focus:ring-ring/50 shadow-2xs';
 
 export default function App() {
   const subjects = useSubjects();
@@ -412,11 +417,11 @@ export default function App() {
         title="Add Course Subject"
         subtitle="Create a dedicated subject folder in Temari"
         icon={<FolderPlus className="w-5 h-5" />}
-        iconClassName="bg-cyan-300 text-slate-950"
+        iconClassName="bg-amber-500/10 text-amber-600 dark:text-amber-400"
       >
         <form onSubmit={handleAddSubject} className="space-y-3.5">
           <div>
-            <label className="block text-xs font-black uppercase tracking-wider text-slate-800 mb-1">
+            <label className="block text-xs font-bold uppercase tracking-wider text-foreground mb-1">
               Subject / Course Name
             </label>
             <input
@@ -424,13 +429,13 @@ export default function App() {
               value={newSubjectName}
               onChange={(e) => setNewSubjectName(e.target.value)}
               placeholder="e.g. Organic Chemistry"
-              className="w-full px-3.5 py-2 text-xs bg-[#FAF8F5] border-2 border-slate-900 rounded-xl font-bold focus:outline-hidden focus:ring-2 focus:ring-cyan-400 shadow-neo-sm"
+              className={fieldClass}
               required
             />
           </div>
 
           <div>
-            <label className="block text-xs font-black uppercase tracking-wider text-slate-800 mb-1">
+            <label className="block text-xs font-bold uppercase tracking-wider text-foreground mb-1">
               Amharic / Ethiopic Title (Optional)
             </label>
             <input
@@ -438,12 +443,12 @@ export default function App() {
               value={newSubjectAmharicName}
               onChange={(e) => setNewSubjectAmharicName(e.target.value)}
               placeholder="e.g. ኦርጋኒክ ኬሚስትሪ"
-              className="w-full px-3.5 py-2 text-xs bg-[#FAF8F5] border-2 border-slate-900 rounded-xl font-bold font-ethiopic focus:outline-hidden focus:ring-2 focus:ring-cyan-400 shadow-neo-sm"
+              className={`${fieldClass} font-ethiopic`}
             />
           </div>
 
           <div>
-            <label className="block text-xs font-black uppercase tracking-wider text-slate-800 mb-1">
+            <label className="block text-xs font-bold uppercase tracking-wider text-foreground mb-1">
               Course Code (Optional)
             </label>
             <input
@@ -451,45 +456,36 @@ export default function App() {
               value={newSubjectCode}
               onChange={(e) => setNewSubjectCode(e.target.value)}
               placeholder="e.g. CHEM201"
-              className="w-full px-3.5 py-2 text-xs bg-[#FAF8F5] border-2 border-slate-900 rounded-xl font-bold focus:outline-hidden focus:ring-2 focus:ring-cyan-400 shadow-neo-sm"
+              className={`${fieldClass} font-mono`}
             />
           </div>
 
-          <div className="flex items-center justify-end gap-2.5 pt-3 border-t-2 border-slate-100">
-            <button
-              type="button"
-              onClick={() => setOpenModal(null)}
-              className="px-4 py-2 text-xs font-black text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl border-2 border-slate-900 transition-all shadow-neo-sm"
-            >
+          <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-border">
+            <Button type="button" variant="outline" onClick={() => setOpenModal(null)}>
               Cancel
-            </button>
-            <button
-              type="submit"
-              className="px-5 py-2 text-xs font-black text-slate-950 bg-yellow-300 hover:bg-yellow-200 rounded-xl border-2 border-slate-900 transition-all shadow-neo active:translate-y-0.5"
-            >
-              Create Subject
-            </button>
+            </Button>
+            <Button type="submit">Create Subject</Button>
           </div>
         </form>
 
         {/* List of existing subjects with delete */}
         {subjects.length > 0 && (
-          <div className="mt-5 pt-3 border-t-2 border-slate-200">
-            <h4 className="text-[11px] font-black uppercase tracking-wider text-slate-600 mb-2">
+          <div className="mt-5 pt-3 border-t border-border">
+            <h4 className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground mb-2">
               Existing Subjects
             </h4>
             <div className="space-y-1.5 max-h-36 overflow-y-auto pr-1">
               {subjects.map((s) => (
                 <div
                   key={s.id}
-                  className="p-2.5 bg-slate-50 border-2 border-slate-900 rounded-xl flex items-center justify-between text-xs shadow-xs"
+                  className="p-2.5 bg-muted/50 border border-border rounded-xl flex items-center justify-between text-xs"
                 >
-                  <div className="flex items-center gap-2">
-                    <span className="font-bold text-slate-900">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="font-semibold text-foreground">
                       {s.name} {s.code && `(${s.code})`}
                     </span>
                     {s.amharicName && (
-                      <span className="text-xs font-bold text-slate-600 font-ethiopic border-l-2 border-slate-300 pl-2">
+                      <span className="text-xs font-medium text-muted-foreground font-ethiopic border-l border-border pl-2">
                         {s.amharicName}
                       </span>
                     )}
@@ -497,8 +493,9 @@ export default function App() {
                   {subjects.length > 1 && (
                     <button
                       onClick={(e) => handleDeleteSubject(s.id, e)}
-                      className="text-rose-600 hover:bg-rose-100 p-1 rounded-md transition-colors"
+                      className="text-muted-foreground hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 p-1 rounded-md transition-colors"
                       title="Delete subject"
+                      aria-label={`Delete ${s.name}`}
                     >
                       <Trash2 className="w-3.5 h-3.5" />
                     </button>
@@ -517,33 +514,30 @@ export default function App() {
         title="Delete Subject"
         subtitle="This cannot be undone"
         icon={<Trash2 className="w-5 h-5" />}
-        iconClassName="bg-rose-200 text-rose-950"
+        iconClassName="bg-rose-500/10 text-rose-700 dark:text-rose-400"
       >
-        <p className="text-sm font-bold text-slate-700 mb-5">
+        <p className="text-sm font-medium text-muted-foreground mb-5">
           Delete{' '}
-          <span className="text-slate-950">
+          <span className="text-foreground font-semibold">
             &ldquo;{subjects.find((s) => s.id === confirmDeleteSubjectId)?.name}&rdquo;
           </span>{' '}
           and all of its Notes, Quizzes, Exams and Study Tasks?
         </p>
-        <div className="flex items-center justify-end gap-2.5 pt-3 border-t-2 border-slate-100">
-          <button
-            type="button"
-            onClick={() => setConfirmDeleteSubjectId(null)}
-            className="px-4 py-2 text-xs font-black text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl border-2 border-slate-900 transition-all shadow-neo-sm"
-          >
+        <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-border">
+          <Button type="button" variant="outline" onClick={() => setConfirmDeleteSubjectId(null)}>
             Cancel
-          </button>
-          <button
+          </Button>
+          <Button
             type="button"
+            variant="destructive"
             onClick={() => {
               if (confirmDeleteSubjectId) deleteSubject(confirmDeleteSubjectId);
               setConfirmDeleteSubjectId(null);
             }}
-            className="px-5 py-2 text-xs font-black text-white bg-rose-600 hover:bg-rose-700 rounded-xl border-2 border-slate-900 transition-all shadow-neo active:translate-y-0.5"
           >
+            <Trash2 className="size-3.5" />
             Delete Subject
-          </button>
+          </Button>
         </div>
       </Modal>
     </div>
