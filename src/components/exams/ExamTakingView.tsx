@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { ExamQuestion, ExamResult, Article, StoredAttempt } from '../../types';
+import { CognitiveMixId, ExamQuestion, ExamResult, Article, StoredAttempt } from '../../types';
 import { ai } from '../../services/ai';
+import { COGNITIVE_MIXES } from '../../services/examBlueprint';
+import { BloomBadge } from '../ui/BloomBadge';
 import {
   Clock,
   Flag,
@@ -20,6 +22,10 @@ interface ExamTakingViewProps {
   questions: ExamQuestion[];
   timeLimitMinutes?: number;
   offlineDraft?: boolean;
+  /** Which Bloom distribution this exam was generated with, recorded on the Attempt. */
+  cognitiveMix?: CognitiveMixId;
+  /** True when questions were written against extracted Knowledge Units. */
+  knowledgeUnitTargeted?: boolean;
   onCompleted: (attempt: Omit<StoredAttempt, 'id' | 'date'>) => void;
   onCancel: () => void;
 }
@@ -37,6 +43,8 @@ export const ExamTakingView: React.FC<ExamTakingViewProps> = ({
   questions,
   timeLimitMinutes = 20,
   offlineDraft,
+  cognitiveMix,
+  knowledgeUnitTargeted,
   onCompleted,
   onCancel,
 }) => {
@@ -116,6 +124,8 @@ export const ExamTakingView: React.FC<ExamTakingViewProps> = ({
         extraReadings: grading.extraReadings,
         examQuestions: questions,
         examResults: grading.results,
+        cognitiveMix,
+        knowledgeUnitTargeted,
       };
 
       if (grading.overallScore >= 70) {
@@ -134,6 +144,10 @@ export const ExamTakingView: React.FC<ExamTakingViewProps> = ({
         isCorrect: answers[idx]?.trim().toLowerCase() === q.correctAnswer.toLowerCase(),
         explanation: q.explanation || `Correct answer is: ${q.correctAnswer}`,
         topic: q.topic,
+        // Carried from the question so a locally graded attempt still feeds the
+        // topic x level mastery grid instead of silently dropping out of it.
+        bloomLevel: q.bloomLevel,
+        knowledgeUnitId: q.knowledgeUnitId,
       }));
 
       const correctCount = results.filter((r) => r.isCorrect).length;
@@ -150,6 +164,8 @@ export const ExamTakingView: React.FC<ExamTakingViewProps> = ({
         topicsToReview: ['Key Principles Review'],
         examQuestions: questions,
         examResults: results,
+        cognitiveMix,
+        knowledgeUnitTargeted,
       };
 
       onCompleted(attempt);
@@ -191,8 +207,16 @@ export const ExamTakingView: React.FC<ExamTakingViewProps> = ({
               {subjectName}
             </span>
             {offlineDraft && (
-              <span className="px-2 py-0.5 bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/20 rounded text-[10px] font-semibold uppercase tracking-wider">
-                Offline draft questions
+              <span
+                title="Offline drafts are built by extracting sentences, which cannot produce analysis or synthesis questions. Every item here tests recall."
+                className="px-2 py-0.5 bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/20 rounded text-[10px] font-semibold uppercase tracking-wider"
+              >
+                Offline draft · recall only
+              </span>
+            )}
+            {cognitiveMix && (
+              <span className="px-2 py-0.5 bg-muted/60 text-muted-foreground border border-border rounded text-[10px] font-semibold uppercase tracking-wider">
+                {COGNITIVE_MIXES[cognitiveMix].label}
               </span>
             )}
           </div>
@@ -244,6 +268,9 @@ export const ExamTakingView: React.FC<ExamTakingViewProps> = ({
               <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider truncate">
                 {currentQ.topic || 'General Knowledge'}
               </span>
+              {/* Tells the learner why a question felt hard, so they can
+                  self-calibrate instead of blaming the subject. */}
+              <BloomBadge level={currentQ.bloomLevel} />
             </div>
 
             <Button

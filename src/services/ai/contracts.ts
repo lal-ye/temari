@@ -1,4 +1,13 @@
-import { Flashcard, ExamQuestion, ExamResult, Article, UserSettings } from '../../types';
+import {
+  BloomSlot,
+  CognitiveMixId,
+  Flashcard,
+  ExamQuestion,
+  ExamResult,
+  Article,
+  KnowledgeUnit,
+  UserSettings,
+} from '../../types';
 import { AIProviderId } from '../../../shared/aiCatalog';
 
 /**
@@ -28,6 +37,28 @@ export interface GenerateQuizParams {
 export interface GenerateExamParams {
   material: string;
   numberOfQuestions?: number;
+  /**
+   * Per-level quota the Provider is asked to hit. Computed by
+   * src/services/examBlueprint.ts and rendered into the server prompt, so the
+   * exam's cognitive mix is a request the model can be held to — not an
+   * emergent property of whatever the Material happened to contain.
+   */
+  bloomPlan?: BloomSlot[];
+  /**
+   * Knowledge units extracted in the preceding stage. When present, generation
+   * is targeted per unit, which is what stops a concatenated notes library from
+   * biasing every question toward whichever topic appears first.
+   */
+  knowledgeUnits?: KnowledgeUnit[];
+  /** Question stems the learner has already seen; the Provider is told to avoid them. */
+  avoidStems?: string[];
+  signal?: AbortSignal;
+}
+
+export interface ExtractKnowledgeUnitsParams {
+  material: string;
+  /** Ceiling on returned units; the server also caps by material size. */
+  maxUnits?: number;
   signal?: AbortSignal;
 }
 
@@ -70,6 +101,14 @@ export interface GenerationResult<T> {
 export interface AiGenerator {
   generateNotes(params: GenerateNotesParams): Promise<GenerationResult<string>>;
   generateQuiz(params: GenerateQuizParams): Promise<GenerationResult<Flashcard[]>>;
+  /**
+   * Stage 1 of exam generation: the assessable ideas in the Material, before
+   * any question is written. Returns `source: 'offline'` when the heuristic
+   * extractor served it, so callers can label the exam accordingly.
+   */
+  extractKnowledgeUnits(
+    params: ExtractKnowledgeUnitsParams
+  ): Promise<GenerationResult<KnowledgeUnit[]>>;
   generateExam(params: GenerateExamParams): Promise<GenerationResult<ExamQuestion[]>>;
   gradeExam(params: GradeExamParams): Promise<GenerationResult<GradeExamResult>>;
   explainTerm(params: ExplainTermParams): Promise<GenerationResult<ExplainTermResult>>;
@@ -77,10 +116,11 @@ export interface AiGenerator {
 
 // --- Adapter contract (internal seam) ---------------------------------------
 
-/** What every adapter implements: the five ops, bare values, throwing on failure. */
+/** What every adapter implements: the six ops, bare values, throwing on failure. */
 export interface GenerationAdapter {
   generateNotes(params: GenerateNotesParams): Promise<string>;
   generateQuiz(params: GenerateQuizParams): Promise<Flashcard[]>;
+  extractKnowledgeUnits(params: ExtractKnowledgeUnitsParams): Promise<KnowledgeUnit[]>;
   generateExam(params: GenerateExamParams): Promise<ExamQuestion[]>;
   gradeExam(params: GradeExamParams): Promise<GradeExamResult>;
   explainTerm(params: ExplainTermParams): Promise<ExplainTermResult>;

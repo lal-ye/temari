@@ -1,6 +1,7 @@
 import { getStudyStore } from '../studyStore';
 import {
   AiGenerator,
+  ExtractKnowledgeUnitsParams,
   GenerateExamParams,
   GenerateNotesParams,
   GenerateQuizParams,
@@ -23,7 +24,8 @@ export * from './contracts';
  * fallback policy, and response contracts.
  *
  * Public interface (the port, keep small):
- *   generateNotes, generateQuiz, generateExam, gradeExam, explainTerm
+ *   generateNotes, generateQuiz, extractKnowledgeUnits, generateExam,
+ *   gradeExam, explainTerm
  *
  * Every op returns GenerationResult<T>, whose `source` says which adapter
  * served it — 'model' (the configured Provider) or 'offline' (the local
@@ -66,6 +68,12 @@ export function createAiGenerator(deps: { getSettings: SettingsSource }): AiGene
       withFallback('Note generation', () => http.generateNotes(params), () => offline.generateNotes(params)),
     generateQuiz: (params: GenerateQuizParams) =>
       withFallback('Quiz generation', () => http.generateQuiz(params), () => offline.generateQuiz(params)),
+    extractKnowledgeUnits: (params: ExtractKnowledgeUnitsParams) =>
+      withFallback(
+        'Knowledge-unit extraction',
+        () => http.extractKnowledgeUnits(params),
+        () => offline.extractKnowledgeUnits(params)
+      ),
     generateExam: (params: GenerateExamParams) =>
       withFallback('Exam generation', () => http.generateExam(params), () => offline.generateExam(params)),
     gradeExam: (params: GradeExamParams) =>

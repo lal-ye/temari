@@ -1,13 +1,14 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { prefersReducedMotion } from '../../utils/viewTransition';
 
-export type GenerationKind = 'notes' | 'quiz' | 'exam' | 'explanation' | 'grading';
+export type GenerationKind = 'notes' | 'quiz' | 'exam' | 'knowledge-units' | 'explanation' | 'grading';
 
 /** Stage labels per generation kind. Order is the order they are entered. */
 const STAGES: Record<GenerationKind, string[]> = {
   notes: ['Reading material', 'Structuring sections', 'Writing the note'],
   quiz: ['Reading material', 'Picking testable ideas', 'Writing flashcards'],
-  exam: ['Reading material', 'Balancing question types', 'Writing questions'],
+  exam: ['Reading material', 'Balancing cognitive levels', 'Writing questions'],
+  'knowledge-units': ['Reading material', 'Naming the assessable ideas'],
   explanation: ['Reading the term', 'Finding a plain-language angle'],
   grading: ['Reading answers', 'Scoring against the key', 'Writing feedback'],
 };

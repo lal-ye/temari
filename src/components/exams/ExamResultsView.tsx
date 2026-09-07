@@ -1,5 +1,6 @@
 import React from 'react';
-import { StoredAttempt } from '../../types';
+import { BLOOM_LEVELS, StoredAttempt } from '../../types';
+import { BloomBadge } from '../ui/BloomBadge';
 import {
   CheckCircle2,
   XCircle,
@@ -20,6 +21,18 @@ interface ExamResultsViewProps {
 
 export const ExamResultsView: React.FC<ExamResultsViewProps> = ({ attempt, onRetake, onBack }) => {
   const isPassed = attempt.overallScore >= 70;
+
+  // Per-level accuracy for this sitting. Levels the learner was never asked
+  // about are omitted rather than shown as 0%, which would read as failure.
+  const levelBreakdown = BLOOM_LEVELS.map((level) => {
+    const rows = (attempt.examResults ?? []).filter((r) => r.bloomLevel === level);
+    if (rows.length === 0) return null;
+    const correct = rows.filter((r) => r.isCorrect).length;
+    return { level, total: rows.length, correct, accuracy: Math.round((correct / rows.length) * 100) };
+  }).filter((r): r is NonNullable<typeof r> => r !== null);
+
+  // Attempts graded before cognitive levels existed have no breakdown to show.
+  const hasLevels = levelBreakdown.length > 0;
 
   return (
     <div className="max-w-4xl mx-auto space-y-5 animate-in fade-in duration-150">
@@ -84,6 +97,49 @@ export const ExamResultsView: React.FC<ExamResultsViewProps> = ({ attempt, onRet
           </Button>
         </div>
       </div>
+
+      {/* Cognitive level breakdown — the axis topic accuracy cannot show */}
+      {hasLevels && (
+        <div className="bg-card border border-border/80 rounded-2xl p-5 shadow-xs space-y-3.5">
+          <div className="flex items-center gap-2.5">
+            <div className="p-2 bg-amber-500/10 border border-amber-500/20 text-amber-700 dark:text-amber-400 rounded-lg shrink-0">
+              <Sparkles className="w-4 h-4" />
+            </div>
+            <div>
+              <h3 className="text-sm font-semibold text-foreground">Cognitive Level Breakdown</h3>
+              <p className="text-[11px] font-medium text-muted-foreground">
+                Recall and application are separate skills. Strong at one does not carry to the other.
+              </p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5 pt-1">
+            {levelBreakdown.map((row) => {
+              const strong = row.accuracy >= 70;
+              return (
+                <div
+                  key={row.level}
+                  className="p-2.5 bg-muted/40 border border-border rounded-xl text-center"
+                >
+                  <BloomBadge level={row.level} className="mb-1.5" />
+                  <div
+                    className={`text-lg font-semibold font-mono tabular-nums ${
+                      strong
+                        ? 'text-emerald-700 dark:text-emerald-400'
+                        : 'text-rose-700 dark:text-rose-400'
+                    }`}
+                  >
+                    {row.accuracy}%
+                  </div>
+                  <div className="text-[10px] font-medium text-muted-foreground font-mono tabular-nums">
+                    {row.correct}/{row.total}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Topics to Review & Recommended Readings */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
@@ -186,6 +242,7 @@ export const ExamResultsView: React.FC<ExamResultsViewProps> = ({ attempt, onRet
                     <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider truncate">
                       {res.topic || 'General Concept'}
                     </span>
+                    <BloomBadge level={res.bloomLevel} />
                   </div>
 
                   <span
@@ -228,6 +285,22 @@ export const ExamResultsView: React.FC<ExamResultsViewProps> = ({ attempt, onRet
                     <span className="font-semibold text-foreground">{res.correctAnswer}</span>
                   </div>
                 </div>
+
+                {res.rubricEarned && res.rubricEarned.length > 0 && (
+                  <div className="p-3 mb-2 bg-muted/50 border border-border rounded-xl text-xs font-medium">
+                    <span className="text-[10px] uppercase tracking-wider text-muted-foreground block mb-1.5">
+                      Rubric points earned
+                    </span>
+                    <ul className="space-y-1 text-foreground/90">
+                      {res.rubricEarned.map((point, pIdx) => (
+                        <li key={pIdx} className="flex items-start gap-1.5">
+                          <CheckCircle2 className="w-3.5 h-3.5 mt-0.5 shrink-0 text-emerald-600 dark:text-emerald-400" />
+                          <span>{point}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
 
                 {res.explanation && (
                   <div className="p-3 bg-muted/50 border border-border rounded-xl text-xs text-foreground/90 leading-relaxed font-medium">

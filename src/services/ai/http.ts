@@ -1,6 +1,7 @@
-import { Flashcard, ExamQuestion } from '../../types';
+import { Flashcard, ExamQuestion, KnowledgeUnit } from '../../types';
 import { resolveCredentials } from './credentials';
 import {
+  ExtractKnowledgeUnitsParams,
   GenerateExamParams,
   GenerateNotesParams,
   GenerateQuizParams,
@@ -79,6 +80,19 @@ export function createHttpAdapter(getSettings: () => Parameters<typeof resolveCr
       return data.flashcards || [];
     },
 
+    async extractKnowledgeUnits(params: ExtractKnowledgeUnitsParams): Promise<KnowledgeUnit[]> {
+      const data = await postAi<{ knowledgeUnits?: KnowledgeUnit[] }>(
+        '/api/ai/extract-knowledge-units',
+        {
+          ...resolveCredentials(getSettings()),
+          material: params.material,
+          maxUnits: params.maxUnits,
+        },
+        params.signal
+      );
+      return data.knowledgeUnits || [];
+    },
+
     async generateExam(params: GenerateExamParams): Promise<ExamQuestion[]> {
       const data = await postAi<{ exam?: ExamQuestion[] }>(
         '/api/ai/generate-exam',
@@ -86,6 +100,9 @@ export function createHttpAdapter(getSettings: () => Parameters<typeof resolveCr
           ...resolveCredentials(getSettings()),
           material: params.material,
           numberOfQuestions: params.numberOfQuestions,
+          bloomPlan: params.bloomPlan,
+          knowledgeUnits: params.knowledgeUnits,
+          avoidStems: params.avoidStems,
         },
         params.signal
       );

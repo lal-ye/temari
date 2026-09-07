@@ -2,7 +2,13 @@ import React, { useEffect, useRef, useState, useMemo } from 'react';
 import { StoredAttempt } from '../../types';
 import { studyStore } from '../../hooks/useStudyStore';
 import { useActiveSubjectId, useAllAttempts, useSubjects } from '../../hooks/useStudyStore';
-import { computeAnalyticsSummary } from '../../utils/analytics';
+import {
+  computeAnalyticsSummary,
+  computeReviewQueue,
+  dueForReview,
+  escalatedLevel,
+} from '../../utils/analytics';
+import { BloomBadge } from '../ui/BloomBadge';
 import { ExamResultsView } from '../exams/ExamResultsView';
 import {
   TrendingUp,
@@ -16,6 +22,7 @@ import {
   Calendar,
   CheckCircle2,
   Filter,
+  History,
 } from 'lucide-react';
 import {
   ResponsiveContainer,
@@ -59,6 +66,12 @@ export const AnalyticsView: React.FC = () => {
   const { filteredAttempts, analytics } = useMemo(() => {
     return computeAnalyticsSummary(attempts, effectiveSubjectId);
   }, [attempts, effectiveSubjectId]);
+
+  // Spaced resurfacing: cells whose most recent answer was wrong, scheduled at
+  // expanding intervals. Derived, not stored — recomputing from attempts keeps
+  // it consistent when an attempt is deleted.
+  const reviewQueue = useMemo(() => computeReviewQueue(filteredAttempts), [filteredAttempts]);
+  const dueNow = useMemo(() => dueForReview(reviewQueue), [reviewQueue]);
 
   const handleDeleteAttempt = (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -388,6 +401,138 @@ export const AnalyticsView: React.FC = () => {
               <p className="text-muted-foreground text-xs max-w-sm">
                 You are currently maintaining high mastery across all recorded topics. Continue with periodic spaced recall drills.
               </p>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Mastery by cognitive level + spaced resurfacing */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+        <div className="bg-card border border-border/80 rounded-2xl p-6 shadow-xs space-y-4">
+          <div>
+            <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
+              <Layers className="w-4 h-4 text-amber-600 dark:text-amber-400" /> Mastery by Cognitive Level
+            </h3>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Topic accuracy alone hides this: recalling a definition and applying it are separate skills.
+            </p>
+          </div>
+
+          {analytics.levelStats.length > 0 ? (
+            <div className="space-y-3">
+              {analytics.levelStats.map((stat) => (
+                <div key={stat.level} className="space-y-1.5">
+                  <div className="flex items-center justify-between gap-2">
+                    <BloomBadge level={stat.level} size="md" />
+                    <span
+                      className={`font-mono text-xs font-semibold tabular-nums ${
+                        stat.accuracy >= 80
+                          ? 'text-emerald-600 dark:text-emerald-400'
+                          : stat.accuracy >= 60
+                          ? 'text-amber-600 dark:text-amber-400'
+                          : 'text-rose-600 dark:text-rose-400'
+                      }`}
+                    >
+                      {stat.accuracy}%
+                      <span className="text-muted-foreground font-medium">
+                        {' '}({stat.correct}/{stat.total})
+                      </span>
+                    </span>
+                  </div>
+                  <div className="w-full bg-muted h-2 rounded-full overflow-hidden">
+                    <div
+                      className={`h-full rounded-full ${
+                        stat.accuracy >= 80
+                          ? 'bg-emerald-500'
+                          : stat.accuracy >= 60
+                          ? 'bg-amber-500'
+                          : 'bg-rose-500'
+                      }`}
+                      style={{ width: `${stat.accuracy}%` }}
+                    />
+                  </div>
+                </div>
+              ))}
+
+              {/* Escalation: topics mastered at a level and ready for the next one */}
+              {(() => {
+                const ready = analytics.topicStats
+                  .map((t) => ({ topic: t.topic, next: escalatedLevel(t.topic, analytics.topicLevelStats) }))
+                  .filter((r): r is { topic: string; next: NonNullable<typeof r.next> } => Boolean(r.next));
+                if (ready.length === 0) return null;
+                return (
+                  <div className="pt-3 border-t border-border space-y-2">
+                    <span className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">
+                      Ready to move up a level
+                    </span>
+                    {ready.map((r) => (
+                      <div
+                        key={r.topic}
+                        className="flex items-center justify-between gap-2 p-2.5 bg-emerald-500/10 border border-emerald-500/20 rounded-xl text-xs"
+                      >
+                        <span className="font-semibold text-foreground truncate">{r.topic}</span>
+                        <BloomBadge level={r.next} size="md" />
+                      </div>
+                    ))}
+                  </div>
+                );
+              })()}
+            </div>
+          ) : (
+            <p className="text-xs text-muted-foreground py-6 text-center">
+              No levelled attempts yet. Exams generated now carry a Bloom level, so this fills in as you practise.
+            </p>
+          )}
+        </div>
+
+        {/* Spaced resurfacing queue */}
+        <div className="bg-card border border-border/80 rounded-2xl p-6 shadow-xs space-y-4">
+          <div className="flex items-center gap-2">
+            <div className="p-2 bg-rose-500/10 text-rose-700 dark:text-rose-400 rounded-lg">
+              <History className="w-4 h-4" />
+            </div>
+            <div>
+              <h3 className="text-sm font-semibold text-foreground">Due for Review</h3>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Missed ideas resurface at expanding intervals — 1, 3, 7 then 14 days.
+              </p>
+            </div>
+          </div>
+
+          {dueNow.length > 0 ? (
+            <div className="space-y-2.5">
+              {dueNow.slice(0, 8).map((item, idx) => (
+                <div
+                  key={`${item.topic}-${item.level}-${idx}`}
+                  className="p-3 bg-rose-500/[0.06] dark:bg-rose-950/20 border border-rose-500/20 rounded-xl flex items-center justify-between gap-3"
+                >
+                  <div className="min-w-0">
+                    <strong className="block text-xs font-semibold text-foreground truncate">
+                      {item.topic}
+                    </strong>
+                    <span className="text-[11px] text-muted-foreground">
+                      Missed {item.lapseStreak}× in a row · next look in {item.intervalDays}d
+                    </span>
+                  </div>
+                  <BloomBadge level={item.level === 'unlevelled' ? undefined : item.level} size="md" />
+                </div>
+              ))}
+            </div>
+          ) : reviewQueue.length > 0 ? (
+            <div className="p-5 bg-muted/40 border border-border rounded-xl text-xs text-muted-foreground">
+              {reviewQueue.length} item{reviewQueue.length === 1 ? '' : 's'} scheduled,{' '}
+              <strong className="text-foreground font-semibold">
+                {new Date(reviewQueue[0].dueAt).toLocaleDateString(undefined, {
+                  month: 'short',
+                  day: 'numeric',
+                })}
+              </strong>{' '}
+              is next.
+            </div>
+          ) : (
+            <div className="p-5 bg-emerald-500/10 border border-emerald-500/20 rounded-xl text-xs text-emerald-700 dark:text-emerald-400 flex items-center gap-2.5">
+              <CheckCircle2 className="w-5 h-5 shrink-0" />
+              <span>Nothing outstanding. Your last answers were correct, so there is nothing to resurface yet.</span>
             </div>
           )}
         </div>
