@@ -6,11 +6,11 @@ import { OfflineBanner } from '../tools/OfflineBanner';
 import { studyStore } from '../../hooks/useStudyStore';
 import { useActiveSubject, useNotes } from '../../hooks/useStudyStore';
 import { NoteViewer } from './NoteViewer';
-import { ModelPicker } from '../tools/ModelPicker';
 import { Modal, type MorphOrigin } from '../ui/Modal';
 import { GenerationProgress } from '../ui/GenerationProgress';
 import { EmptyState } from '../ui/EmptyState';
 import { useModalOrigin } from '../ui/useModalOrigin';
+import { Button } from '../ui/button';
 import {
   FileText,
   Upload,
@@ -27,6 +27,10 @@ import {
 interface NotesManagerProps {
   onHighlightTerm: (term: string, context?: string, origin?: MorphOrigin) => void;
 }
+
+/** One class string for every text field, shared with the Quizzes modal. */
+const fieldClass =
+  'w-full px-3.5 py-2 text-sm bg-background border border-border rounded-lg font-medium focus:outline-hidden focus:ring-2 focus:ring-ring/50 shadow-2xs';
 
 export const NotesManager: React.FC<NotesManagerProps> = ({ onHighlightTerm }) => {
   const notes = useNotes();
@@ -158,42 +162,42 @@ export const NotesManager: React.FC<NotesManagerProps> = ({ onHighlightTerm }) =
 
   return (
     <div className="space-y-6">
-      {/* Top Header & Actions */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-5 border-3 border-slate-900 rounded-2xl shadow-neo-md">
+      {/* Header Bar */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-card p-6 border border-border/80 rounded-2xl shadow-xs">
         <div>
           <div className="flex items-center gap-2 mb-1.5 flex-wrap">
-            <span className="badge-chip px-2.5 py-1 bg-yellow-300 text-slate-900 border-2 border-slate-900 rounded-md shadow-neo-sm inline-flex items-center gap-1.5">
-              <span className="font-ethiopic font-bold text-xs normal-case">ተማሪ</span>
-              <span>Smart Notes</span>
+            <span className="font-ethiopic font-semibold text-amber-600 dark:text-amber-400 text-sm">
+              ተማሪ
             </span>
-            <span className="text-xs font-bold text-slate-600">
-              {activeSubject.name}
+            <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+              Smart Notes
             </span>
+            <span className="text-xs font-medium text-muted-foreground">·</span>
+            <span className="text-xs font-medium text-foreground">{activeSubject.name}</span>
             {activeSubject.amharicName && (
-              <span className="text-xs font-bold text-slate-600 font-ethiopic border-l-2 border-slate-300 pl-2 hidden md:inline">
-                {activeSubject.amharicName}
+              <span className="text-xs font-medium text-muted-foreground font-ethiopic hidden md:inline">
+                ({activeSubject.amharicName})
               </span>
             )}
           </div>
-          <h2 className="section-heading text-slate-950 flex items-center gap-2">
-            <BookOpen className="w-5 h-5 text-cyan-600 shrink-0" />
-            Interactive Study Notes
+          <h2 className="font-editorial text-2xl font-bold text-foreground tracking-tight flex items-center gap-2">
+            <BookOpen className="w-5 h-5 text-amber-600 dark:text-amber-400 shrink-0" /> Interactive Study Notes
           </h2>
-          <p className="text-xs font-bold text-slate-600 mt-1">
+          <p className="text-sm text-muted-foreground mt-1">
             Structured Markdown notes with hierarchy, comparison tables, visual callouts, and Editorial vector diagrams.
           </p>
         </div>
 
-        <button
+        <Button
           onClick={(e) => {
             generateOrigin.capture(e);
             setShowGenerateModal(true);
           }}
-          className="flex items-center justify-center gap-2 px-5 py-2.5 bg-yellow-300 hover:bg-yellow-200 text-slate-950 font-black text-xs rounded-xl border-2 border-slate-900 shadow-neo transition-all active:translate-y-0.5 shrink-0"
+          className="shrink-0"
         >
-          <Sparkles className="w-4 h-4 text-slate-900" />
+          <Sparkles className="size-3.5" />
           Generate Notes with AI
-        </button>
+        </Button>
       </div>
 
       {generatedOffline && (
@@ -204,23 +208,23 @@ export const NotesManager: React.FC<NotesManagerProps> = ({ onHighlightTerm }) =
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
         {/* Left Notes List */}
         <div className="lg:col-span-4 space-y-3">
-          <div className="bg-white p-4 border-3 border-slate-900 rounded-2xl shadow-neo space-y-3">
+          <div className="bg-card border border-border/80 rounded-2xl p-4 shadow-xs space-y-3">
             <div className="relative">
-              <Search className="w-4 h-4 text-slate-900 absolute left-3 top-1/2 -translate-y-1/2" />
+              <Search className="w-4 h-4 text-muted-foreground absolute left-3 top-1/2 -translate-y-1/2" />
               <input
                 type="text"
                 placeholder="Search notes or tags..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-9 pr-3 py-2 text-xs bg-[#FAF8F5] border-2 border-slate-900 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-amber-400 font-bold shadow-xs"
+                className="w-full pl-9 pr-3 py-2 text-sm bg-background border border-border rounded-lg font-medium focus:outline-hidden focus:ring-2 focus:ring-ring/50 shadow-2xs"
               />
             </div>
 
             <div className="space-y-2 max-h-[600px] overflow-y-auto pr-1">
               {filteredNotes.length === 0 ? (
-                <div className="p-6 text-center text-slate-600 text-xs border-2 border-dashed border-slate-300 rounded-xl bg-slate-50">
-                  <FileText className="w-8 h-8 mx-auto text-slate-400 mb-2" />
-                  <p className="font-black text-slate-800">No notes found</p>
+                <div className="p-6 text-center text-muted-foreground text-xs border border-dashed border-border rounded-xl bg-muted/40">
+                  <FileText className="w-8 h-8 mx-auto text-muted-foreground/60 mb-2" />
+                  <p className="font-semibold text-foreground">No notes found</p>
                   <p className="mt-1 text-[11px] font-medium">Upload slides or paste text to generate notes.</p>
                 </div>
               ) : (
@@ -230,33 +234,34 @@ export const NotesManager: React.FC<NotesManagerProps> = ({ onHighlightTerm }) =
                     <div
                       key={note.id}
                       onClick={() => setSelectedNoteId(note.id)}
-                      className={`p-3.5 rounded-xl border-2 cursor-pointer transition-all ${
+                      className={`p-3.5 rounded-xl border cursor-pointer transition-colors ${
                         isSelected
-                          ? 'bg-[#A7F3D0] border-slate-900 text-slate-950 shadow-neo translate-x-1'
-                          : 'bg-white border-slate-900/40 hover:border-slate-900 hover:bg-slate-50 shadow-xs'
+                          ? 'bg-amber-500/10 border-amber-500/30 text-foreground'
+                          : 'bg-background border-border/80 hover:bg-muted/50 hover:border-border'
                       }`}
                     >
                       <div className="flex items-start justify-between gap-2">
-                        <h4 className="text-xs font-black line-clamp-1 text-slate-950">
+                        <h4 className="text-xs font-semibold line-clamp-1 text-foreground">
                           {note.title}
                         </h4>
                         <button
                           onClick={(e) => handleDeleteNote(note.id, e)}
-                          className="text-slate-500 hover:text-rose-600 hover:bg-rose-50 p-1 rounded-md transition-colors shrink-0"
+                          className="text-muted-foreground hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 p-1 rounded-md transition-colors shrink-0"
                           title="Delete note"
+                          aria-label={`Delete ${note.title}`}
                         >
                           <Trash2 className="w-3.5 h-3.5" />
                         </button>
                       </div>
 
-                      <p className="text-[11px] text-slate-600 line-clamp-2 mt-1 font-medium">
+                      <p className="text-[11px] text-muted-foreground line-clamp-2 mt-1 font-medium">
                         {note.content.replace(/[#*`[\]>]/g, '').slice(0, 90)}...
                       </p>
 
-                      <div className="flex items-center justify-between mt-2.5 pt-2 border-t border-slate-900/20 text-[10px] font-bold text-slate-600">
+                      <div className="flex items-center justify-between mt-2.5 pt-2 border-t border-border/60 text-[10px] font-medium text-muted-foreground">
                         <span>{new Date(note.createdAt).toLocaleDateString()}</span>
                         {note.tags && note.tags[0] && (
-                          <span className="px-2 py-0.5 bg-white border border-slate-900 text-slate-900 rounded-md font-black shadow-xs">
+                          <span className="px-2 py-0.5 bg-muted border border-border text-foreground rounded-md font-medium">
                             {note.tags[0]}
                           </span>
                         )}
@@ -272,14 +277,15 @@ export const NotesManager: React.FC<NotesManagerProps> = ({ onHighlightTerm }) =
         {/* Right Viewer or Editor */}
         <div className="lg:col-span-8">
           {editingNote ? (
-            <div className="bg-white border-3 border-slate-900 rounded-2xl p-5 shadow-neo-md space-y-4">
-              <div className="flex items-center justify-between pb-3 border-b-2 border-slate-200">
-                <h3 className="text-sm font-black text-slate-900 flex items-center gap-2">
-                  <Edit3 className="w-4 h-4 text-cyan-600" /> Edit Note Markdown
+            <div className="bg-card border border-border/80 rounded-2xl p-5 shadow-xs space-y-4">
+              <div className="flex items-center justify-between pb-3 border-b border-border">
+                <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                  <Edit3 className="w-4 h-4 text-amber-600 dark:text-amber-400" /> Edit Note Markdown
                 </h3>
                 <button
                   onClick={() => setEditingNote(null)}
-                  className="p-1 text-slate-900 hover:bg-slate-100 rounded-lg border-2 border-slate-900"
+                  className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg border border-border transition-colors"
+                  aria-label="Close editor"
                 >
                   <X className="w-4 h-4" />
                 </button>
@@ -287,39 +293,33 @@ export const NotesManager: React.FC<NotesManagerProps> = ({ onHighlightTerm }) =
 
               <form onSubmit={handleSaveEdit} className="space-y-3.5">
                 <div>
-                  <label className="block text-xs font-black uppercase tracking-wider text-slate-800 mb-1">Title</label>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-foreground mb-1">Title</label>
                   <input
                     type="text"
                     value={editingNote.title}
                     onChange={(e) => setEditingNote({ ...editingNote, title: e.target.value })}
-                    className="w-full px-3.5 py-2 text-xs bg-[#FAF8F5] border-2 border-slate-900 rounded-xl font-bold focus:outline-hidden focus:ring-2 focus:ring-amber-400 shadow-neo-sm"
+                    className={fieldClass}
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-black uppercase tracking-wider text-slate-800 mb-1">Markdown Content</label>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-foreground mb-1">Markdown Content</label>
                   <textarea
                     rows={16}
                     value={editingNote.content}
                     onChange={(e) => setEditingNote({ ...editingNote, content: e.target.value })}
-                    className="w-full p-3.5 text-xs bg-[#FAF8F5] border-2 border-slate-900 rounded-xl font-mono font-medium leading-relaxed focus:outline-hidden focus:ring-2 focus:ring-amber-400 shadow-neo-sm"
+                    className={`${fieldClass} p-3.5 font-mono leading-relaxed`}
                   />
                 </div>
 
-                <div className="flex justify-end gap-2.5 pt-2">
-                  <button
-                    type="button"
-                    onClick={() => setEditingNote(null)}
-                    className="px-4 py-2 text-xs font-black text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl border-2 border-slate-900 transition-all shadow-neo-sm"
-                  >
+                <div className="flex justify-end gap-2.5 pt-3 border-t border-border">
+                  <Button type="button" variant="outline" onClick={() => setEditingNote(null)}>
                     Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    className="px-5 py-2 text-xs font-black text-slate-950 bg-emerald-300 hover:bg-emerald-200 rounded-xl border-2 border-slate-900 shadow-neo transition-all active:translate-y-0.5"
-                  >
+                  </Button>
+                  <Button type="submit">
+                    <CheckCircle className="size-3.5" />
                     Save Changes
-                  </button>
+                  </Button>
                 </div>
               </form>
             </div>
@@ -339,16 +339,14 @@ export const NotesManager: React.FC<NotesManagerProps> = ({ onHighlightTerm }) =
               title="No Note Selected"
               description="Choose a note from the left sidebar or generate an interactive study note with Temari AI."
               action={
-                <button
+                <Button
                   onClick={(e) => {
                     generateOrigin.capture(e);
                     setShowGenerateModal(true);
                   }}
-                  className="inline-flex items-center gap-2 px-5 py-2.5 bg-yellow-300 hover:bg-yellow-200 text-slate-950 font-black text-xs rounded-xl border-2 border-slate-900 shadow-neo transition-all active:translate-y-0.5"
                 >
-                  <Sparkles className="w-4 h-4 text-slate-900" />
-                  Generate New Note
-                </button>
+                  <Sparkles className="size-3.5" /> Generate New Note
+                </Button>
               }
             />
           )}
@@ -362,12 +360,12 @@ export const NotesManager: React.FC<NotesManagerProps> = ({ onHighlightTerm }) =
         originRef={generateOrigin.ref}
         title="Generate Dynamic Interactive Notes"
         subtitle={`Target Subject: ${activeSubject.name}`}
-        icon={<Sparkles className="w-5 h-5 text-slate-950" />}
-        iconClassName="bg-yellow-300 text-slate-950"
+        icon={<Sparkles className="w-5 h-5" />}
+        iconClassName="bg-amber-500/10 text-amber-600 dark:text-amber-400"
         maxWidthClassName="max-w-2xl"
       >
         {error && (
-          <div className="p-3 mb-3 bg-rose-50 border-2 border-rose-500 rounded-xl text-xs font-bold text-rose-900">
+          <div className="p-3 mb-3 bg-rose-500/10 border border-rose-500/20 rounded-xl text-xs font-medium text-rose-700 dark:text-rose-400">
             {error}
           </div>
         )}
@@ -379,10 +377,10 @@ export const NotesManager: React.FC<NotesManagerProps> = ({ onHighlightTerm }) =
 
               {/* File Upload Box */}
               <div>
-                <label className="block text-xs font-black uppercase tracking-wider text-slate-800 mb-1.5">
+                <label className="block text-xs font-bold uppercase tracking-wider text-foreground mb-1.5">
                   Upload Course Material (.pdf, .txt)
                 </label>
-                <div className="border-2 border-dashed border-slate-900 hover:bg-yellow-50/50 rounded-xl p-4 bg-[#FAF8F5] text-center relative transition-colors shadow-neo-sm">
+                <div className="border border-dashed border-border hover:border-amber-500/40 hover:bg-amber-500/5 rounded-xl p-4 bg-muted/30 text-center relative transition-colors">
                   <input
                     type="file"
                     accept=".pdf,.txt"
@@ -393,22 +391,22 @@ export const NotesManager: React.FC<NotesManagerProps> = ({ onHighlightTerm }) =
                   <div className="flex flex-col items-center justify-center gap-1.5 pointer-events-none">
                     {isExtractingPdf ? (
                       <>
-                        <Loader2 className="w-6 h-6 animate-spin text-slate-900" />
-                        <span className="text-xs font-black text-slate-900">Extracting text from PDF with AI OCR...</span>
+                        <Loader2 className="w-6 h-6 animate-spin text-amber-600 dark:text-amber-400" />
+                        <span className="text-xs font-semibold text-foreground">Extracting text from PDF with AI OCR...</span>
                       </>
                     ) : sourceFileName ? (
                       <>
-                        <CheckCircle className="w-6 h-6 text-emerald-600" />
-                        <span className="text-xs font-black text-slate-900">{sourceFileName}</span>
-                        <span className="text-[10px] font-bold text-slate-500">Click or drop another file to replace</span>
+                        <CheckCircle className="w-6 h-6 text-emerald-600 dark:text-emerald-400" />
+                        <span className="text-xs font-semibold text-foreground">{sourceFileName}</span>
+                        <span className="text-[10px] font-medium text-muted-foreground">Click or drop another file to replace</span>
                       </>
                     ) : (
                       <>
-                        <Upload className="w-6 h-6 text-slate-900" />
-                        <span className="text-xs font-black text-slate-900">
+                        <Upload className="w-6 h-6 text-muted-foreground" />
+                        <span className="text-xs font-semibold text-foreground">
                           Click to browse or drag & drop lecture PDF / TXT
                         </span>
-                        <span className="text-[10px] font-bold text-slate-500">Auto-extracted with Multimodal Gemini AI</span>
+                        <span className="text-[10px] font-medium text-muted-foreground">Auto-extracted with Multimodal Gemini AI</span>
                       </>
                     )}
                   </div>
@@ -418,24 +416,24 @@ export const NotesManager: React.FC<NotesManagerProps> = ({ onHighlightTerm }) =
               {/* Paste Text Area */}
               <div>
                 <div className="flex items-center justify-between mb-1.5">
-                  <label className="text-xs font-black uppercase tracking-wider text-slate-800">
+                  <label className="text-xs font-bold uppercase tracking-wider text-foreground">
                     Source Material / Lecture Text
                   </label>
-                  <span className="text-[10px] font-mono font-bold text-slate-500">{materialText.length} chars</span>
+                  <span className="text-[10px] font-mono font-medium text-muted-foreground tabular-nums">{materialText.length} chars</span>
                 </div>
                 <textarea
                   rows={6}
                   value={materialText}
                   onChange={(e) => setMaterialText(e.target.value)}
                   placeholder="Paste lecture transcript, textbook chapters, or slides content here..."
-                  className="w-full p-3 text-xs bg-[#FAF8F5] border-2 border-slate-900 rounded-xl font-mono leading-relaxed focus:outline-hidden focus:ring-2 focus:ring-amber-400 shadow-neo-sm"
+                  className={`${fieldClass} p-3 font-mono leading-relaxed`}
                   disabled={isGenerating}
                 />
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-black uppercase tracking-wider text-slate-800 mb-1">
+                  <label className="block text-xs font-bold uppercase tracking-wider text-foreground mb-1">
                     Note Title (Optional)
                   </label>
                   <input
@@ -443,13 +441,13 @@ export const NotesManager: React.FC<NotesManagerProps> = ({ onHighlightTerm }) =
                     value={customTitle}
                     onChange={(e) => setCustomTitle(e.target.value)}
                     placeholder="e.g. Cellular Respiration & ATP"
-                    className="w-full px-3.5 py-2 text-xs bg-[#FAF8F5] border-2 border-slate-900 rounded-xl font-bold focus:outline-hidden focus:ring-2 focus:ring-amber-400 shadow-neo-sm"
+                    className={fieldClass}
                     disabled={isGenerating}
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-black uppercase tracking-wider text-slate-800 mb-1">
+                  <label className="block text-xs font-bold uppercase tracking-wider text-foreground mb-1">
                     Tags (Comma-separated)
                   </label>
                   <input
@@ -457,39 +455,35 @@ export const NotesManager: React.FC<NotesManagerProps> = ({ onHighlightTerm }) =
                     value={customTags}
                     onChange={(e) => setCustomTags(e.target.value)}
                     placeholder="e.g. Midterm, Chapter 4, Biochem"
-                    className="w-full px-3.5 py-2 text-xs bg-[#FAF8F5] border-2 border-slate-900 rounded-xl font-bold focus:outline-hidden focus:ring-2 focus:ring-amber-400 shadow-neo-sm"
+                    className={fieldClass}
                     disabled={isGenerating}
                   />
                 </div>
               </div>
 
-              <div className="flex items-center justify-end gap-2.5 pt-3 border-t-2 border-slate-200">
-                <button
+              <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-border">
+                <Button
                   type="button"
+                  variant="outline"
                   onClick={() => setShowGenerateModal(false)}
                   disabled={isGenerating}
-                  className="px-4 py-2 text-xs font-black text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl border-2 border-slate-900 transition-all shadow-neo-sm"
                 >
                   Cancel
-                </button>
+                </Button>
 
-                <button
-                  type="submit"
-                  disabled={isGenerating || !materialText.trim()}
-                  className="flex items-center gap-2 px-5 py-2 text-xs font-black text-slate-950 bg-yellow-300 hover:bg-yellow-200 rounded-xl border-2 border-slate-900 shadow-neo transition-all active:translate-y-0.5 disabled:opacity-50"
-                >
+                <Button type="submit" disabled={isGenerating || !materialText.trim()}>
                   {isGenerating ? (
                     <>
-                      <Loader2 className="w-4 h-4 animate-spin text-slate-900" />
-                      <span>Synthesizing Notes...</span>
+                      <Loader2 className="size-3.5 animate-spin" />
+                      <span>Synthesizing Notes…</span>
                     </>
                   ) : (
                     <>
-                      <Sparkles className="w-4 h-4 text-slate-900" />
+                      <Sparkles className="size-3.5" />
                       <span>Generate Study Notes</span>
                     </>
                   )}
-                </button>
+                </Button>
               </div>
             </form>
       </Modal>

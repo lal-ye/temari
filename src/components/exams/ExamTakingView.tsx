@@ -6,12 +6,11 @@ import {
   Flag,
   ChevronLeft,
   ChevronRight,
-  CheckCircle,
-  AlertCircle,
+  CheckCircle2,
   Loader2,
-  HelpCircle,
 } from 'lucide-react';
 import { GenerationProgress } from '../ui/GenerationProgress';
+import { Button } from '../ui/button';
 import { fireConfetti } from '../../utils/confetti';
 
 interface ExamTakingViewProps {
@@ -24,6 +23,12 @@ interface ExamTakingViewProps {
   onCompleted: (attempt: Omit<StoredAttempt, 'id' | 'date'>) => void;
   onCancel: () => void;
 }
+
+/** Shared answer-surface treatment, so choice, true/false and short answer feel like one control family. */
+const optionBase =
+  'w-full text-left rounded-xl border transition-colors focus-visible:ring-2 focus-visible:ring-ring/50 outline-hidden';
+const optionIdle = 'bg-background border-border/80 hover:bg-muted/50 hover:border-border text-foreground';
+const optionChosen = 'bg-amber-500/10 border-amber-500/40 text-foreground';
 
 export const ExamTakingView: React.FC<ExamTakingViewProps> = ({
   examTitle,
@@ -157,12 +162,16 @@ export const ExamTakingView: React.FC<ExamTakingViewProps> = ({
   const seconds = timeLeft % 60;
   const formattedTime = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
   const answeredCount = answers.filter((a) => a.trim() !== '').length;
+  const lowOnTime = timeLeft < 180;
 
   if (isGrading) {
     return (
-      <div className="bg-white border-3 border-slate-900 rounded-2xl p-10 shadow-neo-xl max-w-lg mx-auto space-y-4">
-        <h3 className="section-heading text-slate-950 text-center">
-          <span className="font-ethiopic font-bold text-yellow-600">ተማሪ</span> AI is Grading Your Exam
+      <div className="bg-card border border-border/80 rounded-2xl p-10 shadow-xs max-w-lg mx-auto space-y-5 text-center">
+        <div className="w-14 h-14 bg-amber-500/10 border border-amber-500/20 rounded-2xl flex items-center justify-center mx-auto text-amber-600 dark:text-amber-400">
+          <Loader2 className="w-7 h-7 animate-spin" />
+        </div>
+        <h3 className="font-editorial text-2xl font-bold text-foreground tracking-tight">
+          ተማሪ AI is Grading Your Exam
         </h3>
         <GenerationProgress
           kind="grading"
@@ -175,73 +184,85 @@ export const ExamTakingView: React.FC<ExamTakingViewProps> = ({
   return (
     <div className="max-w-5xl mx-auto space-y-6">
       {/* Header with Timer and Progress */}
-      <div className="bg-white border-3 border-slate-900 rounded-2xl p-5 shadow-neo-md flex flex-col md:flex-row items-center justify-between gap-4">
+      <div className="bg-card border border-border/80 rounded-2xl p-5 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <span className="px-2 py-0.5 bg-yellow-300 text-slate-950 border border-slate-900 rounded-md text-[10px] font-black uppercase tracking-wider shadow-xs">
-            {subjectName}
-          </span>
-          {offlineDraft && (
-            <span className="ml-1 px-2 py-0.5 bg-amber-200 text-amber-950 border border-slate-900 rounded-md text-[10px] font-black uppercase tracking-wider shadow-xs">
-              Offline draft questions
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <span className="px-2 py-0.5 bg-amber-100 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400 border border-border rounded text-[10px] font-semibold uppercase tracking-wider">
+              {subjectName}
             </span>
-          )}
-          <h2 className="text-lg font-black text-slate-950 leading-tight mt-1">{examTitle}</h2>
-          <span className="text-xs font-bold text-slate-600">
-            Answered: <strong className="text-cyan-800 font-black">{answeredCount}</strong> of {questions.length} questions
+            {offlineDraft && (
+              <span className="px-2 py-0.5 bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/20 rounded text-[10px] font-semibold uppercase tracking-wider">
+                Offline draft questions
+              </span>
+            )}
+          </div>
+          <h2 className="font-editorial text-xl font-bold text-foreground tracking-tight leading-tight mt-1.5">
+            {examTitle}
+          </h2>
+          <span className="text-xs font-medium text-muted-foreground">
+            Answered:{' '}
+            <strong className="text-amber-600 dark:text-amber-400 font-semibold font-mono tabular-nums">
+              {answeredCount}
+            </strong>{' '}
+            of <span className="font-mono tabular-nums">{questions.length}</span> questions
           </span>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 shrink-0">
           <div
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl border-2 border-slate-900 font-mono font-black text-sm shadow-neo-sm ${
-              timeLeft < 180 ? 'bg-rose-300 text-slate-950 animate-pulse' : 'bg-yellow-300 text-slate-950'
+            className={`flex items-center gap-2 px-3.5 py-2 rounded-xl border font-mono font-semibold text-sm tabular-nums ${
+              lowOnTime
+                ? 'bg-rose-500/10 border-rose-500/30 text-rose-700 dark:text-rose-400 animate-pulse'
+                : 'bg-muted/60 border-border text-foreground'
             }`}
           >
-            <Clock className="w-4 h-4" />
-            <span className="tabular-nums" role="timer">{formattedTime}</span>
+            <Clock className="w-4 h-4" aria-hidden="true" />
+            <span role="timer">{formattedTime}</span>
           </div>
 
-          <button
+          <Button
             onClick={() => {
               if (confirm('Submit exam now and generate your AI score breakdown?')) {
                 handleSubmitExam();
               }
             }}
-            className="px-5 py-2.5 bg-emerald-300 hover:bg-emerald-200 text-slate-950 font-black text-xs rounded-xl border-2 border-slate-900 shadow-neo transition-all active:translate-y-0.5"
           >
+            <CheckCircle2 className="size-4" />
             Submit Exam
-          </button>
+          </Button>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
         {/* Main Question Card */}
-        <div className="lg:col-span-8 bg-white border-3 border-slate-900 rounded-2xl p-6 shadow-neo-lg space-y-6">
-          <div className="flex items-center justify-between pb-4 border-b-2 border-slate-200">
-            <div className="flex items-center gap-2">
-              <span className="px-3 py-1 bg-slate-950 text-white rounded-lg text-xs font-black">
+        <div className="lg:col-span-8 bg-card border border-border/80 rounded-2xl p-6 shadow-xs space-y-6">
+          <div className="flex items-center justify-between pb-4 border-b border-border gap-3">
+            <div className="flex items-center gap-2 min-w-0">
+              <span className="px-2.5 py-1 bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/20 rounded-lg text-xs font-semibold whitespace-nowrap">
                 Question {currentIndex + 1}
               </span>
-              <span className="text-xs font-black text-slate-600 uppercase tracking-wider">
+              <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider truncate">
                 {currentQ.topic || 'General Knowledge'}
               </span>
             </div>
 
-            <button
+            <Button
+              variant={flagged[currentIndex] ? 'secondary' : 'outline'}
+              size="sm"
               onClick={toggleFlag}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black border-2 border-slate-900 transition-all shadow-neo-sm active:translate-y-0.5 ${
+              className={
                 flagged[currentIndex]
-                  ? 'bg-amber-300 text-slate-950'
-                  : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-              }`}
+                  ? 'bg-amber-500/10 border-amber-500/30 text-amber-700 dark:text-amber-400'
+                  : undefined
+              }
             >
-              <Flag className="w-3.5 h-3.5 fill-current" />
+              <Flag className={`size-3.5 ${flagged[currentIndex] ? 'fill-current' : ''}`} />
               {flagged[currentIndex] ? 'Flagged' : 'Flag for Review'}
-            </button>
+            </Button>
           </div>
 
           <div>
-            <h3 className="text-base md:text-lg font-black text-slate-950 leading-relaxed mb-5">
+            <h3 className="text-base md:text-lg font-semibold text-foreground leading-relaxed mb-5">
               {currentQ.question}
             </h3>
 
@@ -256,15 +277,16 @@ export const ExamTakingView: React.FC<ExamTakingViewProps> = ({
                       key={optIdx}
                       type="button"
                       onClick={() => handleSelectAnswer(opt)}
-                      className={`w-full p-3.5 text-left text-xs font-bold rounded-xl border-2 border-slate-900 flex items-center gap-3 transition-all ${
-                        isSelected
-                          ? 'bg-yellow-300 text-slate-950 shadow-neo font-black'
-                          : 'bg-[#FAF8F5] hover:bg-slate-100 text-slate-800 shadow-neo-sm'
+                      aria-pressed={isSelected}
+                      className={`${optionBase} p-3.5 text-sm font-medium flex items-center gap-3 ${
+                        isSelected ? optionChosen : optionIdle
                       }`}
                     >
                       <span
-                        className={`w-6 h-6 rounded-lg border-2 border-slate-900 flex items-center justify-center text-xs shrink-0 font-black ${
-                          isSelected ? 'bg-slate-950 text-white' : 'bg-white text-slate-900'
+                        className={`w-6 h-6 rounded-lg border flex items-center justify-center text-xs shrink-0 font-semibold ${
+                          isSelected
+                            ? 'bg-amber-500 border-amber-500 text-white'
+                            : 'bg-muted border-border text-foreground'
                         }`}
                       >
                         {letter}
@@ -286,10 +308,9 @@ export const ExamTakingView: React.FC<ExamTakingViewProps> = ({
                       key={val}
                       type="button"
                       onClick={() => handleSelectAnswer(val)}
-                      className={`p-4 text-center text-xs font-black rounded-xl border-2 border-slate-900 transition-all uppercase ${
-                        isSelected
-                          ? 'bg-yellow-300 text-slate-950 shadow-neo'
-                          : 'bg-[#FAF8F5] hover:bg-slate-100 text-slate-800 shadow-neo-sm'
+                      aria-pressed={isSelected}
+                      className={`${optionBase} p-4 text-center text-xs font-semibold uppercase ${
+                        isSelected ? optionChosen : optionIdle
                       }`}
                     >
                       {val === 'true' ? 'True' : 'False'}
@@ -302,7 +323,7 @@ export const ExamTakingView: React.FC<ExamTakingViewProps> = ({
             {/* Short Answer */}
             {currentQ.type === 'short_answer' && (
               <div>
-                <label className="block text-xs font-black uppercase tracking-wider text-slate-800 mb-1">
+                <label className="block text-xs font-bold uppercase tracking-wider text-foreground mb-1">
                   Your Explanation / Answer:
                 </label>
                 <textarea
@@ -310,39 +331,41 @@ export const ExamTakingView: React.FC<ExamTakingViewProps> = ({
                   value={answers[currentIndex]}
                   onChange={(e) => handleSelectAnswer(e.target.value)}
                   placeholder="Type your response here..."
-                  className="w-full p-3.5 text-xs bg-[#FAF8F5] border-2 border-slate-900 rounded-xl font-bold focus:outline-hidden focus:ring-2 focus:ring-amber-400 leading-relaxed shadow-neo-sm"
+                  className="w-full p-3.5 text-sm bg-background border border-border rounded-xl font-medium leading-relaxed focus:outline-hidden focus:ring-2 focus:ring-ring/50 shadow-2xs"
                 />
               </div>
             )}
           </div>
 
           {/* Navigation footer */}
-          <div className="flex items-center justify-between pt-4 border-t-2 border-slate-200">
-            <button
+          <div className="flex items-center justify-between pt-4 border-t border-border">
+            <Button
+              variant="secondary"
+              size="sm"
               onClick={() => setCurrentIndex((i) => Math.max(0, i - 1))}
               disabled={currentIndex === 0}
-              className="flex items-center gap-1 px-4 py-2 bg-white hover:bg-slate-100 border-2 border-slate-900 rounded-xl text-xs font-black text-slate-900 disabled:opacity-40 transition-all shadow-neo-sm active:translate-y-0.5"
             >
-              <ChevronLeft className="w-4 h-4" /> Previous
-            </button>
+              <ChevronLeft className="size-3.5" /> Previous
+            </Button>
 
-            <span className="text-xs font-black text-slate-700">
+            <span className="text-xs font-medium text-muted-foreground font-mono tabular-nums">
               {currentIndex + 1} / {questions.length}
             </span>
 
-            <button
+            <Button
+              variant="secondary"
+              size="sm"
               onClick={() => setCurrentIndex((i) => Math.min(questions.length - 1, i + 1))}
               disabled={currentIndex === questions.length - 1}
-              className="flex items-center gap-1 px-4 py-2 bg-white hover:bg-slate-100 border-2 border-slate-900 rounded-xl text-xs font-black text-slate-900 disabled:opacity-40 transition-all shadow-neo-sm active:translate-y-0.5"
             >
-              Next <ChevronRight className="w-4 h-4" />
-            </button>
+              Next <ChevronRight className="size-3.5" />
+            </Button>
           </div>
         </div>
 
         {/* Question Palette / Navigator */}
-        <div className="lg:col-span-4 bg-white border-3 border-slate-900 rounded-2xl p-5 shadow-neo-md space-y-4">
-          <h4 className="text-xs font-black uppercase tracking-wider text-slate-900">Question Palette</h4>
+        <div className="lg:col-span-4 bg-card border border-border/80 rounded-2xl p-5 shadow-xs space-y-4">
+          <h4 className="text-sm font-semibold text-foreground">Question Palette</h4>
 
           <div className="grid grid-cols-5 gap-2">
             {questions.map((_, idx) => {
@@ -354,38 +377,36 @@ export const ExamTakingView: React.FC<ExamTakingViewProps> = ({
                 <button
                   key={idx}
                   onClick={() => setCurrentIndex(idx)}
-                  className={`h-9 rounded-xl text-xs font-black border-2 border-slate-900 transition-all relative ${
-                    isCurrent
-                      ? 'ring-2 ring-slate-950 scale-105 shadow-neo-sm'
-                      : ''
-                  } ${
+                  aria-label={`Go to question ${idx + 1}${isAnswered ? ' (answered)' : ''}${isFlagged ? ' (flagged)' : ''}`}
+                  aria-current={isCurrent ? 'true' : undefined}
+                  className={`h-9 rounded-xl text-xs font-semibold border transition-colors relative outline-hidden focus-visible:ring-2 focus-visible:ring-ring/50 ${
                     isFlagged
-                      ? 'bg-amber-300 text-slate-950'
+                      ? 'bg-amber-500/10 border-amber-500/30 text-amber-700 dark:text-amber-400'
                       : isAnswered
-                      ? 'bg-yellow-300 text-slate-950'
-                      : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-                  }`}
+                      ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-700 dark:text-emerald-400'
+                      : 'bg-muted/50 border-border text-muted-foreground hover:bg-muted hover:text-foreground'
+                  } ${isCurrent ? 'ring-2 ring-amber-500/50 ring-offset-1 ring-offset-card' : ''}`}
                 >
                   {idx + 1}
                   {isFlagged && (
-                    <span className="w-2 h-2 bg-rose-600 rounded-full border border-slate-900 absolute top-1 right-1" />
+                    <span className="w-2 h-2 bg-rose-500 rounded-full absolute top-1 right-1" aria-hidden="true" />
                   )}
                 </button>
               );
             })}
           </div>
 
-          <div className="pt-3 border-t-2 border-slate-200 space-y-2 text-xs font-bold text-slate-700">
+          <div className="pt-3 border-t border-border space-y-2 text-xs font-medium text-muted-foreground">
             <div className="flex items-center gap-2">
-              <span className="w-3.5 h-3.5 bg-yellow-300 border border-slate-900 rounded-md" />
+              <span className="w-3.5 h-3.5 bg-emerald-500/10 border border-emerald-500/30 rounded-md" aria-hidden="true" />
               <span>Answered</span>
             </div>
             <div className="flex items-center gap-2">
-              <span className="w-3.5 h-3.5 bg-amber-300 border border-slate-900 rounded-md" />
+              <span className="w-3.5 h-3.5 bg-amber-500/10 border border-amber-500/30 rounded-md" aria-hidden="true" />
               <span>Flagged for Review</span>
             </div>
             <div className="flex items-center gap-2">
-              <span className="w-3.5 h-3.5 bg-slate-100 border border-slate-900 rounded-md" />
+              <span className="w-3.5 h-3.5 bg-muted/50 border border-border rounded-md" aria-hidden="true" />
               <span>Unanswered</span>
             </div>
           </div>

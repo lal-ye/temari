@@ -42,43 +42,43 @@ type ProviderPresentation = Pick<
 const PRESENTATION: Record<AIProviderId, ProviderPresentation> = {
   gemini: {
     tagline: 'Free tier available, handles images and PDFs',
-    badgeColor: 'bg-emerald-100 text-emerald-950 border-emerald-400',
+    badgeColor: 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/20',
     keyPlaceholder: 'AIzaSy...',
     keyUrl: 'https://aistudio.google.com/app/apikey',
   },
   openai: {
     tagline: 'GPT-5.6 family, strong all-round reasoning',
-    badgeColor: 'bg-slate-900 text-white border-slate-700',
+    badgeColor: 'bg-foreground text-background border-foreground',
     keyPlaceholder: 'sk-proj-...',
     keyUrl: 'https://platform.openai.com/api-keys',
   },
   anthropic: {
     tagline: 'Best prose quality, large context windows',
-    badgeColor: 'bg-orange-100 text-orange-950 border-orange-400',
+    badgeColor: 'bg-orange-500/10 text-orange-700 dark:text-orange-400 border-orange-500/20',
     keyPlaceholder: 'sk-ant-api03-...',
     keyUrl: 'https://console.anthropic.com/settings/keys',
   },
   groq: {
     tagline: 'Fastest replies, generous free tier',
-    badgeColor: 'bg-red-100 text-red-950 border-red-400',
+    badgeColor: 'bg-rose-500/10 text-rose-700 dark:text-rose-400 border-rose-500/20',
     keyPlaceholder: 'gsk_...',
     keyUrl: 'https://console.groq.com/keys',
   },
   deepseek: {
     tagline: 'Cheapest capable models, strong at maths',
-    badgeColor: 'bg-blue-100 text-blue-950 border-blue-400',
+    badgeColor: 'bg-blue-500/10 text-blue-700 dark:text-blue-400 border-blue-500/20',
     keyPlaceholder: 'sk-...',
     keyUrl: 'https://platform.deepseek.com/api_keys',
   },
   openrouter: {
     tagline: 'One key for many providers',
-    badgeColor: 'bg-violet-100 text-violet-950 border-violet-400',
+    badgeColor: 'bg-violet-500/10 text-violet-700 dark:text-violet-400 border-violet-500/20',
     keyPlaceholder: 'sk-or-v1-...',
     keyUrl: 'https://openrouter.ai/keys',
   },
   custom: {
     tagline: 'Runs on your own machine, works offline',
-    badgeColor: 'bg-yellow-100 text-yellow-950 border-yellow-400',
+    badgeColor: 'bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/20',
     keyPlaceholder: 'Optional (e.g. "ollama" or API key)',
     allowsBaseUrl: true,
   },
@@ -108,7 +108,7 @@ const MODELS: Record<AIProviderId, AIModelOption[]> = {
       provider: 'gemini',
       name: 'Gemini 2.5 Flash',
       tag: 'Recommended',
-      badgeColor: 'bg-emerald-100 text-emerald-900 border-emerald-400',
+      badgeColor: 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/20',
       description:
         'Fast, handles images and PDFs, and cheap enough to regenerate notes freely. The sensible default for everyday study.',
       speed: 'Ultra Fast',
@@ -120,7 +120,7 @@ const MODELS: Record<AIProviderId, AIModelOption[]> = {
       provider: 'gemini',
       name: 'Gemini 2.5 Pro',
       tag: 'Deeper reasoning',
-      badgeColor: 'bg-purple-100 text-purple-900 border-purple-400',
+      badgeColor: 'bg-violet-500/10 text-violet-700 dark:text-violet-400 border-violet-500/20',
       description:
         'Slower and pricier, but better at multi-step derivations and marking exam answers where the reasoning matters more than the speed.',
       speed: 'Standard',
@@ -132,7 +132,7 @@ const MODELS: Record<AIProviderId, AIModelOption[]> = {
       provider: 'gemini',
       name: 'Gemini 3.8 Flash',
       tag: 'Newest',
-      badgeColor: 'bg-amber-100 text-amber-900 border-amber-400',
+      badgeColor: 'bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/20',
       description:
         'The current Flash generation. Stronger reasoning than 2.5 Flash at similar speed; availability varies by account.',
       speed: 'Ultra Fast',
@@ -146,7 +146,7 @@ const MODELS: Record<AIProviderId, AIModelOption[]> = {
       provider: 'openai',
       name: 'GPT-5.6 Terra',
       tag: 'Recommended',
-      badgeColor: 'bg-emerald-100 text-emerald-900 border-emerald-400',
+      badgeColor: 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/20',
       description:
         'The mid tier: good reasoning at roughly a third of flagship cost. The right default unless a task is genuinely hard.',
       speed: 'Fast',
@@ -158,7 +158,7 @@ const MODELS: Record<AIProviderId, AIModelOption[]> = {
       provider: 'openai',
       name: 'GPT-5.6 Sol',
       tag: 'Flagship',
-      badgeColor: 'bg-purple-100 text-purple-900 border-purple-400',
+      badgeColor: 'bg-violet-500/10 text-violet-700 dark:text-violet-400 border-violet-500/20',
       description:
         'Strongest reasoning OpenAI sells, and priced like it. Worth it for hard exam grading, wasteful for flashcards.',
       speed: 'Standard',
@@ -170,7 +170,7 @@ const MODELS: Record<AIProviderId, AIModelOption[]> = {
       provider: 'openai',
       name: 'GPT-5.6 Luna',
       tag: 'Cheapest',
-      badgeColor: 'bg-cyan-100 text-cyan-900 border-cyan-400',
+      badgeColor: 'bg-sky-500/10 text-sky-700 dark:text-sky-400 border-sky-500/20',
       description:
         'Very cheap and very fast. Fine for definitions and simple cards; it will struggle with long source material.',
       speed: 'Ultra Fast',
@@ -184,7 +184,7 @@ const MODELS: Record<AIProviderId, AIModelOption[]> = {
       provider: 'anthropic',
       name: 'Claude Haiku 4.5',
       tag: 'Recommended',
-      badgeColor: 'bg-emerald-100 text-emerald-900 border-emerald-400',
+      badgeColor: 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/20',
       description:
         'Fast and inexpensive with unusually clean prose, which shows in generated notes. 200K context.',
       speed: 'Ultra Fast',
@@ -196,7 +196,7 @@ const MODELS: Record<AIProviderId, AIModelOption[]> = {
       provider: 'anthropic',
       name: 'Claude Sonnet 5',
       tag: 'Balanced',
-      badgeColor: 'bg-cyan-100 text-cyan-900 border-cyan-400',
+      badgeColor: 'bg-sky-500/10 text-sky-700 dark:text-sky-400 border-sky-500/20',
       description:
         'The middle tier, with a 1M context window that swallows an entire textbook chapter without splitting it.',
       speed: 'Fast',
@@ -208,7 +208,7 @@ const MODELS: Record<AIProviderId, AIModelOption[]> = {
       provider: 'anthropic',
       name: 'Claude Opus 5',
       tag: 'Flagship',
-      badgeColor: 'bg-purple-100 text-purple-900 border-purple-400',
+      badgeColor: 'bg-violet-500/10 text-violet-700 dark:text-violet-400 border-violet-500/20',
       description:
         'Best at sustained, careful reasoning. Expensive per token, so reach for it on hard material rather than routine drills.',
       speed: 'Standard',
@@ -222,7 +222,7 @@ const MODELS: Record<AIProviderId, AIModelOption[]> = {
       provider: 'groq',
       name: 'Llama 3.3 70B',
       tag: 'Recommended',
-      badgeColor: 'bg-red-100 text-red-900 border-red-400',
+      badgeColor: 'bg-rose-500/10 text-rose-700 dark:text-rose-400 border-rose-500/20',
       description:
         'Open weights on Groq hardware, so replies arrive almost instantly. Free tier allows about 1,000 requests a day.',
       speed: 'Ultra Fast',
@@ -234,7 +234,7 @@ const MODELS: Record<AIProviderId, AIModelOption[]> = {
       provider: 'groq',
       name: 'Llama 3.1 8B Instant',
       tag: 'Highest free limits',
-      badgeColor: 'bg-emerald-100 text-emerald-900 border-emerald-400',
+      badgeColor: 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/20',
       description:
         'Smaller and less capable, but the most generous free allowance here at roughly 14,400 requests a day.',
       speed: 'Ultra Fast',
@@ -246,7 +246,7 @@ const MODELS: Record<AIProviderId, AIModelOption[]> = {
       provider: 'groq',
       name: 'GPT-OSS 120B',
       tag: 'Open weights',
-      badgeColor: 'bg-slate-100 text-slate-900 border-slate-400',
+      badgeColor: 'bg-muted text-foreground border-border',
       description:
         "OpenAI's open-weight model served on Groq. Stronger reasoning than Llama 3.3 at comparable speed.",
       speed: 'Ultra Fast',
@@ -260,7 +260,7 @@ const MODELS: Record<AIProviderId, AIModelOption[]> = {
       provider: 'deepseek',
       name: 'DeepSeek V4 Flash',
       tag: 'Recommended',
-      badgeColor: 'bg-blue-100 text-blue-900 border-blue-400',
+      badgeColor: 'bg-blue-500/10 text-blue-700 dark:text-blue-400 border-blue-500/20',
       description:
         'Among the cheapest capable models available, with a 1M context window. Thinking mode is on by default, so replies can be slower than the price suggests.',
       speed: 'Fast',
@@ -272,7 +272,7 @@ const MODELS: Record<AIProviderId, AIModelOption[]> = {
       provider: 'deepseek',
       name: 'DeepSeek V4 Pro',
       tag: 'Deeper reasoning',
-      badgeColor: 'bg-purple-100 text-purple-900 border-purple-400',
+      badgeColor: 'bg-violet-500/10 text-violet-700 dark:text-violet-400 border-violet-500/20',
       description:
         'Larger sibling, notably strong on mathematical derivations and physics. Still far cheaper than Western flagships.',
       speed: 'Standard',
@@ -286,7 +286,7 @@ const MODELS: Record<AIProviderId, AIModelOption[]> = {
       provider: 'openrouter',
       name: 'DeepSeek V4 Flash',
       tag: 'Recommended',
-      badgeColor: 'bg-blue-100 text-blue-900 border-blue-400',
+      badgeColor: 'bg-blue-500/10 text-blue-700 dark:text-blue-400 border-blue-500/20',
       description:
         'Cheap, long-context, and routed through OpenRouter so one key reaches many providers.',
       speed: 'Fast',
@@ -298,7 +298,7 @@ const MODELS: Record<AIProviderId, AIModelOption[]> = {
       provider: 'openrouter',
       name: 'Claude Haiku 4.5',
       tag: 'Best writing',
-      badgeColor: 'bg-emerald-100 text-emerald-900 border-emerald-400',
+      badgeColor: 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/20',
       description:
         'Claude prose quality without an Anthropic account. Slightly more expensive than routing to DeepSeek.',
       speed: 'Ultra Fast',
@@ -310,7 +310,7 @@ const MODELS: Record<AIProviderId, AIModelOption[]> = {
       provider: 'openrouter',
       name: 'Gemini 2.5 Flash',
       tag: 'Multimodal',
-      badgeColor: 'bg-amber-100 text-amber-900 border-amber-400',
+      badgeColor: 'bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/20',
       description:
         'Handles images and PDFs, useful when your source material is scanned slides.',
       speed: 'Ultra Fast',
@@ -324,7 +324,7 @@ const MODELS: Record<AIProviderId, AIModelOption[]> = {
       provider: 'custom',
       name: 'Llama 3.2 (local)',
       tag: 'Recommended',
-      badgeColor: 'bg-emerald-100 text-emerald-900 border-emerald-400',
+      badgeColor: 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/20',
       description:
         'Runs on a normal laptop through Ollama. Nothing leaves your machine, and it works with no internet at all.',
       speed: 'Fast',
@@ -337,7 +337,7 @@ const MODELS: Record<AIProviderId, AIModelOption[]> = {
       provider: 'custom',
       name: 'Llama 3.3 70B (local)',
       tag: 'Needs strong hardware',
-      badgeColor: 'bg-purple-100 text-purple-900 border-purple-400',
+      badgeColor: 'bg-violet-500/10 text-violet-700 dark:text-violet-400 border-violet-500/20',
       description:
         'Much more capable locally, but wants roughly 40GB of memory. Slow or unusable on a typical laptop.',
       speed: 'Standard',
@@ -350,7 +350,7 @@ const MODELS: Record<AIProviderId, AIModelOption[]> = {
       provider: 'custom',
       name: 'Qwen 2.5 7B (local)',
       tag: 'Good middle ground',
-      badgeColor: 'bg-cyan-100 text-cyan-900 border-cyan-400',
+      badgeColor: 'bg-sky-500/10 text-sky-700 dark:text-sky-400 border-sky-500/20',
       description:
         'Stronger than Llama 3.2 at maths while still fitting comfortably on consumer hardware.',
       speed: 'Fast',
@@ -384,7 +384,7 @@ export function getModelOption(providerId?: string, modelId?: string): AIModelOp
       provider: provider.id,
       name: modelId.trim(),
       tag: 'Custom Model',
-      badgeColor: 'bg-slate-100 text-slate-900 border-slate-400',
+      badgeColor: 'bg-muted text-foreground border-border',
       description: `Custom model identifier (${modelId}) on ${provider.name}.`,
       speed: 'Fast',
       reasoning: 'Standard',

@@ -5,6 +5,7 @@ import { Article } from '../../types';
 import { Modal, type MorphOrigin } from '../ui/Modal';
 import { GenerationProgress } from '../ui/GenerationProgress';
 import { OfflineBanner } from './OfflineBanner';
+import { Button } from '../ui/button';
 
 interface ExplainTermModalProps {
   term: string | null;
@@ -60,16 +61,16 @@ export const ExplainTermModal: React.FC<ExplainTermModalProps> = ({ term, contex
       subtitle={
         offline ? (
           <span>
-            <span className="font-ethiopic font-bold text-slate-900">ተማሪ</span> Offline Draft Explanation
+            <span className="font-ethiopic font-semibold text-amber-600 dark:text-amber-400">ተማሪ</span> Offline Draft Explanation
           </span>
         ) : (
           <span>
-            <span className="font-ethiopic font-bold text-slate-900">ተማሪ</span> Concept Explanation
+            <span className="font-ethiopic font-semibold text-amber-600 dark:text-amber-400">ተማሪ</span> Concept Explanation
           </span>
         )
       }
-      icon={<Sparkles className="w-5 h-5 text-slate-950" />}
-      iconClassName="bg-yellow-300 text-slate-950"
+      icon={<Sparkles className="w-5 h-5" />}
+      iconClassName="bg-amber-500/10 text-amber-600 dark:text-amber-400"
       maxWidthClassName="max-w-lg"
       originRef={originRef}
     >
@@ -77,26 +78,26 @@ export const ExplainTermModal: React.FC<ExplainTermModalProps> = ({ term, contex
         {loading && <GenerationProgress kind="explanation" detail={`Term: “${term}”`} />}
 
         {error && (
-          <div className="p-4 bg-rose-200 border-2 border-slate-900 rounded-xl text-xs font-black text-rose-950 shadow-neo-sm">
+          <div className="p-4 bg-rose-500/10 border border-rose-500/20 rounded-xl text-xs font-medium text-rose-700 dark:text-rose-400">
             {error}
           </div>
         )}
 
         {!loading && !error && explanation && (
-          <div className="space-y-4 text-xs text-slate-800 leading-relaxed font-bold">
+          <div className="space-y-4">
             {/* Offline output must be identifiable, not just implied by the
                 subtitle (CONTEXT.md: Offline generation). */}
             {offline && (
               <OfflineBanner label="Offline draft. No AI Provider was reachable, so this explanation was assembled locally. Reconnect and regenerate for a full AI explanation." />
             )}
-            <div className="bg-[#FAF8F5] border-2 border-slate-900 rounded-xl p-4 space-y-2 shadow-neo-sm">
-              <p className="whitespace-pre-line text-slate-900">{explanation}</p>
+            <div className="bg-muted/50 border border-border rounded-xl p-4 space-y-2">
+              <p className="whitespace-pre-line text-sm text-foreground/90 leading-relaxed">{explanation}</p>
             </div>
 
             {links.length > 0 && (
               <div className="pt-2">
-                <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-wider text-slate-700 mb-2">
-                  <BookOpen className="w-4 h-4 text-cyan-800" />
+                <div className="flex items-center gap-2 text-[11px] font-medium uppercase tracking-wider text-muted-foreground mb-2">
+                  <BookOpen className="w-4 h-4 text-amber-600 dark:text-amber-400" />
                   <span>Curated Resources & Readings</span>
                 </div>
                 <div className="space-y-2">
@@ -106,15 +107,15 @@ export const ExplainTermModal: React.FC<ExplainTermModalProps> = ({ term, contex
                       href={link.url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="block p-3 bg-white border-2 border-slate-900 rounded-xl hover:bg-yellow-50 transition-all shadow-neo-sm group"
+                      className="block p-3 bg-background border border-border rounded-xl hover:bg-amber-500/5 hover:border-amber-500/30 transition-colors group"
                     >
                       <div className="flex items-center justify-between gap-2">
-                        <span className="text-xs font-black text-slate-950 group-hover:text-cyan-800 transition-colors">
+                        <span className="text-xs font-semibold text-foreground group-hover:text-amber-600 dark:group-hover:text-amber-400 transition-colors">
                           {link.title}
                         </span>
-                        <ExternalLink className="w-3.5 h-3.5 text-slate-900 shrink-0" />
+                        <ExternalLink className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
                       </div>
-                      {link.snippet && <p className="text-[11px] font-bold text-slate-600 mt-1 line-clamp-2">{link.snippet}</p>}
+                      {link.snippet && <p className="text-[11px] font-medium text-muted-foreground mt-1 line-clamp-2">{link.snippet}</p>}
                     </a>
                   ))}
                 </div>
@@ -123,13 +124,8 @@ export const ExplainTermModal: React.FC<ExplainTermModalProps> = ({ term, contex
           </div>
         )}
 
-        <div className="pt-3.5 border-t-2 border-slate-200 flex justify-end">
-          <button
-            onClick={onClose}
-            className="px-5 py-2 text-xs font-black text-slate-950 bg-yellow-300 hover:bg-yellow-200 border-2 border-slate-900 rounded-xl shadow-neo transition-all active:translate-y-0.5"
-          >
-            Done
-          </button>
+        <div className="pt-3.5 border-t border-border flex justify-end">
+          <Button onClick={onClose}>Done</Button>
         </div>
       </div>
     </Modal>

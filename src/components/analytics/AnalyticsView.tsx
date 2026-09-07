@@ -29,7 +29,6 @@ import {
   Bar,
   Cell,
 } from 'recharts';
-import { Card, CardContent } from '../ui/card';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
 
@@ -100,9 +99,9 @@ export const AnalyticsView: React.FC = () => {
             </span>
           </div>
           <h2 className="font-editorial text-2xl font-bold text-foreground tracking-tight flex items-center gap-2">
-            Academic Mastery & Diagnostic Analytics
+            <TrendingUp className="w-5 h-5 text-amber-600 dark:text-amber-400 shrink-0" /> Academic Mastery & Diagnostic Analytics
           </h2>
-          <p className="text-xs text-muted-foreground mt-1">
+          <p className="text-sm text-muted-foreground mt-1">
             Tracking recall retention, score progression, and conceptual mastery across study sessions.
           </p>
         </div>
@@ -127,7 +126,7 @@ export const AnalyticsView: React.FC = () => {
 
       {/* KPI Summary Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card className="p-5 border border-border/80 shadow-xs flex flex-col justify-between">
+        <div className="bg-card p-5 border border-border/80 rounded-2xl shadow-xs flex flex-col justify-between">
           <div className="flex items-center justify-between">
             <span className="text-xs font-medium text-muted-foreground">Average Score</span>
             <div className="p-2 bg-amber-500/10 text-amber-600 dark:text-amber-400 rounded-lg">
@@ -143,9 +142,9 @@ export const AnalyticsView: React.FC = () => {
             <span className="font-semibold text-foreground">{analytics.passRate}%</span>
             <span>pass rate (≥70%)</span>
           </div>
-        </Card>
+        </div>
 
-        <Card className="p-5 border border-border/80 shadow-xs flex flex-col justify-between">
+        <div className="bg-card p-5 border border-border/80 rounded-2xl shadow-xs flex flex-col justify-between">
           <div className="flex items-center justify-between">
             <span className="text-xs font-medium text-muted-foreground">Quizzes Completed</span>
             <div className="p-2 bg-muted text-muted-foreground rounded-lg">
@@ -158,9 +157,9 @@ export const AnalyticsView: React.FC = () => {
             </span>
           </div>
           <span className="text-xs text-muted-foreground">Active recall sessions</span>
-        </Card>
+        </div>
 
-        <Card className="p-5 border border-border/80 shadow-xs flex flex-col justify-between">
+        <div className="bg-card p-5 border border-border/80 rounded-2xl shadow-xs flex flex-col justify-between">
           <div className="flex items-center justify-between">
             <span className="text-xs font-medium text-muted-foreground">Mock Exams</span>
             <div className="p-2 bg-muted text-muted-foreground rounded-lg">
@@ -173,9 +172,9 @@ export const AnalyticsView: React.FC = () => {
             </span>
           </div>
           <span className="text-xs text-muted-foreground">Timed diagnostic evaluations</span>
-        </Card>
+        </div>
 
-        <Card className="p-5 border border-border/80 shadow-xs flex flex-col justify-between">
+        <div className="bg-card p-5 border border-border/80 rounded-2xl shadow-xs flex flex-col justify-between">
           <div className="flex items-center justify-between">
             <span className="text-xs font-medium text-muted-foreground">Latest Session</span>
             <div className="p-2 bg-muted text-muted-foreground rounded-lg">
@@ -196,7 +195,7 @@ export const AnalyticsView: React.FC = () => {
           <span className="text-xs text-emerald-600 dark:text-emerald-400 font-medium">
             {filteredAttempts.length > 0 ? 'Study activity recorded' : 'Awaiting first test'}
           </span>
-        </Card>
+        </div>
       </div>
 
       {/* Progress Charts Grid */}

@@ -10,16 +10,16 @@ import React from 'react';
  */
 
 export const SkeletonBlock: React.FC<{ className?: string }> = ({ className = '' }) => (
-  <div className={`bg-slate-200 border-2 border-slate-900 rounded-xl skeleton-shimmer ${className}`} />
+  <div className={`bg-muted border border-border/80 rounded-xl skeleton-shimmer ${className}`} />
 );
 
 /** Mirrors the Quiz / Exam card grid. */
 export const SkeletonCardGrid: React.FC<{ count?: number }> = ({ count = 3 }) => (
-  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5" aria-hidden="true">
+  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" aria-hidden="true">
     {Array.from({ length: count }).map((_, i) => (
       <div
         key={i}
-        className="bg-white border-3 border-slate-900 rounded-2xl p-5 shadow-neo space-y-3"
+        className="bg-card border border-border/80 rounded-2xl p-5 shadow-xs space-y-3"
       >
         <div className="flex items-start justify-between gap-2">
           <SkeletonBlock className="h-5 w-20 rounded-lg" />
@@ -27,7 +27,7 @@ export const SkeletonCardGrid: React.FC<{ count?: number }> = ({ count = 3 }) =>
         </div>
         <SkeletonBlock className="h-4 w-4/5" />
         <SkeletonBlock className="h-3 w-2/3" />
-        <div className="pt-3 border-t-2 border-slate-200 flex items-center justify-between">
+        <div className="pt-3.5 border-t border-border flex items-center justify-between">
           <SkeletonBlock className="h-3 w-16" />
           <SkeletonBlock className="h-8 w-24 rounded-xl" />
         </div>

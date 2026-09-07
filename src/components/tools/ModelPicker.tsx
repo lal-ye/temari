@@ -26,6 +26,7 @@ import {
 } from './modelPresentation';
 import { resolveActiveModel } from '../../../shared/aiCatalog';
 import { studyStore, useSettings } from '../../hooks/useStudyStore';
+import { Button } from '../ui/button';
 import { aiConnection } from '../../services/aiConnection';
 
 interface ModelPickerProps {
@@ -206,12 +207,12 @@ export const ModelPicker: React.FC<ModelPickerProps> = ({
         {/* Provider Tabs */}
         <div>
           <div className="flex items-center justify-between mb-1.5">
-            <label className="text-xs font-black text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
-              <Cpu className="w-3.5 h-3.5 text-amber-500" />
+            <label className="text-xs font-bold uppercase tracking-wider text-foreground flex items-center gap-1.5">
+              <Cpu className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
               1. Choose AI Provider
             </label>
-            <span className="text-[10px] font-bold text-slate-500">
-              Active: <strong className="text-slate-900">{currentProviderConfig.name}</strong>
+            <span className="text-[10px] font-medium text-muted-foreground">
+              Active: <strong className="text-foreground font-semibold">{currentProviderConfig.name}</strong>
             </span>
           </div>
 
@@ -226,34 +227,34 @@ export const ModelPicker: React.FC<ModelPickerProps> = ({
                   key={provider.id}
                   type="button"
                   onClick={() => setSelectedProviderTab(provider.id)}
-                  className={`p-2 rounded-xl border-2 text-left transition-all relative flex flex-col gap-0.5 ${
+                  className={`p-2 rounded-xl border text-left transition-colors relative flex flex-col gap-0.5 outline-hidden focus-visible:ring-2 focus-visible:ring-ring/50 ${
                     isActive
-                      ? 'bg-amber-100/90 border-slate-900 shadow-neo-sm ring-1 ring-amber-400'
-                      : 'bg-white border-slate-200 hover:border-slate-900 hover:bg-slate-50'
+                      ? 'bg-amber-500/10 border-amber-500/30 ring-1 ring-amber-500/20'
+                      : 'bg-card border-border/80 hover:border-border hover:bg-muted/50'
                   }`}
                 >
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-1.5">
                       {getProviderIcon(provider.id)}
-                      <span className="text-xs font-black text-slate-900 truncate">
+                      <span className="text-xs font-semibold text-foreground truncate">
                         {provider.name.split(' ')[0]}
                       </span>
                     </div>
                     {isSavedActive && (
                       <span
-                        className="w-2 h-2 rounded-full bg-emerald-500 ring-2 ring-white shadow-xs"
+                        className="w-2 h-2 rounded-full bg-emerald-500 ring-2 ring-card"
                         title="Currently active"
                       />
                     )}
                   </div>
-                  <div className="flex items-center justify-between text-[9px] text-slate-500 font-bold mt-0.5">
+                  <div className="flex items-center justify-between text-[9px] text-muted-foreground font-medium mt-0.5">
                     <span className="truncate max-w-[85px]">
                       {provider.id === 'custom' ? 'Local / Self-hosted' : provider.id.toUpperCase()}
                     </span>
                     {hasKey ? (
-                      <span className="text-emerald-700 font-black">Ready</span>
+                      <span className="text-emerald-600 dark:text-emerald-400 font-semibold">Ready</span>
                     ) : (
-                      <span className="text-amber-700 flex items-center gap-0.5 font-bold">
+                      <span className="text-amber-600 dark:text-amber-400 flex items-center gap-0.5 font-semibold">
                         <Lock className="w-2.5 h-2.5" /> Key Req
                       </span>
                     )}
@@ -267,11 +268,11 @@ export const ModelPicker: React.FC<ModelPickerProps> = ({
         {/* Model Selection for Active Tab (Curated 2 Options: Flagship & Budget) */}
         <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <label className="text-xs font-black text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
-              <Sparkles className="w-3.5 h-3.5 text-indigo-500" />
+            <label className="text-xs font-bold uppercase tracking-wider text-foreground flex items-center gap-1.5">
+              <Sparkles className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
               2. Curated Model Options on {tabProviderConfig.name}
             </label>
-            <span className="text-[10px] font-bold text-slate-500 bg-white border border-slate-300 px-2 py-0.5 rounded">
+            <span className="text-[10px] font-medium text-muted-foreground bg-muted border border-border px-2 py-0.5 rounded">
               2 Curated Tiers: Flagship & Cheap
             </span>
           </div>
@@ -286,43 +287,43 @@ export const ModelPicker: React.FC<ModelPickerProps> = ({
                   key={model.id}
                   type="button"
                   onClick={() => handleSelect(tabProviderConfig.id, model.id)}
-                  className={`w-full text-left p-3 rounded-xl border-2 transition-all relative flex flex-col justify-between gap-1.5 ${
+                  className={`w-full text-left p-3 rounded-xl border transition-colors relative flex flex-col justify-between gap-1.5 outline-hidden focus-visible:ring-2 focus-visible:ring-ring/50 ${
                     isSelected
-                      ? 'bg-amber-50/90 border-slate-900 shadow-neo-sm ring-1 ring-amber-400'
-                      : 'bg-white border-slate-200 hover:border-slate-900 hover:bg-slate-50'
+                      ? 'bg-amber-500/10 border-amber-500/30 ring-1 ring-amber-500/20'
+                      : 'bg-card border-border/80 hover:border-border hover:bg-muted/50'
                   }`}
                 >
                   <div>
                     <div className="flex items-center justify-between gap-1 mb-1">
-                      <span className="text-xs font-black text-slate-900">{model.name}</span>
+                      <span className="text-xs font-semibold text-foreground">{model.name}</span>
                       <span
-                        className={`text-[9px] font-black px-1.5 py-0.5 rounded border whitespace-nowrap ${model.badgeColor}`}
+                        className={`text-[9px] font-medium px-1.5 py-0.5 rounded border whitespace-nowrap ${model.badgeColor}`}
                       >
                         {model.tag}
                       </span>
                     </div>
 
-                    <p className="text-[11px] text-slate-600 leading-snug">{model.description}</p>
+                    <p className="text-[11px] text-muted-foreground leading-snug">{model.description}</p>
                   </div>
 
-                  <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-[10px] text-slate-500 font-bold">
+                  <div className="pt-2 border-t border-border flex items-center justify-between text-[10px] text-muted-foreground font-medium">
                     <div className="flex items-center gap-2">
                       <span className="flex items-center gap-0.5">
-                        <Zap className="w-2.5 h-2.5 text-amber-600" /> {model.speed}
+                        <Zap className="w-2.5 h-2.5 text-amber-600 dark:text-amber-400" /> {model.speed}
                       </span>
-                      <span>•</span>
+                      <span>·</span>
                       <span className="flex items-center gap-0.5">
-                        <Brain className="w-2.5 h-2.5 text-purple-600" /> {model.reasoning}
+                        <Brain className="w-2.5 h-2.5 text-violet-600 dark:text-violet-400" /> {model.reasoning}
                       </span>
                     </div>
 
                     <div className="flex items-center gap-1">
                       {isSelected ? (
-                        <span className="inline-flex items-center gap-1 text-emerald-700 font-black text-[10px] bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-300">
+                        <span className="inline-flex items-center gap-1 text-emerald-700 dark:text-emerald-400 font-semibold text-[10px] bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/20">
                           <Check className="w-3 h-3 stroke-[3]" /> Active
                         </span>
                       ) : (
-                        <span className="font-mono text-[9px] text-slate-400 truncate max-w-[80px]">
+                        <span className="font-mono text-[9px] text-muted-foreground/70 truncate max-w-[80px]">
                           {model.id}
                         </span>
                       )}
@@ -335,15 +336,15 @@ export const ModelPicker: React.FC<ModelPickerProps> = ({
 
           {/* Active Custom Model Display if selected */}
           {isCurrentModelCustom && (
-            <div className="p-2.5 bg-purple-50 border-2 border-purple-400 rounded-xl flex items-center justify-between">
+            <div className="p-2.5 bg-violet-500/10 border border-violet-500/20 rounded-xl flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <Sparkles className="w-4 h-4 text-purple-600" />
+                <Sparkles className="w-4 h-4 text-violet-600 dark:text-violet-400" />
                 <div>
-                  <span className="text-xs font-black text-purple-950">Active Custom Model: </span>
-                  <span className="font-mono text-xs font-bold text-purple-900">{activeModelId}</span>
+                  <span className="text-xs font-semibold text-violet-800 dark:text-violet-300">Active Custom Model: </span>
+                  <span className="font-mono text-xs font-semibold text-violet-700 dark:text-violet-400">{activeModelId}</span>
                 </div>
               </div>
-              <span className="text-[9px] font-black uppercase bg-purple-200 text-purple-950 px-2 py-0.5 rounded border border-purple-400">
+              <span className="text-[9px] font-semibold uppercase bg-violet-500/15 text-violet-800 dark:text-violet-300 px-2 py-0.5 rounded border border-violet-500/20">
                 Custom Specified
               </span>
             </div>
@@ -351,39 +352,40 @@ export const ModelPicker: React.FC<ModelPickerProps> = ({
         </div>
 
         {/* Programmatic Live Discovery & Custom Model Feature */}
-        <div className="bg-slate-50 border-2 border-slate-900 rounded-xl p-3 space-y-2.5">
+        <div className="bg-muted/40 border border-border rounded-xl p-3 space-y-2.5">
           <div className="flex items-center justify-between flex-wrap gap-2">
             <div>
               <div className="flex items-center gap-1.5">
-                <Search className="w-3.5 h-3.5 text-slate-700" />
-                <span className="text-xs font-black text-slate-900 uppercase tracking-wide">
+                <Search className="w-3.5 h-3.5 text-muted-foreground" />
+                <span className="text-xs font-bold uppercase tracking-wide text-foreground">
                   Programmatic Live Model Discovery & Custom ID
                 </span>
               </div>
-              <p className="text-[11px] text-slate-600">
+              <p className="text-[11px] text-muted-foreground">
                 Check programmatically what {tabProviderConfig.name}&apos;s live API currently offers, or specify any model ID.
               </p>
             </div>
 
-            <button
+            <Button
               type="button"
+              size="sm"
+              variant="outline"
               onClick={handleScanLiveModels}
               disabled={isScanningLive}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white hover:bg-yellow-200 text-slate-950 text-xs font-black rounded-lg border-2 border-slate-900 shadow-neo-sm transition-all active:translate-y-0.5 disabled:opacity-50 cursor-pointer"
             >
-              <RefreshCw className={`w-3.5 h-3.5 ${isScanningLive ? 'animate-spin' : ''}`} />
-              <span>{isScanningLive ? 'Querying API...' : `Query ${tabProviderConfig.name} Live API`}</span>
-            </button>
+              <RefreshCw className={`size-3.5 ${isScanningLive ? 'animate-spin' : ''}`} />
+              <span>{isScanningLive ? 'Querying API…' : `Query ${tabProviderConfig.name} Live API`}</span>
+            </Button>
           </div>
 
           {/* Error Message if Scan Failed */}
           {liveScanError && (
-            <div className="p-2.5 bg-amber-50 border-2 border-amber-300 rounded-lg text-xs text-amber-900 flex items-start gap-2">
-              <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+            <div className="p-2.5 bg-amber-500/10 border border-amber-500/20 rounded-lg text-xs text-amber-800 dark:text-amber-300 flex items-start gap-2">
+              <AlertCircle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
               <div>
-                <p className="font-bold">{liveScanError}</p>
+                <p className="font-semibold">{liveScanError}</p>
                 {tabProviderConfig.requiresKey && !hasKeyForProvider(tabProviderConfig.id) && (
-                  <p className="text-[11px] text-amber-800 mt-0.5">
+                  <p className="text-[11px] text-amber-700 dark:text-amber-400 mt-0.5">
                     Tip: Enter your API key below in section 3 first, then click query again.
                   </p>
                 )}
@@ -393,30 +395,30 @@ export const ModelPicker: React.FC<ModelPickerProps> = ({
 
           {/* Live Models Discovered Drawer */}
           {showLiveDrawer && liveModels.length > 0 && (
-            <div className="bg-white border-2 border-slate-900 rounded-xl p-3 space-y-2 animate-in fade-in duration-150">
+            <div className="bg-card border border-border rounded-xl p-3 space-y-2 animate-in fade-in duration-150">
               <div className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-1.5">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                  <span className="text-xs font-black text-slate-900">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                  <span className="text-xs font-semibold text-foreground">
                     Live Verified: {liveModels.length} models discovered on {tabProviderConfig.name} API
                   </span>
                 </div>
 
                 <div className="relative">
-                  <Search className="w-3 h-3 absolute left-2 top-2 text-slate-400" />
+                  <Search className="w-3 h-3 absolute left-2 top-2 text-muted-foreground" />
                   <input
                     type="text"
                     value={liveSearchFilter}
                     onChange={(e) => setLiveSearchFilter(e.target.value)}
                     placeholder="Filter live models..."
-                    className="pl-7 pr-2 py-1 text-[11px] bg-slate-50 border border-slate-300 rounded-lg text-slate-900 w-36 sm:w-48 font-medium focus:outline-none focus:bg-white focus:ring-1 focus:ring-slate-900"
+                    className="pl-7 pr-2 py-1 text-[11px] bg-background border border-border rounded-lg text-foreground w-36 sm:w-48 font-medium focus:outline-hidden focus:ring-2 focus:ring-ring/50 shadow-2xs"
                   />
                 </div>
               </div>
 
-              <div className="max-h-48 overflow-y-auto space-y-1 pr-1 divide-y divide-slate-100 scrollbar-thin">
+              <div className="max-h-48 overflow-y-auto space-y-1 pr-1 divide-y divide-border/60 scrollbar-thin">
                 {filteredLiveModels.length === 0 ? (
-                  <p className="text-xs text-slate-500 py-2 text-center font-medium">
+                  <p className="text-xs text-muted-foreground py-2 text-center font-medium">
                     No models match &ldquo;{liveSearchFilter}&rdquo;
                   </p>
                 ) : (
@@ -426,43 +428,43 @@ export const ModelPicker: React.FC<ModelPickerProps> = ({
                       <div
                         key={m.id}
                         onClick={() => handleSelect(tabProviderConfig.id, m.id)}
-                        className={`p-2 rounded-lg cursor-pointer transition-all flex items-center justify-between gap-2 ${
+                        className={`p-2 rounded-lg cursor-pointer transition-colors flex items-center justify-between gap-2 ${
                           isSelected
-                            ? 'bg-amber-100 border border-slate-900 font-black'
-                            : 'hover:bg-slate-100'
+                            ? 'bg-amber-500/10 border border-amber-500/30 font-semibold'
+                            : 'border border-transparent hover:bg-muted/60'
                         }`}
                       >
                         <div className="min-w-0">
                           <div className="flex items-center gap-1.5 flex-wrap">
-                            <span className="text-xs font-mono font-bold text-slate-900 truncate">
+                            <span className="text-xs font-mono font-medium text-foreground truncate">
                               {m.id}
                             </span>
                             {m.isVisionCapable && (
-                              <span className="text-[9px] font-black bg-blue-100 text-blue-900 border border-blue-300 px-1 py-0.2 rounded">
+                              <span className="text-[9px] font-medium bg-sky-500/10 text-sky-700 dark:text-sky-400 border border-sky-500/20 px-1 py-0.5 rounded">
                                 Vision
                               </span>
                             )}
                             {m.contextWindow && (
-                              <span className="text-[9px] font-bold text-slate-500">
+                              <span className="text-[9px] font-medium text-muted-foreground">
                                 ({Math.round(m.contextWindow / 1000)}k ctx)
                               </span>
                             )}
                           </div>
                           {m.description && (
-                            <p className="text-[10px] text-slate-500 truncate max-w-sm">
+                            <p className="text-[10px] text-muted-foreground truncate max-w-sm">
                               {m.description}
                             </p>
                           )}
                         </div>
 
                         {isSelected ? (
-                          <span className="text-xs font-black text-emerald-700 flex items-center gap-1">
+                          <span className="text-xs font-semibold text-emerald-700 dark:text-emerald-400 flex items-center gap-1">
                             <Check className="w-3.5 h-3.5 stroke-[3]" /> Active
                           </span>
                         ) : (
                           <button
                             type="button"
-                            className="text-[10px] font-bold px-2 py-0.5 bg-slate-200 hover:bg-slate-300 text-slate-800 rounded transition-all whitespace-nowrap"
+                            className="text-[10px] font-medium px-2 py-0.5 bg-muted hover:bg-muted/70 text-foreground border border-border rounded transition-colors whitespace-nowrap"
                           >
                             Use Model
                           </button>
@@ -482,16 +484,12 @@ export const ModelPicker: React.FC<ModelPickerProps> = ({
               value={customInputId}
               onChange={(e) => setCustomInputId(e.target.value)}
               placeholder={`Specify exact model ID on ${tabProviderConfig.name} (e.g. gemma-4-it, gpt-4.5, claude-3-7-sonnet...)`}
-              className="flex-1 px-3 py-1.5 bg-white border-2 border-slate-900 rounded-lg text-xs font-mono text-slate-900 focus:outline-none focus:ring-2 focus:ring-yellow-400 placeholder:text-slate-400"
+              className="flex-1 px-3 py-1.5 bg-background border border-border rounded-lg text-xs font-mono text-foreground focus:outline-hidden focus:ring-2 focus:ring-ring/50 shadow-2xs placeholder:text-muted-foreground/70"
             />
-            <button
-              type="submit"
-              disabled={!customInputId.trim()}
-              className="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 disabled:opacity-40 text-white text-xs font-black rounded-lg border-2 border-slate-900 transition-all shadow-xs flex items-center gap-1 whitespace-nowrap cursor-pointer"
-            >
+            <Button type="submit" size="sm" disabled={!customInputId.trim()}>
               <span>Apply ID</span>
               <ArrowRight className="w-3 h-3" />
-            </button>
+            </Button>
           </form>
         </div>
       </div>
@@ -593,9 +591,9 @@ export const ModelPicker: React.FC<ModelPickerProps> = ({
           </div>
 
           {/* Footer with settings shortcut */}
-          <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-600 font-bold">
-            <span className="text-[10px] text-slate-500">
-              Provider: <strong className="text-slate-900">{getProviderConfig(selectedProviderTab).name}</strong>
+          <div className="pt-2 border-t border-border flex items-center justify-between text-[11px] text-muted-foreground font-medium">
+            <span className="text-[10px] text-muted-foreground">
+              Provider: <strong className="text-foreground font-semibold">{getProviderConfig(selectedProviderTab).name}</strong>
             </span>
             {onOpenSettings && (
               <button
@@ -604,7 +602,7 @@ export const ModelPicker: React.FC<ModelPickerProps> = ({
                   setIsOpen(false);
                   onOpenSettings();
                 }}
-                className="flex items-center gap-1 text-slate-900 hover:text-amber-700 text-xs font-black hover:underline"
+                className="flex items-center gap-1 text-foreground hover:text-amber-600 dark:hover:text-amber-400 text-xs font-semibold hover:underline"
               >
                 <Settings className="w-3 h-3" />
                 Configure Keys

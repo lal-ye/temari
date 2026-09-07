@@ -5,6 +5,8 @@ import { prefersReducedMotion } from '../../utils/viewTransition';
 const EXIT_MS = 160;
 const MORPH_MS = 240;
 const MORPH_EASING = 'cubic-bezier(0.34, 1.3, 0.64, 1)';
+/** Panel corner radius in px — `rounded-2xl` resolves to 18px at --radius 10px. */
+const PANEL_RADIUS = 18;
 
 /**
  * Anything that can report a box to morph from — a real element, or a virtual
@@ -47,9 +49,9 @@ interface ModalProps {
 }
 
 /**
- * Neo-brutalist modal primitive: backdrop + panel, Escape and backdrop-click to
- * dismiss. The parent controls `open`; exit animation completes before
- * `onClose` fires so markup is not ripped out mid-animation.
+ * Modal primitive in the editorial design language: backdrop + panel, Escape
+ * and backdrop-click to dismiss. The parent controls `open`; exit animation
+ * completes before `onClose` fires so markup is not ripped out mid-animation.
  *
  * When `originRef` is given the panel morphs from that element rather than
  * hard-cutting into the centre of the screen (learn-ui, "Spatial consistency
@@ -66,7 +68,7 @@ export function Modal({
   title,
   subtitle,
   icon,
-  iconClassName = 'bg-cyan-300 text-slate-950',
+  iconClassName = 'bg-amber-500/10 text-amber-600 dark:text-amber-400',
   maxWidthClassName = 'max-w-md',
   originRef,
   children,
@@ -162,7 +164,7 @@ export function Modal({
 
   return (
     <div
-      className={`fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 ${
+      className={`fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 backdrop-blur-sm p-4 ${
         closing ? 'modal-backdrop-out' : 'modal-backdrop-in'
       }`}
       onClick={requestClose}
@@ -173,7 +175,7 @@ export function Modal({
         aria-modal="true"
         aria-label={typeof title === 'string' ? title : 'Dialog'}
         onClick={(e) => e.stopPropagation()}
-        className={`w-full ${maxWidthClassName} bg-white border-3 border-slate-900 rounded-2xl p-6 shadow-neo-xl relative max-h-[90vh] overflow-y-auto ${
+        className={`w-full ${maxWidthClassName} bg-card border border-border rounded-2xl p-6 shadow-lg relative max-h-[90vh] overflow-y-auto ${
           // A morphing panel is driven entirely by WAAPI; the keyframe classes
           // would fight it for the same properties.
           morphing ? '' : closing ? 'modal-panel-out' : 'modal-panel-in'
@@ -181,19 +183,19 @@ export function Modal({
       >
         <button
           onClick={requestClose}
-          className="absolute top-4 right-4 p-1.5 text-slate-900 hover:bg-slate-100 rounded-lg border-2 border-slate-900 shadow-neo-sm"
+          className="absolute top-4 right-4 p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg border border-border transition-colors outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
           aria-label="Close dialog"
         >
           <X className="w-4 h-4" />
         </button>
 
-        <div className="flex items-center gap-3 mb-4">
-          <div className={`p-2.5 border-2 border-slate-900 rounded-xl shadow-neo-sm ${iconClassName}`}>
+        <div className="flex items-center gap-3 mb-4 pr-8">
+          <div className={`p-2.5 border border-border rounded-xl shadow-xs shrink-0 ${iconClassName}`}>
             {icon}
           </div>
           <div>
-            <h3 className="text-base font-black text-slate-950">{title}</h3>
-            {subtitle && <p className="text-xs font-bold text-slate-600">{subtitle}</p>}
+            <h3 className="text-base font-semibold text-foreground tracking-tight">{title}</h3>
+            {subtitle && <p className="text-xs font-medium text-muted-foreground mt-0.5">{subtitle}</p>}
           </div>
         </div>
 
@@ -206,7 +208,8 @@ export function Modal({
 /**
  * FLIP: express the origin box as a transform of the panel's settled box, so
  * the panel can start life looking like the element that spawned it. Scaling a
- * box also scales its corners, so the radius is pre-divided to land at 1rem.
+ * box also scales its corners, so the radius is pre-divided to land on the
+ * panel's own `rounded-2xl` (18px at the app's --radius of 10px).
  */
 function morphKeyframes(from: DOMRect, to: DOMRect) {
   const scaleX = Math.max(from.width / to.width, 0.01);
@@ -217,12 +220,12 @@ function morphKeyframes(from: DOMRect, to: DOMRect) {
   return {
     at: {
       transform: `translate(${dx}px, ${dy}px) scale(${scaleX}, ${scaleY})`,
-      borderRadius: `${16 / Math.min(scaleX, scaleY)}px`,
+      borderRadius: `${PANEL_RADIUS / Math.min(scaleX, scaleY)}px`,
       opacity: 0.4,
     },
     rest: {
       transform: 'translate(0px, 0px) scale(1, 1)',
-      borderRadius: '16px',
+      borderRadius: `${PANEL_RADIUS}px`,
       opacity: 1,
     },
   };

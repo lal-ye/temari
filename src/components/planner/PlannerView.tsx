@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { StudyTask } from '../../types';
 import { studyStore } from '../../hooks/useStudyStore';
 import { useActiveSubjectId, useSubjects, useTasks } from '../../hooks/useStudyStore';
+import { Button } from '../ui/button';
 import {
   CheckCircle,
   Circle,
@@ -15,6 +16,10 @@ import {
 interface PlannerViewProps {
   onOpenPomodoro?: () => void;
 }
+
+/** One class string for every text field, shared with the generation modals. */
+const fieldClass =
+  'w-full px-3.5 py-2 text-sm bg-background border border-border rounded-lg font-medium text-foreground focus:outline-hidden focus:ring-2 focus:ring-ring/50 shadow-2xs';
 
 export const PlannerView: React.FC<PlannerViewProps> = ({ onOpenPomodoro }) => {
   const tasks = useTasks();
@@ -75,52 +80,55 @@ export const PlannerView: React.FC<PlannerViewProps> = ({ onOpenPomodoro }) => {
 
   return (
     <div className="space-y-6">
-      {/* Top Banner with Stats & Pomodoro Launch */}
-      <div className="bg-white border-3 border-slate-900 rounded-2xl p-5 md:p-6 shadow-neo-md flex flex-col md:flex-row items-center justify-between gap-4">
+      {/* Header Bar */}
+      <div className="bg-card border border-border/80 rounded-2xl p-6 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex items-center gap-4">
-          <div className="w-14 h-14 rounded-2xl bg-yellow-300 border-2 border-slate-900 flex items-center justify-center text-slate-950 shrink-0 shadow-neo-sm">
+          <div className="w-14 h-14 bg-amber-500/10 border border-amber-500/20 rounded-2xl flex items-center justify-center text-amber-600 dark:text-amber-400 shrink-0 shadow-xs">
             <Flame className="w-7 h-7 fill-current" />
           </div>
           <div>
-            <div className="flex items-center gap-2">
-              <span className="badge-chip px-2.5 py-1 bg-emerald-300 text-slate-950 border-2 border-slate-900 rounded-md shadow-neo-sm inline-flex items-center gap-1.5">
-                <span className="font-ethiopic font-bold text-xs normal-case">ተማሪ</span>
-                <span>Routine</span>
+            <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+              <span className="font-ethiopic font-semibold text-amber-600 dark:text-amber-400 text-sm">
+                ተማሪ
               </span>
-              <span className="text-xs font-bold text-slate-600">
-                {completedCount} of {tasks.length} tasks finished
+              <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                Routine
+              </span>
+              <span className="text-xs font-medium text-muted-foreground">·</span>
+              <span className="text-xs font-medium text-foreground">
+                <span className="font-mono tabular-nums">
+                  {completedCount} of {tasks.length}
+                </span>{' '}
+                tasks finished
               </span>
             </div>
-            <h2 className="section-heading text-slate-950 mt-1">Study Goal & Milestone Planner</h2>
-            <p className="text-xs font-bold text-slate-600 mt-0.5">
+            <h2 className="font-editorial text-2xl font-bold text-foreground tracking-tight">
+              Study Goal & Milestone Planner
+            </h2>
+            <p className="text-sm text-muted-foreground mt-1">
               Organize syllabus deadlines, active recall checkpoints, and Pomodoro focus intervals.
             </p>
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
-          {onOpenPomodoro && (
-            <button
-              onClick={onOpenPomodoro}
-              className="flex items-center gap-2 px-4 py-2.5 bg-yellow-300 hover:bg-yellow-200 text-slate-950 font-black text-xs rounded-xl border-2 border-slate-900 shadow-neo transition-all active:translate-y-0.5"
-            >
-              <Clock className="w-4 h-4" /> Start Focus Timer
-            </button>
-          )}
-        </div>
+        {onOpenPomodoro && (
+          <Button onClick={onOpenPomodoro} className="shrink-0">
+            <Clock className="size-3.5" /> Start Focus Timer
+          </Button>
+        )}
       </div>
 
       {/* Main Grid: Add Task Card + Tasks List */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
         {/* Add Task Form */}
-        <div className="lg:col-span-5 bg-white border-3 border-slate-900 rounded-2xl p-6 shadow-neo-md space-y-5">
-          <h3 className="text-xs font-black text-slate-950 uppercase tracking-wider flex items-center gap-2">
-            <Plus className="w-4 h-4 text-cyan-800" /> Add New Study Goal
+        <div className="lg:col-span-5 bg-card border border-border/80 rounded-2xl p-6 shadow-xs space-y-5">
+          <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
+            <Plus className="w-4 h-4 text-amber-600 dark:text-amber-400" /> Add New Study Goal
           </h3>
 
           <form onSubmit={handleAddTask} className="space-y-4">
             <div>
-              <label className="block text-xs font-black uppercase tracking-wider text-slate-800 mb-1">
+              <label className="block text-xs font-bold uppercase tracking-wider text-foreground mb-1">
                 Task Description
               </label>
               <input
@@ -128,19 +136,19 @@ export const PlannerView: React.FC<PlannerViewProps> = ({ onOpenPomodoro }) => {
                 value={newTaskTitle}
                 onChange={(e) => setNewTaskTitle(e.target.value)}
                 placeholder="e.g. Master Glycolysis Pathways & Flashcards"
-                className="w-full px-3.5 py-2.5 text-xs bg-[#FAF8F5] border-2 border-slate-900 rounded-xl font-bold text-slate-950 placeholder-slate-400 focus:outline-hidden focus:ring-2 focus:ring-amber-400 shadow-neo-sm"
+                className={`${fieldClass} placeholder:text-muted-foreground/70`}
                 required
               />
             </div>
 
             <div>
-              <label className="block text-xs font-black uppercase tracking-wider text-slate-800 mb-1">
+              <label className="block text-xs font-bold uppercase tracking-wider text-foreground mb-1">
                 Target Subject
               </label>
               <select
                 value={taskSubjectId}
                 onChange={(e) => setTaskSubjectId(e.target.value)}
-                className="w-full px-3.5 py-2.5 text-xs bg-[#FAF8F5] border-2 border-slate-900 rounded-xl font-bold text-slate-950 focus:outline-hidden focus:ring-2 focus:ring-amber-400 shadow-neo-sm"
+                className={fieldClass}
               >
                 {subjects.map((s) => (
                   <option key={s.id} value={s.id}>
@@ -152,19 +160,19 @@ export const PlannerView: React.FC<PlannerViewProps> = ({ onOpenPomodoro }) => {
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs font-black uppercase tracking-wider text-slate-800 mb-1">
+                <label className="block text-xs font-bold uppercase tracking-wider text-foreground mb-1">
                   Due Date
                 </label>
                 <input
                   type="date"
                   value={taskDueDate}
                   onChange={(e) => setTaskDueDate(e.target.value)}
-                  className="w-full px-3 py-2 text-xs bg-[#FAF8F5] border-2 border-slate-900 rounded-xl font-bold text-slate-900 shadow-neo-sm"
+                  className={`${fieldClass} font-mono`}
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-black uppercase tracking-wider text-slate-800 mb-1">
+                <label className="block text-xs font-bold uppercase tracking-wider text-foreground mb-1">
                   Duration (Mins)
                 </label>
                 <input
@@ -174,28 +182,25 @@ export const PlannerView: React.FC<PlannerViewProps> = ({ onOpenPomodoro }) => {
                   step={5}
                   value={taskDuration}
                   onChange={(e) => setTaskDuration(Number(e.target.value))}
-                  className="w-full px-3 py-2 text-xs bg-[#FAF8F5] border-2 border-slate-900 rounded-xl font-bold text-slate-900 shadow-neo-sm"
+                  className={`${fieldClass} font-mono tabular-nums`}
                 />
               </div>
             </div>
 
-            <button
-              type="submit"
-              className="w-full py-3 bg-yellow-300 hover:bg-yellow-200 text-slate-950 font-black text-xs rounded-xl border-2 border-slate-900 shadow-neo transition-all active:translate-y-0.5 flex items-center justify-center gap-2"
-            >
-              <Plus className="w-4 h-4" /> Save Study Goal
-            </button>
+            <Button type="submit" className="w-full py-2 h-9">
+              <Plus className="size-3.5" /> Save Study Goal
+            </Button>
           </form>
 
           {/* Quick Progress Bar */}
-          <div className="pt-4 border-t-2 border-slate-200">
-            <div className="flex items-center justify-between text-xs font-black text-slate-950 mb-2">
+          <div className="pt-4 border-t border-border">
+            <div className="flex items-center justify-between text-xs font-semibold text-foreground mb-2">
               <span>Goal Completion Progress</span>
-              <span className="font-mono text-cyan-800">{progressPercent}%</span>
+              <span className="font-mono tabular-nums text-amber-600 dark:text-amber-400">{progressPercent}%</span>
             </div>
-            <div className="w-full bg-slate-200 h-3 rounded-full overflow-hidden border-2 border-slate-900">
+            <div className="w-full bg-muted h-2.5 rounded-full overflow-hidden">
               <div
-                className="h-full bg-yellow-400 transition-all duration-300"
+                className="h-full bg-amber-500 transition-all duration-300"
                 style={{ width: `${progressPercent}%` }}
               />
             </div>
@@ -203,19 +208,22 @@ export const PlannerView: React.FC<PlannerViewProps> = ({ onOpenPomodoro }) => {
         </div>
 
         {/* Task List */}
-        <div className="lg:col-span-7 bg-white border-3 border-slate-900 rounded-2xl p-6 shadow-neo-md space-y-5">
-          <div className="flex items-center justify-between flex-wrap gap-2 pb-4 border-b-2 border-slate-200">
-            <h3 className="text-xs font-black text-slate-950 uppercase tracking-wider flex items-center gap-2">
-              <CheckSquare className="w-4 h-4 text-cyan-800" /> Daily Action Checklist
+        <div className="lg:col-span-7 bg-card border border-border/80 rounded-2xl p-6 shadow-xs space-y-5">
+          <div className="flex items-center justify-between flex-wrap gap-2 pb-4 border-b border-border">
+            <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
+              <CheckSquare className="w-4 h-4 text-amber-600 dark:text-amber-400" /> Daily Action Checklist
             </h3>
 
-            <div className="flex items-center gap-1.5 bg-slate-100 p-1 rounded-xl border-2 border-slate-900">
+            <div className="flex items-center gap-1 bg-muted/60 p-1 rounded-xl border border-border">
               {(['ALL', 'PENDING', 'COMPLETED'] as const).map((f) => (
                 <button
                   key={f}
                   onClick={() => setFilter(f)}
-                  className={`px-3 py-1 rounded-lg text-xs font-black transition-all ${
-                    filter === f ? 'bg-yellow-300 text-slate-950 border border-slate-900 shadow-xs' : 'text-slate-600 hover:text-slate-950'
+                  aria-pressed={filter === f}
+                  className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors outline-hidden focus-visible:ring-2 focus-visible:ring-ring ${
+                    filter === f
+                      ? 'bg-card border border-border text-foreground font-semibold shadow-2xs'
+                      : 'border border-transparent text-muted-foreground hover:text-foreground'
                   }`}
                 >
                   {f}
@@ -226,8 +234,8 @@ export const PlannerView: React.FC<PlannerViewProps> = ({ onOpenPomodoro }) => {
 
           <div className="space-y-2.5 max-h-[500px] overflow-y-auto pr-1">
             {filteredTasks.length === 0 ? (
-              <div className="p-8 text-center text-slate-500 font-bold text-xs border-2 border-dashed border-slate-300 rounded-xl bg-[#FAF8F5]">
-                No tasks match current filter. Add one on the left!
+              <div className="p-8 text-center text-muted-foreground font-medium text-xs border border-dashed border-border rounded-xl bg-muted/40">
+                No tasks match the current filter. Add one on the left!
               </div>
             ) : (
               filteredTasks.map((task) => {
@@ -236,44 +244,45 @@ export const PlannerView: React.FC<PlannerViewProps> = ({ onOpenPomodoro }) => {
                   <div
                     key={task.id}
                     onClick={() => toggleTask(task)}
-                    className={`p-3.5 rounded-xl border-2 border-slate-900 flex items-center justify-between gap-3 cursor-pointer transition-all shadow-neo-sm ${
+                    className={`p-3.5 rounded-xl border flex items-center justify-between gap-3 cursor-pointer transition-colors ${
                       task.completed
-                        ? 'bg-slate-100 opacity-60'
-                        : 'bg-white hover:bg-yellow-50/50'
+                        ? 'bg-muted/50 border-border/60'
+                        : 'bg-background border-border/80 hover:bg-muted/50 hover:border-border'
                     }`}
                   >
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-3 min-w-0">
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
                           toggleTask(task);
                         }}
-                        className="text-slate-900 focus:outline-hidden"
+                        className="text-foreground focus:outline-hidden focus-visible:ring-2 focus-visible:ring-ring rounded-md shrink-0"
+                        aria-label={task.completed ? `Mark "${task.title}" as pending` : `Mark "${task.title}" as complete`}
                       >
                         {task.completed ? (
-                          <CheckCircle className="w-5 h-5 text-emerald-600 fill-emerald-100" />
+                          <CheckCircle className="w-5 h-5 text-emerald-600 dark:text-emerald-400 fill-emerald-500/10" />
                         ) : (
-                          <Circle className="w-5 h-5 text-slate-400 hover:text-slate-700" />
+                          <Circle className="w-5 h-5 text-muted-foreground hover:text-foreground" />
                         )}
                       </button>
 
-                      <div>
+                      <div className="min-w-0">
                         <h4
-                          className={`text-xs font-black ${
-                            task.completed ? 'line-through text-slate-500' : 'text-slate-950'
+                          className={`text-xs font-semibold ${
+                            task.completed ? 'line-through text-muted-foreground' : 'text-foreground'
                           }`}
                         >
                           {task.title}
                         </h4>
-                        <div className="flex items-center gap-2 text-[10px] font-bold text-slate-500 mt-1">
+                        <div className="flex items-center gap-2 text-[10px] font-medium text-muted-foreground mt-1 flex-wrap">
                           {sub && (
-                            <span className="px-2 py-0.5 rounded-md bg-yellow-100 border border-slate-900 text-slate-900 font-black">
+                            <span className="px-2 py-0.5 rounded-md bg-amber-500/10 border border-amber-500/20 text-amber-700 dark:text-amber-400">
                               {sub.name}
                             </span>
                           )}
                           <span>Due {task.dueDate || 'today'}</span>
                           {task.estimatedMinutes && (
-                            <span className="tabular-nums">{task.estimatedMinutes}m</span>
+                            <span className="font-mono tabular-nums">{task.estimatedMinutes}m</span>
                           )}
                         </div>
                       </div>
@@ -281,8 +290,9 @@ export const PlannerView: React.FC<PlannerViewProps> = ({ onOpenPomodoro }) => {
 
                     <button
                       onClick={(e) => deleteTask(task.id, e)}
-                      className="p-1.5 text-slate-400 hover:text-rose-700 hover:bg-rose-100 rounded-lg transition-colors border border-transparent hover:border-slate-900"
+                      className="p-1.5 text-muted-foreground hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 rounded-lg transition-colors shrink-0"
                       title="Delete goal"
+                      aria-label={`Delete ${task.title}`}
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>

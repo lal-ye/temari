@@ -16,6 +16,10 @@ interface SourceMaterialSelectorProps {
   customPlaceholder?: string;
 }
 
+/** One class string for every text field in the editorial design language. */
+const fieldClass =
+  'w-full px-3.5 py-2 text-sm bg-background border border-border rounded-lg font-medium focus:outline-hidden focus:ring-2 focus:ring-ring/50 shadow-2xs disabled:opacity-60';
+
 /**
  * Reusable Source Material Selector.
  * Unifies material selection across Quizzes and Exams (Ponytail Rung 2: Codebase Reuse).
@@ -46,7 +50,7 @@ export const SourceMaterialSelector: React.FC<SourceMaterialSelectorProps> = ({
             name={`sourceOption-${subjectName}`}
             checked={sourceOption === 'subjectNotes'}
             onChange={() => onSourceOptionChange('subjectNotes')}
-            className="accent-slate-900"
+            className="accent-amber-600"
             disabled={isGenerating}
           />
           {notesLabel} ({subjectNotes.length} available)
@@ -57,7 +61,7 @@ export const SourceMaterialSelector: React.FC<SourceMaterialSelectorProps> = ({
             name={`sourceOption-${subjectName}`}
             checked={sourceOption === 'customText'}
             onChange={() => onSourceOptionChange('customText')}
-            className="accent-slate-900"
+            className="accent-amber-600"
             disabled={isGenerating}
           />
           {customLabel}
@@ -69,7 +73,7 @@ export const SourceMaterialSelector: React.FC<SourceMaterialSelectorProps> = ({
           <select
             value={selectedNoteId}
             onChange={(e) => onSelectedNoteIdChange(e.target.value)}
-            className="w-full px-3.5 py-2 text-xs bg-[#FAF8F5] border-2 border-slate-900 rounded-xl font-bold focus:outline-hidden focus:ring-2 focus:ring-amber-400 shadow-neo-sm"
+            className={fieldClass}
             disabled={isGenerating}
           >
             <option value="">All Notes Combined in {subjectName}</option>
@@ -80,7 +84,7 @@ export const SourceMaterialSelector: React.FC<SourceMaterialSelectorProps> = ({
             ))}
           </select>
         ) : (
-          <div className="p-3 bg-amber-50 border-2 border-slate-900 rounded-xl text-xs font-bold text-slate-900">
+          <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-lg text-xs font-medium text-amber-700 dark:text-amber-400">
             No notes created yet for this subject. Switch to &ldquo;{customLabel}&rdquo; or generate notes first.
           </div>
         )
@@ -90,7 +94,7 @@ export const SourceMaterialSelector: React.FC<SourceMaterialSelectorProps> = ({
           value={customMaterial}
           onChange={(e) => onCustomMaterialChange(e.target.value)}
           placeholder={customPlaceholder}
-          className="w-full p-3 text-xs bg-[#FAF8F5] border-2 border-slate-900 rounded-xl font-mono focus:outline-hidden focus:ring-2 focus:ring-amber-400 shadow-neo-sm"
+          className={`${fieldClass} font-mono`}
           disabled={isGenerating}
         />
       )}
