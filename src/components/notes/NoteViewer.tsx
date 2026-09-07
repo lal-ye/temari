@@ -11,6 +11,7 @@ import {
   Copy,
   Check,
   Printer,
+  Download,
   Sparkles,
   Tag,
   BookOpen,
@@ -25,9 +26,12 @@ import { EditorialDiagram } from '../diagrams/EditorialDiagram';
 import { pointOrigin, type MorphOrigin } from '../ui/Modal';
 import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
+import { toast } from '../ui/toast';
 
 interface NoteViewerProps {
   note: StoredNote;
+  /** Active Subject name, shown in the print masthead only. */
+  subjectName?: string;
   onEdit?: () => void;
   onHighlightTerm?: (term: string, context?: string, origin?: MorphOrigin) => void;
   onRefresh?: () => void | Promise<void>;
@@ -173,7 +177,10 @@ function CalloutBlockquote({ children }: { children: React.ReactNode }) {
       const IconComponent = current.icon;
 
       return (
-        <div className={`p-4 my-4 rounded-r-xl border border-l-0 ${current.border} ${current.bg} ${current.text} text-sm`}>
+        <div
+          data-callout={alertType.toLowerCase()}
+          className={`note-callout p-4 my-4 rounded-r-xl border border-l-0 ${current.border} ${current.bg} ${current.text} text-sm`}
+        >
           <div className={`flex items-center gap-1.5 text-xs uppercase tracking-wider mb-2 ${current.badge}`}>
             <IconComponent className="w-4 h-4 shrink-0" />
             <span>{current.label}</span>
@@ -193,6 +200,7 @@ function CalloutBlockquote({ children }: { children: React.ReactNode }) {
 
 export const NoteViewer: React.FC<NoteViewerProps> = ({
   note,
+  subjectName,
   onEdit,
   onHighlightTerm,
   onRefresh,
@@ -339,14 +347,61 @@ export const NoteViewer: React.FC<NoteViewerProps> = ({
   };
 
   const copyToClipboard = () => {
-    navigator.clipboard.writeText(note.content);
+    navigator.clipboard
+      .writeText(note.content)
+      .then(() => toast.success('Note copied to clipboard.'))
+      .catch(() => toast.error('Could not copy — select the text manually.'));
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  // Download the note's source Markdown. Works offline and on Netlify: it
+  // builds a Blob on the learner's device and triggers a download, with no
+  // server round-trip (the print stylesheet handles the PDF/Paper route).
+  const downloadMarkdown = () => {
+    const stamp = new Date(note.createdAt).toLocaleDateString(undefined, {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+    });
+    const header = [
+      `# ${note.title}`,
+      '',
+      subjectName ? `> Subject: ${subjectName}` : null,
+      note.sourceName ? `> Source: ${note.sourceName}` : null,
+      `> ${stamp}`,
+      note.tags && note.tags.length ? `> Tags: ${note.tags.join(', ')}` : null,
+      '',
+      '---',
+      '',
+    ]
+      .filter((line) => line !== null)
+      .join('\n');
+
+    const blob = new Blob([header + note.content], {
+      type: 'text/markdown;charset=utf-8',
+    });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    const safeTitle = note.title.replace(/[^a-z0-9\-_.]+/gi, '-').replace(/^-+|-+$/g, '') || 'note';
+    a.href = url;
+    a.download = `${safeTitle}.md`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+    toast.success('Markdown source downloaded.');
   };
 
   const handlePrint = () => {
     window.print();
   };
+
+  const createdLabel = new Date(note.createdAt).toLocaleDateString(undefined, {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+  });
 
   // Markdown component mappings
   const markdownComponents = useMemo(() => ({
@@ -360,7 +415,7 @@ export const NoteViewer: React.FC<NoteViewerProps> = ({
         figureCounter += 1;
         const currentFigIndex = figureCounter;
         return (
-          <div className="my-6 not-prose">
+          <div className="note-figure my-6 not-prose">
             <EditorialDiagram
               content={String(children).trim()}
               title={note.title}
@@ -387,7 +442,7 @@ export const NoteViewer: React.FC<NoteViewerProps> = ({
       }
 
       return (
-        <pre className="my-4 p-4 rounded-xl bg-zinc-900 text-zinc-100 overflow-x-auto font-mono text-xs leading-relaxed dark:bg-zinc-950 border border-border">
+        <pre className="note-codeblock my-4 p-4 rounded-xl bg-zinc-900 text-zinc-100 overflow-x-auto font-mono text-xs leading-relaxed dark:bg-zinc-950 border border-border">
           <code className={className} {...props}>
             {children}
           </code>
@@ -476,8 +531,24 @@ export const NoteViewer: React.FC<NoteViewerProps> = ({
       onTouchStart={handlePullDownStart}
       onTouchMove={handlePullDownMove}
       onTouchEnd={handlePullDownEnd}
-      className="bg-card border border-border/80 rounded-2xl shadow-xs overflow-hidden flex flex-col relative select-text"
+      className="note-print-root bg-card border border-border/80 rounded-2xl shadow-xs overflow-hidden flex flex-col relative select-text"
     >
+      {/* Print-only masthead (page one). Hidden on screen via the base
+          .print-only rule; revealed under @media print in index.css. */}
+      <header className="print-only note-print-masthead">
+        <div className="note-masthead-brand">
+          <span className="font-ethiopic">ተማሪ</span>
+          <span>Temari Study Note</span>
+        </div>
+        <h1>{note.title}</h1>
+        <div className="note-masthead-meta">
+          {subjectName && <span>{subjectName}</span>}
+          {note.sourceName && <span>Source: {note.sourceName}</span>}
+          <span>{createdLabel}</span>
+          {note.tags && note.tags.length > 0 && <span>{note.tags.join(' · ')}</span>}
+        </div>
+      </header>
+
       {/* Pulse Ring Indicator for 300ms Long-press Gesture */}
       {pulseRingCoords && (
         <div
@@ -573,6 +644,17 @@ export const NoteViewer: React.FC<NoteViewerProps> = ({
           >
             {copied ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
             <span>{copied ? 'Copied' : 'Copy'}</span>
+          </Button>
+
+          <Button
+            onClick={downloadMarkdown}
+            variant="outline"
+            size="sm"
+            className="gap-1.5"
+            title="Download Markdown source"
+          >
+            <Download className="w-3.5 h-3.5" />
+            <span>.md</span>
           </Button>
 
           <Button

@@ -16,11 +16,11 @@ export const DEFAULT_CHAR_RAMP =
   " .`'\",:;Il!i><~+_-?][}{1)(|/tfjrxnuvczXYUJCLQ0OZmwqpdbkhao*#MW&8%B@$";
 
 /**
- * Temari's four accent colours, in the order they appear in `index.css`
- * (`shadow-neo-teal`, `-amber`, `-rose`, and the focus ring on dark
- * surfaces). The reference ships an "aurora" palette; ours is the app's.
+ * Temari's editorial accents (ADR-0010): academic amber leads, with a warm
+ * amber, ink, and emerald for depth. The reference ships an "aurora" palette;
+ * ours is the app's single-accent amber + ink language.
  */
-export const TEMARI_PALETTE = ['#0D9488', '#F59E0B', '#E11D48', '#FDE047'] as const;
+export const TEMARI_PALETTE = ['#D97706', '#F59E0B', '#0F172A', '#10B981'] as const;
 
 /** The app's ink colour, used when no palette is set. */
 export const INK = '#0F172A';

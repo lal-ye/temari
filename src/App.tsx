@@ -18,6 +18,10 @@ import { computeStudyStreak } from './utils/analytics';
 import { useOnlineStatus } from './hooks/useOnlineStatus';
 import { SkeletonAnalytics } from './components/ui/Skeleton';
 import { CommandPalette, type Command } from './components/ui/CommandPalette';
+import { Kbd } from './components/ui/kbd';
+import { ToastRegion } from './components/ui/toast';
+import { ConfirmRegion } from './components/ui/confirm';
+import { ShortcutsOverlay } from './components/ui/ShortcutsOverlay';
 import { SubjectSwitcher } from './components/nav/SubjectSwitcher';
 import { StreakPill } from './components/nav/StreakPill';
 import { HubTabs, HubBottomBar } from './components/nav/HubTabs';
@@ -88,6 +92,7 @@ export default function App() {
 
   const [activeTab, setActiveTab] = useState<TabType>('notes');
   const [paletteOpen, setPaletteOpen] = useState(false);
+  const [shortcutsOpen, setShortcutsOpen] = useState(false);
   /** Label the shortcut the way the learner's own keyboard does. */
   const isMac =
     typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform || '');
@@ -234,12 +239,25 @@ export default function App() {
         return;
       }
 
+      // The shortcuts overlay owns the keyboard while open; Escape closes it.
+      if (shortcutsOpen) {
+        if (e.key === 'Escape') setShortcutsOpen(false);
+        return;
+      }
+
       if (openModal || confirmDeleteSubjectId || explainTermData) {
         if (e.key === 'Escape') {
           setOpenModal(null);
           setConfirmDeleteSubjectId(null);
           setExplainTermData(null);
         }
+        return;
+      }
+
+      // "?" opens the keyboard-shortcut reference (Shift+/ on most layouts).
+      if (e.key === '?' || (e.shiftKey && e.key === '/')) {
+        e.preventDefault();
+        setShortcutsOpen(true);
         return;
       }
 
@@ -260,7 +278,7 @@ export default function App() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [openModal, confirmDeleteSubjectId, explainTermData, activeTab, paletteOpen]);
+  }, [openModal, confirmDeleteSubjectId, explainTermData, activeTab, paletteOpen, shortcutsOpen]);
 
   return (
     <div className="app-layout h-screen w-full bg-background text-foreground font-sans overflow-hidden">
@@ -322,9 +340,10 @@ export default function App() {
             >
               <Search className="w-3.5 h-3.5" aria-hidden="true" />
               <span className="hidden xl:inline text-xs font-medium">Search actions</span>
-              <kbd className="hidden xl:inline text-[10px] font-mono font-medium text-muted-foreground border border-border rounded px-1.5 py-0.5 bg-background shadow-2xs">
-                {isMac ? '⌘K' : 'Ctrl K'}
-              </kbd>
+              <span className="hidden xl:inline-flex items-center gap-0.5">
+                {!isMac && <Kbd>Ctrl</Kbd>}
+                <Kbd>{isMac ? '⌘' : 'K'}</Kbd>
+              </span>
             </button>
 
             {/* Dynamic Active AI Model Selector */}
@@ -540,6 +559,13 @@ export default function App() {
           </Button>
         </div>
       </Modal>
+
+      {/* Keyboard-shortcut reference (? to open). */}
+      <ShortcutsOverlay open={shortcutsOpen} onClose={() => setShortcutsOpen(false)} />
+
+      {/* App-wide transient feedback and imperative confirms. */}
+      <ToastRegion />
+      <ConfirmRegion />
     </div>
   );
 }
