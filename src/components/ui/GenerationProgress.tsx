@@ -65,14 +65,14 @@ export const GenerationProgress: React.FC<GenerationProgressProps> = ({
 
   return (
     <div
-      className={`bg-[#FAF8F5] border-2 border-slate-900 rounded-xl p-4 shadow-neo-sm ${className}`}
+      className={`bg-card border border-border/80 rounded-2xl p-4 shadow-xs ${className}`}
       role="status"
       aria-live="polite"
     >
       <div className="flex items-center justify-between mb-3">
-        <span className="badge-chip text-slate-900">Generating</span>
+        <span className="badge-chip text-foreground">Generating</span>
         <span
-          className="text-[11px] font-mono font-bold text-slate-600 tabular-nums"
+          className="text-[11px] font-mono font-bold text-foreground tabular-nums"
           aria-label={`${seconds} seconds elapsed`}
         >
           {seconds}s
@@ -86,14 +86,14 @@ export const GenerationProgress: React.FC<GenerationProgressProps> = ({
           return (
             <li key={stage} className="flex items-center gap-2.5">
               <span
-                className={`w-2.5 h-2.5 rounded-full border-2 border-slate-900 shrink-0 ${
-                  done ? 'bg-emerald-400' : active ? 'bg-yellow-300' : 'bg-white'
+                className={`w-2.5 h-2.5 rounded-full border-2 border-border shrink-0 ${
+                  done ? 'bg-emerald-400' : active ? 'bg-amber-400' : 'bg-card'
                 } ${active && !reduced ? 'generation-stage-pulse' : ''}`}
                 aria-hidden="true"
               />
               <span
                 className={`text-xs font-bold ${
-                  done ? 'text-slate-500' : active ? 'text-slate-950' : 'text-slate-400'
+                  done ? 'text-muted-foreground' : active ? 'text-foreground' : 'text-muted-foreground'
                 }`}
               >
                 {stage}
@@ -105,7 +105,7 @@ export const GenerationProgress: React.FC<GenerationProgressProps> = ({
       </ol>
 
       {detail && (
-        <p className="mt-3 pt-2.5 border-t border-slate-200 text-[11px] font-bold text-slate-600">
+        <p className="mt-3 pt-2.5 border-t border-border rounded-md text-[11px] font-bold text-foreground">
           {detail}
         </p>
       )}

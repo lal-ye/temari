@@ -28,11 +28,11 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
   className = '',
 }) => (
   <div
-    className={`bg-white border-3 border-slate-900 rounded-2xl p-12 text-center shadow-neo ${className}`}
+    className={`bg-card border border-border/80 rounded-2xl p-10 text-center shadow-xs ${className}`}
   >
-    <Icon className="w-12 h-12 mx-auto text-slate-400 mb-3" aria-hidden="true" />
-    <h3 className="text-base font-black text-slate-900">{title}</h3>
-    <p className="text-xs font-bold text-slate-600 max-w-sm mx-auto mt-1 mb-5">{description}</p>
+    <Icon className="w-10 h-10 mx-auto text-muted-foreground mb-3" aria-hidden="true" />
+    <h3 className="text-base font-semibold text-foreground">{title}</h3>
+    <p className="text-sm text-muted-foreground max-w-sm mx-auto mt-1.5 mb-5">{description}</p>
     {action}
   </div>
 );

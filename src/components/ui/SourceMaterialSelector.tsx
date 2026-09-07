@@ -36,11 +36,11 @@ export const SourceMaterialSelector: React.FC<SourceMaterialSelectorProps> = ({
 }) => {
   return (
     <div>
-      <label className="block text-xs font-black uppercase tracking-wider text-slate-800 mb-1">
+      <label className="block text-xs font-bold uppercase tracking-wider text-foreground mb-1">
         Source Material
       </label>
       <div className="flex gap-4 mb-2">
-        <label className="flex items-center gap-2 text-xs font-bold text-slate-800 cursor-pointer">
+        <label className="flex items-center gap-2 text-xs font-semibold text-foreground cursor-pointer">
           <input
             type="radio"
             name={`sourceOption-${subjectName}`}
@@ -51,7 +51,7 @@ export const SourceMaterialSelector: React.FC<SourceMaterialSelectorProps> = ({
           />
           {notesLabel} ({subjectNotes.length} available)
         </label>
-        <label className="flex items-center gap-2 text-xs font-bold text-slate-800 cursor-pointer">
+        <label className="flex items-center gap-2 text-xs font-semibold text-foreground cursor-pointer">
           <input
             type="radio"
             name={`sourceOption-${subjectName}`}

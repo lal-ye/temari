@@ -12,7 +12,6 @@ import {
   GraduationCap,
   Clock,
   AlertTriangle,
-  FileCheck,
   Trash2,
   Calendar,
   CheckCircle2,
@@ -30,6 +29,9 @@ import {
   Bar,
   Cell,
 } from 'recharts';
+import { Card, CardContent } from '../ui/card';
+import { Badge } from '../ui/badge';
+import { Button } from '../ui/button';
 
 export const AnalyticsView: React.FC = () => {
   // Attempts across all subjects (this screen has its own subject filter).
@@ -45,7 +47,7 @@ export const AnalyticsView: React.FC = () => {
   const effectiveSubjectId = filterOverride ?? activeSubjectId ?? 'ALL';
 
   // Guarded follow: while the user has not pinned an override, the filter
-  // follows the store's active subject (sidebar switches update analytics).
+  // follows the store's active subject.
   useEffect(() => {
     const prev = lastActiveRef.current;
     lastActiveRef.current = activeSubjectId;
@@ -54,8 +56,7 @@ export const AnalyticsView: React.FC = () => {
     }
   }, [activeSubjectId, filterOverride]);
 
-  // Pure domain calculation for analytics and filtered attempts (memoized on
-  // the stable attempts reference from the store)
+  // Pure domain calculation for analytics and filtered attempts
   const { filteredAttempts, analytics } = useMemo(() => {
     return computeAnalyticsSummary(attempts, effectiveSubjectId);
   }, [attempts, effectiveSubjectId]);
@@ -76,31 +77,43 @@ export const AnalyticsView: React.FC = () => {
     );
   }
 
-  const COLORS = ['#F87171', '#FBBF24', '#38BDF8', '#34D399', '#A78BFA'];
+  // Bracket color mapping for score distribution (Red -> Amber -> Emerald)
+  const BRACKET_COLORS: Record<string, string> = {
+    '0-59%': '#F43F5E',
+    '60-69%': '#F59E0B',
+    '70-79%': '#EAB308',
+    '80-89%': '#10B981',
+    '90-100%': '#059669',
+  };
 
   return (
     <div className="space-y-6">
-      {/* Top Filter Bar */}
-      <div className="bg-white border-3 border-slate-900 rounded-2xl p-5 md:p-6 shadow-neo-md flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      {/* Top Header & Filter Bar */}
+      <div className="bg-card border border-border/80 rounded-2xl p-6 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <span className="badge-chip px-2.5 py-1 bg-yellow-300 text-slate-950 border-2 border-slate-900 rounded-md shadow-neo-sm inline-flex items-center gap-1.5">
-            <span className="font-ethiopic font-bold text-xs normal-case">ተማሪ</span>
-            <span>Intelligence</span>
-          </span>
-          <h2 className="section-heading text-slate-950 flex items-center gap-2 mt-2">
-            <TrendingUp className="w-5 h-5 text-cyan-800 shrink-0" /> Academic Progress & Mastery Analytics
+          <div className="flex items-center gap-2 mb-1.5">
+            <span className="font-ethiopic font-semibold text-amber-600 dark:text-amber-400 text-sm">
+              ተማሪ
+            </span>
+            <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+              Performance Intelligence
+            </span>
+          </div>
+          <h2 className="font-editorial text-2xl font-bold text-foreground tracking-tight flex items-center gap-2">
+            Academic Mastery & Diagnostic Analytics
           </h2>
-          <p className="text-xs font-bold text-slate-600 mt-1">
-            Diagnostic breakdown of scores, topic mastery retention, and exam readiness.
+          <p className="text-xs text-muted-foreground mt-1">
+            Tracking recall retention, score progression, and conceptual mastery across study sessions.
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
-          <Filter className="w-4 h-4 text-slate-700" />
+        <div className="flex items-center gap-2 shrink-0">
+          <Filter className="w-4 h-4 text-muted-foreground" aria-hidden="true" />
           <select
             value={effectiveSubjectId}
             onChange={(e) => setFilterOverride(e.target.value === 'ALL' ? 'ALL' : e.target.value)}
-            className="px-3.5 py-2 text-xs bg-[#FAF8F5] border-2 border-slate-900 rounded-xl font-black text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-amber-400 shadow-neo-sm"
+            className="px-3 py-1.5 text-xs bg-muted/50 border border-border rounded-lg text-foreground font-medium focus:outline-hidden focus:ring-2 focus:ring-ring transition-colors shadow-2xs"
+            aria-label="Filter analytics by course subject"
           >
             <option value="ALL">All Subjects Combined</option>
             {subjects.map((s) => (
@@ -112,140 +125,167 @@ export const AnalyticsView: React.FC = () => {
         </div>
       </div>
 
-      {/* KPI Cards */}
+      {/* KPI Summary Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-white border-3 border-slate-900 rounded-2xl p-5 shadow-neo flex flex-col justify-between">
-          <div className="flex items-center justify-between text-xs font-black uppercase tracking-wider text-slate-700">
-            <span>Average Score</span>
-            <div className="p-1.5 bg-amber-300 border border-slate-900 rounded-lg">
-              <Award className="w-4 h-4 text-slate-950" />
+        <Card className="p-5 border border-border/80 shadow-xs flex flex-col justify-between">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-medium text-muted-foreground">Average Score</span>
+            <div className="p-2 bg-amber-500/10 text-amber-600 dark:text-amber-400 rounded-lg">
+              <Award className="w-4 h-4" />
             </div>
           </div>
           <div className="my-2">
-            <span className="text-3xl font-black text-slate-950 font-mono">{analytics.averageScore}%</span>
+            <span className="text-3xl font-bold text-foreground font-mono tabular-nums tracking-tight">
+              {analytics.averageScore}%
+            </span>
           </div>
-          <span className="text-xs text-cyan-800 font-black">{analytics.passRate}% pass rate</span>
-        </div>
+          <div className="text-xs text-muted-foreground flex items-center gap-1.5">
+            <span className="font-semibold text-foreground">{analytics.passRate}%</span>
+            <span>pass rate (≥70%)</span>
+          </div>
+        </Card>
 
-        <div className="bg-white border-3 border-slate-900 rounded-2xl p-5 shadow-neo flex flex-col justify-between">
-          <div className="flex items-center justify-between text-xs font-black uppercase tracking-wider text-slate-700">
-            <span>Quizzes Drilled</span>
-            <div className="p-1.5 bg-yellow-300 border border-slate-900 rounded-lg">
-              <Layers className="w-4 h-4 text-slate-950" />
+        <Card className="p-5 border border-border/80 shadow-xs flex flex-col justify-between">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-medium text-muted-foreground">Quizzes Completed</span>
+            <div className="p-2 bg-muted text-muted-foreground rounded-lg">
+              <Layers className="w-4 h-4" />
             </div>
           </div>
           <div className="my-2">
-            <span className="text-3xl font-black text-slate-950 font-mono">{analytics.quizzesCount}</span>
+            <span className="text-3xl font-bold text-foreground font-mono tabular-nums tracking-tight">
+              {analytics.quizzesCount}
+            </span>
           </div>
-          <span className="text-xs text-slate-600 font-bold">Flashcard sessions</span>
-        </div>
+          <span className="text-xs text-muted-foreground">Active recall sessions</span>
+        </Card>
 
-        <div className="bg-white border-3 border-slate-900 rounded-2xl p-5 shadow-neo flex flex-col justify-between">
-          <div className="flex items-center justify-between text-xs font-black uppercase tracking-wider text-slate-700">
-            <span>Mock Exams Taken</span>
-            <div className="p-1.5 bg-cyan-300 border border-slate-900 rounded-lg">
-              <GraduationCap className="w-4 h-4 text-slate-950" />
+        <Card className="p-5 border border-border/80 shadow-xs flex flex-col justify-between">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-medium text-muted-foreground">Mock Exams</span>
+            <div className="p-2 bg-muted text-muted-foreground rounded-lg">
+              <GraduationCap className="w-4 h-4" />
             </div>
           </div>
           <div className="my-2">
-            <span className="text-3xl font-black text-slate-950 font-mono">{analytics.examsCount}</span>
+            <span className="text-3xl font-bold text-foreground font-mono tabular-nums tracking-tight">
+              {analytics.examsCount}
+            </span>
           </div>
-          <span className="text-xs text-slate-600 font-bold">Diagnostic tests</span>
-        </div>
+          <span className="text-xs text-muted-foreground">Timed diagnostic evaluations</span>
+        </Card>
 
-        <div className="bg-white border-3 border-slate-900 rounded-2xl p-5 shadow-neo flex flex-col justify-between">
-          <div className="flex items-center justify-between text-xs font-black uppercase tracking-wider text-slate-700">
-            <span>Recent Activity</span>
-            <div className="p-1.5 bg-emerald-300 border border-slate-900 rounded-lg">
-              <Clock className="w-4 h-4 text-slate-950" />
+        <Card className="p-5 border border-border/80 shadow-xs flex flex-col justify-between">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-medium text-muted-foreground">Latest Session</span>
+            <div className="p-2 bg-muted text-muted-foreground rounded-lg">
+              <Clock className="w-4 h-4" />
             </div>
           </div>
           <div className="my-2">
-            <span className="text-sm font-black text-slate-950 truncate">
+            <span className="text-base font-semibold text-foreground truncate">
               {analytics.lastActivity
-                ? new Date(analytics.lastActivity).toLocaleDateString()
+                ? new Date(analytics.lastActivity).toLocaleDateString(undefined, {
+                    month: 'short',
+                    day: 'numeric',
+                    year: 'numeric',
+                  })
                 : 'No activity yet'}
             </span>
           </div>
-          <span className="text-xs text-emerald-800 font-black">Active learner</span>
-        </div>
+          <span className="text-xs text-emerald-600 dark:text-emerald-400 font-medium">
+            {filteredAttempts.length > 0 ? 'Study activity recorded' : 'Awaiting first test'}
+          </span>
+        </Card>
       </div>
 
       {/* Progress Charts Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
         {/* Progress Over Time (Line Chart) */}
-        <div className="lg:col-span-8 bg-white border-3 border-slate-900 rounded-2xl p-6 shadow-neo-md space-y-4">
+        <div className="lg:col-span-8 bg-card border border-border/80 rounded-2xl p-6 shadow-xs space-y-4">
           <div className="flex items-center justify-between">
-            <h3 className="text-xs font-black uppercase tracking-wider text-slate-950 flex items-center gap-2">
-              <TrendingUp className="w-4 h-4 text-cyan-800" /> Performance Progress Over Time
-            </h3>
-            <span className="text-xs text-slate-600 font-black px-2 py-0.5 bg-slate-100 border border-slate-900 rounded-md">
-              Target: 80%+
-            </span>
+            <div>
+              <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                <TrendingUp className="w-4 h-4 text-amber-600 dark:text-amber-400" /> Score Progression Over Time
+              </h3>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Evaluation results plotted chronologically
+              </p>
+            </div>
+            <Badge variant="secondary" className="font-mono text-[11px] font-normal">
+              Target: ≥80%
+            </Badge>
           </div>
 
           <div className="h-64 w-full pt-2">
             {analytics.scoreHistory.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={analytics.scoreHistory} margin={{ top: 10, right: 15, left: -25, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                  <XAxis dataKey="date" stroke="#0f172a" fontSize={11} tickLine={false} />
-                  <YAxis domain={[0, 100]} stroke="#0f172a" fontSize={11} tickLine={false} />
+                  <CartesianGrid strokeDasharray="3 3" stroke="currentColor" className="text-border/60" />
+                  <XAxis dataKey="date" stroke="currentColor" className="text-muted-foreground" fontSize={11} tickLine={false} />
+                  <YAxis domain={[0, 100]} stroke="currentColor" className="text-muted-foreground" fontSize={11} tickLine={false} />
                   <Tooltip
                     contentStyle={{
-                      backgroundColor: '#FAF8F5',
-                      color: '#0f172a',
-                      border: '2px solid #0f172a',
-                      borderRadius: '12px',
+                      backgroundColor: 'var(--color-popover)',
+                      color: 'var(--color-popover-foreground)',
+                      border: '1px solid var(--color-border)',
+                      borderRadius: '8px',
                       fontSize: '12px',
-                      fontWeight: 'bold',
-                      boxShadow: '3px 3px 0px #0f172a',
+                      boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
                     }}
                   />
                   <Line
                     type="monotone"
                     dataKey="score"
-                    stroke="#0284c7"
-                    strokeWidth={3}
-                    dot={{ r: 5, fill: '#facc15', stroke: '#0f172a', strokeWidth: 2 }}
-                    activeDot={{ r: 7 }}
+                    stroke="#D97706"
+                    strokeWidth={2.5}
+                    dot={{ r: 4, fill: '#F59E0B', stroke: '#D97706', strokeWidth: 1.5 }}
+                    activeDot={{ r: 6 }}
                   />
                 </LineChart>
               </ResponsiveContainer>
             ) : (
-              <div className="h-full flex items-center justify-center text-xs font-bold text-slate-500">
-                Complete quizzes or mock exams to visualize your score progression.
+              <div className="h-full flex items-center justify-center text-xs text-muted-foreground font-medium">
+                Complete flashcard drills or mock exams to visualize your score progression.
               </div>
             )}
           </div>
         </div>
 
         {/* Score Distribution (Bar Chart) */}
-        <div className="lg:col-span-4 bg-white border-3 border-slate-900 rounded-2xl p-6 shadow-neo-md space-y-4">
-          <h3 className="text-xs font-black uppercase tracking-wider text-slate-950 flex items-center gap-2">
-            <BarChart3 className="w-4 h-4 text-yellow-600" /> Score Distribution
-          </h3>
+        <div className="lg:col-span-4 bg-card border border-border/80 rounded-2xl p-6 shadow-xs space-y-4">
+          <div>
+            <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
+              <BarChart3 className="w-4 h-4 text-amber-600 dark:text-amber-400" /> Score Distribution
+            </h3>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Breakdown by performance bracket
+            </p>
+          </div>
 
           <div className="h-64 w-full pt-2">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={analytics.distribution} margin={{ top: 10, right: 10, left: -30, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                <XAxis dataKey="name" stroke="#0f172a" fontSize={10} tickLine={false} />
-                <YAxis allowDecimals={false} stroke="#0f172a" fontSize={11} tickLine={false} />
+                <CartesianGrid strokeDasharray="3 3" stroke="currentColor" className="text-border/60" />
+                <XAxis dataKey="name" stroke="currentColor" className="text-muted-foreground" fontSize={10} tickLine={false} />
+                <YAxis allowDecimals={false} stroke="currentColor" className="text-muted-foreground" fontSize={11} tickLine={false} />
                 <Tooltip
                   contentStyle={{
-                    backgroundColor: '#FAF8F5',
-                    color: '#0f172a',
-                    border: '2px solid #0f172a',
-                    borderRadius: '12px',
+                    backgroundColor: 'var(--color-popover)',
+                    color: 'var(--color-popover-foreground)',
+                    border: '1px solid var(--color-border)',
+                    borderRadius: '8px',
                     fontSize: '12px',
-                    fontWeight: 'bold',
-                    boxShadow: '3px 3px 0px #0f172a',
+                    boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
                   }}
                 />
                 <Bar dataKey="count" radius={[4, 4, 0, 0]}>
                   {analytics.distribution.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} stroke="#0f172a" strokeWidth={1.5} />
+                    <Cell
+                      key={`cell-${index}`}
+                      fill={BRACKET_COLORS[entry.name] || '#D97706'}
+                      strokeWidth={0}
+                    />
                   ))}
                 </Bar>
               </BarChart>
@@ -254,40 +294,45 @@ export const AnalyticsView: React.FC = () => {
         </div>
       </div>
 
-      {/* Areas for Improvement / Topic Mastery */}
+      {/* Areas for Improvement & Topic Mastery */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
         {/* Topic Accuracy */}
-        <div className="bg-white border-3 border-slate-900 rounded-2xl p-6 shadow-neo-md space-y-4">
-          <h3 className="text-xs font-black uppercase tracking-wider text-slate-950 flex items-center gap-2">
-            <CheckCircle2 className="w-4 h-4 text-emerald-700" /> Topic Mastery & Accuracy
-          </h3>
+        <div className="bg-card border border-border/80 rounded-2xl p-6 shadow-xs space-y-4">
+          <div>
+            <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" /> Topic Mastery Breakdown
+            </h3>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Accuracy rate on questions grouped by curriculum concept
+            </p>
+          </div>
 
           {analytics.topicStats.length > 0 ? (
-            <div className="space-y-3">
+            <div className="space-y-3.5">
               {analytics.topicStats.map((t, idx) => (
                 <div key={idx} className="space-y-1.5">
-                  <div className="flex items-center justify-between text-xs font-bold text-slate-900">
+                  <div className="flex items-center justify-between text-xs font-medium text-foreground">
                     <span>{t.topic}</span>
                     <span
-                      className={`font-mono text-xs font-black ${
+                      className={`font-mono text-xs font-semibold ${
                         t.accuracy >= 80
-                          ? 'text-emerald-800'
+                          ? 'text-emerald-600 dark:text-emerald-400'
                           : t.accuracy >= 60
-                          ? 'text-amber-800'
-                          : 'text-rose-800'
+                          ? 'text-amber-600 dark:text-amber-400'
+                          : 'text-rose-600 dark:text-rose-400'
                       }`}
                     >
                       {t.accuracy}%
                     </span>
                   </div>
-                  <div className="w-full bg-slate-200 h-2.5 rounded-full overflow-hidden border border-slate-900">
+                  <div className="w-full bg-muted h-2 rounded-full overflow-hidden">
                     <div
-                      className={`h-full transition-all ${
+                      className={`h-full rounded-full transition-all duration-300 ${
                         t.accuracy >= 80
-                          ? 'bg-emerald-400'
+                          ? 'bg-emerald-500'
                           : t.accuracy >= 60
-                          ? 'bg-amber-400'
-                          : 'bg-rose-400'
+                          ? 'bg-amber-500'
+                          : 'bg-rose-500'
                       }`}
                       style={{ width: `${t.accuracy}%` }}
                     />
@@ -296,21 +341,26 @@ export const AnalyticsView: React.FC = () => {
               ))}
             </div>
           ) : (
-            <p className="text-xs font-bold text-slate-500 py-6 text-center">
-              Take mock exams to generate granular topic-by-topic accuracy diagnostics.
+            <p className="text-xs text-muted-foreground py-6 text-center">
+              Complete mock exams to generate granular topic-by-topic accuracy diagnostics.
             </p>
           )}
         </div>
 
         {/* Actionable Improvement Focus */}
-        <div className="bg-white border-3 border-slate-900 rounded-2xl p-6 shadow-neo-md space-y-4">
+        <div className="bg-card border border-border/80 rounded-2xl p-6 shadow-xs space-y-4">
           <div className="flex items-center gap-2">
-            <div className="p-2 bg-rose-200 border-2 border-slate-900 text-slate-950 rounded-xl shadow-neo-sm">
+            <div className="p-2 bg-amber-500/10 text-amber-700 dark:text-amber-400 rounded-lg">
               <AlertTriangle className="w-4 h-4" />
             </div>
-            <h3 className="text-xs font-black uppercase tracking-wider text-slate-950">
-              Targeted Improvement Actions
-            </h3>
+            <div>
+              <h3 className="text-sm font-semibold text-foreground">
+                Targeted Improvement Recommendations
+              </h3>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Suggested focus areas based on recent performance
+              </p>
+            </div>
           </div>
 
           {analytics.weakTopics.length > 0 ? (
@@ -318,92 +368,111 @@ export const AnalyticsView: React.FC = () => {
               {analytics.weakTopics.map((topic, idx) => (
                 <div
                   key={idx}
-                  className="p-3 bg-rose-100 border-2 border-slate-900 rounded-xl text-xs font-black text-rose-950 flex items-center justify-between shadow-neo-sm"
+                  className="p-3 bg-rose-50/60 dark:bg-rose-950/20 border border-rose-200 dark:border-rose-900/50 rounded-xl text-xs flex items-center justify-between"
                 >
                   <div>
-                    <strong className="block text-slate-950 font-black">{topic.topic}</strong>
-                    <span className="text-[11px] text-rose-800 font-bold">Accuracy currently at {topic.accuracy}%</span>
+                    <strong className="block text-foreground font-semibold">{topic.topic}</strong>
+                    <span className="text-[11px] text-rose-700 dark:text-rose-400">
+                      Accuracy currently at {topic.accuracy}%
+                    </span>
                   </div>
-                  <span className="px-2.5 py-1 bg-white border-2 border-slate-900 text-rose-900 rounded-lg text-[10px] font-black uppercase shadow-xs">
+                  <Badge variant="outline" className="border-rose-300 text-rose-700 dark:text-rose-300 text-[10px]">
                     Drill Suggested
-                  </span>
+                  </Badge>
                 </div>
               ))}
             </div>
           ) : (
-            <div className="p-6 bg-emerald-100 border-2 border-slate-900 rounded-2xl text-xs text-emerald-950 flex flex-col items-center text-center gap-2 shadow-neo-sm">
-              <CheckCircle2 className="w-8 h-8 text-emerald-800" />
-              <strong className="font-black text-sm text-emerald-950">Great conceptual retention!</strong>
-              <p className="text-slate-700 text-xs font-bold max-w-sm">
-                You currently have high mastery across recorded topics. Keep maintaining spaced recall drills!
+            <div className="p-6 bg-emerald-50/50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-900/50 rounded-xl text-xs flex flex-col items-center text-center gap-2">
+              <CheckCircle2 className="w-6 h-6 text-emerald-600 dark:text-emerald-400" />
+              <strong className="font-semibold text-sm text-foreground">Strong conceptual retention!</strong>
+              <p className="text-muted-foreground text-xs max-w-sm">
+                You are currently maintaining high mastery across all recorded topics. Continue with periodic spaced recall drills.
               </p>
             </div>
           )}
         </div>
       </div>
 
-      {/* Attempt History Table */}
-      <div className="bg-white border-3 border-slate-900 rounded-2xl p-6 shadow-neo-md space-y-4">
-        <h3 className="text-sm font-black text-slate-950 flex items-center gap-2">
-          <Calendar className="w-4 h-4 text-cyan-800" /> Complete Assessment History Logs
-        </h3>
+      {/* Assessment History Table */}
+      <div className="bg-card border border-border/80 rounded-2xl p-6 shadow-xs space-y-4">
+        <div>
+          <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
+            <Calendar className="w-4 h-4 text-muted-foreground" /> Assessment History Log
+          </h3>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Detailed record of individual quiz and mock exam attempts
+          </p>
+        </div>
 
         {filteredAttempts.length === 0 ? (
-          <p className="text-xs font-bold text-slate-500 py-6 text-center">No quiz or exam history recorded yet.</p>
+          <p className="text-xs text-muted-foreground py-6 text-center">
+            No quiz or exam attempts recorded yet for this filter.
+          </p>
         ) : (
-          <div className="overflow-x-auto border-2 border-slate-900 rounded-xl shadow-neo-sm">
+          <div className="overflow-x-auto border border-border rounded-xl shadow-2xs">
             <table className="w-full text-left text-xs border-collapse">
-              <thead className="bg-[#FAF8F5] text-slate-950 font-black border-b-2 border-slate-900">
+              <thead className="bg-muted/50 text-muted-foreground font-medium border-b border-border">
                 <tr>
-                  <th className="p-3">Type</th>
-                  <th className="p-3">Assessment Title</th>
-                  <th className="p-3">Subject</th>
-                  <th className="p-3">Score</th>
-                  <th className="p-3">Correct / Total</th>
-                  <th className="p-3">Date</th>
-                  <th className="p-3 text-right">Actions</th>
+                  <th className="p-3 font-semibold">Type</th>
+                  <th className="p-3 font-semibold">Assessment Title</th>
+                  <th className="p-3 font-semibold">Subject</th>
+                  <th className="p-3 font-semibold">Score</th>
+                  <th className="p-3 font-semibold">Correct / Total</th>
+                  <th className="p-3 font-semibold">Date</th>
+                  <th className="p-3 font-semibold text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y-2 divide-slate-200">
+              <tbody className="divide-y divide-border/60">
                 {filteredAttempts.map((att) => (
                   <tr
                     key={att.id}
                     onClick={() => setSelectedAttempt(att)}
-                    className="hover:bg-yellow-50 cursor-pointer transition-colors font-bold"
+                    className="hover:bg-muted/40 cursor-pointer transition-colors"
                   >
                     <td className="p-3">
-                      <span
-                        className={`px-2 py-0.5 rounded-md text-[10px] font-black border border-slate-900 shadow-xs ${
+                      <Badge
+                        variant="secondary"
+                        className={`text-[10px] font-medium ${
                           att.type === 'Exam'
-                            ? 'bg-cyan-300 text-slate-950'
-                            : 'bg-yellow-300 text-slate-950'
+                            ? 'bg-primary/10 text-primary border-primary/20'
+                            : 'bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/20'
                         }`}
                       >
                         {att.type}
-                      </span>
+                      </Badge>
                     </td>
-                    <td className="p-3 font-black text-slate-950">{att.name}</td>
-                    <td className="p-3 text-slate-700">{att.subjectName}</td>
+                    <td className="p-3 font-medium text-foreground">{att.name}</td>
+                    <td className="p-3 text-muted-foreground">{att.subjectName}</td>
                     <td className="p-3">
                       <span
-                        className={`font-black font-mono text-sm ${
-                          att.overallScore >= 70 ? 'text-emerald-800' : 'text-rose-800'
+                        className={`font-semibold font-mono text-sm ${
+                          att.overallScore >= 70
+                            ? 'text-emerald-600 dark:text-emerald-400'
+                            : 'text-rose-600 dark:text-rose-400'
                         }`}
                       >
                         {att.overallScore}%
                       </span>
                     </td>
-                    <td className="p-3 text-slate-700 font-mono">
+                    <td className="p-3 text-muted-foreground font-mono">
                       {att.correctQuestions} / {att.totalQuestions}
                     </td>
-                    <td className="p-3 text-slate-600">{new Date(att.date).toLocaleDateString()}</td>
+                    <td className="p-3 text-muted-foreground">
+                      {new Date(att.date).toLocaleDateString(undefined, {
+                        month: 'short',
+                        day: 'numeric',
+                        year: 'numeric',
+                      })}
+                    </td>
                     <td className="p-3 text-right">
                       <button
                         onClick={(e) => handleDeleteAttempt(att.id, e)}
-                        className="p-1.5 text-slate-500 hover:text-rose-700 hover:bg-rose-100 rounded-lg transition-colors border border-transparent hover:border-slate-900"
+                        className="p-1.5 text-muted-foreground hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-md transition-colors"
                         title="Delete log"
+                        aria-label={`Delete record for ${att.name}`}
                       >
-                        <Trash2 className="w-4 h-4" />
+                        <Trash2 className="w-3.5 h-3.5" />
                       </button>
                     </td>
                   </tr>

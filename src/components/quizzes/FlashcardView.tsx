@@ -14,8 +14,10 @@ import {
   BookOpen,
   HelpCircle,
   Hand,
+  Badge,
 } from 'lucide-react';
 import { fireConfetti } from '../../utils/confetti';
+import { Button } from '../ui/button';
 
 interface FlashcardViewProps {
   quizName: string;
@@ -51,18 +53,13 @@ export const FlashcardView: React.FC<FlashcardViewProps> = ({
 
   const pointerStartRef = useRef<{ x: number; y: number; time: number } | null>(null);
   const hasDraggedRef = useRef(false);
-  /** Set once a lightweight action has fired mid-swipe, so it fires only once. */
   const committedDuringSwipeRef = useRef(false);
-  /** Last sample, for the release velocity. */
   const lastSampleRef = useRef<{ x: number; y: number; time: number } | null>(null);
-  /** The dragged surface, so an in-flight settle can be read and interrupted. */
   const cardSurfaceRef = useRef<HTMLDivElement | null>(null);
-  /** Offset adopted from an interrupted settle; new deltas are added to it. */
   const interruptOffsetRef = useRef<{ x: number; y: number } | null>(null);
 
   const currentCard = cards[currentIndex];
 
-  // Ghost hand discoverability animation (1.5s single play, respects prefers-reduced-motion)
   useEffect(() => {
     if (!showGhostHand) return;
 
@@ -184,23 +181,8 @@ export const FlashcardView: React.FC<FlashcardViewProps> = ({
     }
   };
 
-  /*
-   * Gesture commit rules (learn-ui, "Kinetic physics"):
-   *
-   *   Navigation (prev/next) is lightweight and reversible, so it fires DURING
-   *   the swipe the moment the card clears the threshold — waiting for release
-   *   would feel broken and gives less affordance.
-   *
-   *   Rating a card (mastered / needs review) mutates drill state, so it waits
-   *   for release however far the card has been dragged. That is what buys the
-   *   learner a peek: cross the line, change your mind, drag back, nothing
-   *   happened.
-   *
-   * Distance is not the only signal — a short fast flick counts too, so both
-   * paths also accept a velocity above VELOCITY_THRESHOLD.
-   */
   const DISTANCE_THRESHOLD = 65;
-  const VELOCITY_THRESHOLD = 0.4; // px/ms
+  const VELOCITY_THRESHOLD = 0.4;
 
   const sampleVelocity = () => {
     const start = pointerStartRef.current;
@@ -211,12 +193,6 @@ export const FlashcardView: React.FC<FlashcardViewProps> = ({
     return Math.hypot(last.x - start.x, last.y - start.y) / elapsed;
   };
 
-  /**
-   * Read the surface's live transform. A settle animation may be mid-flight, in
-   * which case the committed React state says 0 but the card is visibly
-   * somewhere else; grabbing it must continue from where it *looks*, not
-   * teleport it back to centre.
-   */
   const readLiveOffset = () => {
     const el = cardSurfaceRef.current;
     if (!el) return { x: 0, y: 0 };
@@ -224,12 +200,9 @@ export const FlashcardView: React.FC<FlashcardViewProps> = ({
     return { x: t.m41, y: t.m42 };
   };
 
-  // Pointer & Gesture Event Handlers
   const handlePointerDown = (e: React.PointerEvent) => {
     dismissGhostHand();
 
-    // Interrupt any settle in progress and adopt its current position, so the
-    // gesture that started the motion can also take it over mid-flight.
     const live = readLiveOffset();
     const interrupting = Math.abs(live.x) > 0.5 || Math.abs(live.y) > 0.5;
     if (interrupting) {
@@ -248,7 +221,6 @@ export const FlashcardView: React.FC<FlashcardViewProps> = ({
     try {
       e.currentTarget.setPointerCapture(e.pointerId);
     } catch {
-      // ignore
     }
   };
 
@@ -273,16 +245,12 @@ export const FlashcardView: React.FC<FlashcardViewProps> = ({
     }
 
     if (gestureAxis === 'horizontal') {
-      // Dampen at deck boundaries (first card swipe right or last card swipe left)
       const atStart = currentIndex === 0 && dx > 0;
       const atEnd = currentIndex === cards.length - 1 && dx < 0;
       const factor = atStart || atEnd ? 0.25 : 0.85;
       const offset = base.x + dx * factor;
       setDragOffset({ x: offset, y: 0 });
 
-      // Lightweight: navigate the moment the card reaches its logical position.
-      // Never mid-swipe at the boundaries — there is nowhere to go, and the
-      // last card would finish the drill, which is not lightweight.
       const canAdvance = !atStart && !atEnd;
       if (canAdvance && Math.abs(offset) > DISTANCE_THRESHOLD) {
         committedDuringSwipeRef.current = true;
@@ -292,7 +260,6 @@ export const FlashcardView: React.FC<FlashcardViewProps> = ({
         setGestureAxis(null);
       }
     } else if (gestureAxis === 'vertical' && isFlipped) {
-      // Rating: track the finger, but commit nothing until release.
       setDragOffset({ x: 0, y: base.y + dy * 0.85 });
     }
   };
@@ -301,31 +268,24 @@ export const FlashcardView: React.FC<FlashcardViewProps> = ({
     try {
       e.currentTarget.releasePointerCapture(e.pointerId);
     } catch {
-      // ignore
     }
 
     const velocity = sampleVelocity();
     const flicked = velocity > VELOCITY_THRESHOLD;
 
     if (committedDuringSwipeRef.current) {
-      // Navigation already fired mid-swipe; nothing left to commit.
     } else if (!hasDraggedRef.current) {
-      // Tap or Click: flip card
       setIsFlipped((f) => !f);
     } else if (gestureAxis === 'horizontal') {
-      // Only reachable at the deck boundaries or below the mid-swipe threshold.
       if (dragOffset.x < 0 && (dragOffset.x < -DISTANCE_THRESHOLD || flicked)) {
         handleNext();
       } else if (dragOffset.x > 0 && (dragOffset.x > DISTANCE_THRESHOLD || flicked)) {
         handlePrev();
       }
     } else if (gestureAxis === 'vertical' && isFlipped) {
-      // Destructive-ish: rating is recorded only now, on release.
       if (dragOffset.y < 0 && (dragOffset.y < -DISTANCE_THRESHOLD || flicked)) {
-        // Swipe up: Hard / Need Practice
         markNeedReview();
       } else if (dragOffset.y > 0 && (dragOffset.y > DISTANCE_THRESHOLD || flicked)) {
-        // Swipe down: Easy / Mastered
         markMastered();
       }
     }
@@ -354,35 +314,35 @@ export const FlashcardView: React.FC<FlashcardViewProps> = ({
   if (isComplete) {
     const score = Math.round((masteredIds.size / Math.max(1, cards.length)) * 100);
     return (
-      <div className="bg-white border-3 border-slate-900 rounded-2xl p-6 shadow-neo-xl text-center max-w-xl mx-auto space-y-5 animate-in zoom-in-95 duration-150">
-        <div className="w-14 h-14 bg-yellow-300 border-2 border-slate-900 rounded-2xl flex items-center justify-center mx-auto text-slate-950 shadow-neo-sm">
-          <Award className="w-7 h-7" />
+      <div className="bg-card border border-border/80 rounded-2xl p-6 shadow-xs text-center max-w-xl mx-auto space-y-5 animate-in zoom-in-95 duration-150">
+        <div className="w-14 h-14 bg-amber-100 border border-border rounded-2xl flex items-center justify-center">
+          <Award className="w-7 h-7 text-amber-600" />
         </div>
 
         <div>
-          <span className="px-2.5 py-0.5 bg-yellow-300 text-slate-950 border border-slate-900 rounded-md text-[10px] font-black uppercase tracking-wider shadow-xs">
+          <span className="px-2 py-0.5 bg-amber-100 text-amber-600 border border-border rounded-md text-[10px] font-semibold uppercase tracking-wider shadow-xs">
             Quiz Completed
           </span>
-          <h2 className="text-2xl font-black text-slate-950 mt-2">{quizName}</h2>
+          <h2 className="font-editorial text-2xl font-bold text-foreground mt-2">{quizName}</h2>
         </div>
 
-        <div className="grid grid-cols-3 gap-3 p-4 bg-[#FAF8F5] border-2 border-slate-900 rounded-xl shadow-neo-sm">
+        <div className="grid grid-cols-3 gap-3 p-4 bg-muted/50 border border-border rounded-xl">
           <div>
-            <span className="text-[11px] font-bold text-slate-600 uppercase">Mastery Score</span>
-            <p className="text-2xl font-black text-cyan-800">{score}%</p>
+            <span className="text-[11px] font-medium text-muted-foreground uppercase">Mastery Score</span>
+            <p className="text-2xl font-semibold text-foreground font-mono tabular-nums">{score}%</p>
           </div>
           <div>
-            <span className="text-[11px] font-bold text-slate-600 uppercase">Mastered</span>
-            <p className="text-2xl font-black text-emerald-600">{masteredIds.size}</p>
+            <span className="text-[11px] font-medium text-muted-foreground uppercase">Mastered</span>
+            <p className="text-2xl font-semibold text-emerald-600 font-mono tabular-nums">{masteredIds.size}</p>
           </div>
           <div>
-            <span className="text-[11px] font-bold text-slate-600 uppercase">Need Review</span>
-            <p className="text-2xl font-black text-rose-600">{cards.length - masteredIds.size}</p>
+            <span className="text-[11px] font-medium text-muted-foreground uppercase">Need Review</span>
+            <p className="text-2xl font-semibold text-rose-600 font-mono tabular-nums">{cards.length - masteredIds.size}</p>
           </div>
         </div>
 
         <div className="flex flex-wrap justify-center gap-3 pt-2">
-          <button
+          <Button
             onClick={() => {
               setIsComplete(false);
               setCurrentIndex(0);
@@ -390,16 +350,16 @@ export const FlashcardView: React.FC<FlashcardViewProps> = ({
               setMasteredIds(new Set());
               setReviewIds(new Set());
             }}
-            className="btn-kinetic px-5 py-2.5 bg-yellow-300 hover:bg-yellow-200 text-slate-950 font-black text-xs rounded-xl border-2 border-slate-900 shadow-neo active:translate-x-0.5 active:translate-y-0.5 active:shadow-neo-xs"
+            variant="outline"
           >
             Practice Again
-          </button>
-          <button
+          </Button>
+          <Button
             onClick={onClose}
-            className="btn-kinetic px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-800 font-black text-xs rounded-xl border-2 border-slate-900 shadow-neo-sm active:translate-x-0.5 active:translate-y-0.5 active:shadow-neo-xs"
+            variant="secondary"
           >
             Back to Quizzes
-          </button>
+          </Button>
         </div>
       </div>
     );
@@ -408,52 +368,56 @@ export const FlashcardView: React.FC<FlashcardViewProps> = ({
   return (
     <div className="max-w-2xl mx-auto space-y-4">
       {/* Top Header & Controls */}
-      <div className="flex items-center justify-between bg-white p-4 border-3 border-slate-900 rounded-2xl shadow-neo-sm">
+      <div className="flex items-center justify-between bg-card p-4 border border-border/80 rounded-2xl shadow-xs">
         <div>
-          <span className="px-2 py-0.5 bg-yellow-300 text-slate-950 border border-slate-900 rounded text-[10px] font-black uppercase tracking-wider">
+          <span className="px-2 py-0.5 bg-amber-100 text-amber-600 border border-border rounded text-[10px] font-semibold uppercase tracking-wider">
             {quizName}
           </span>
-          <div className="text-xs font-black text-slate-950 mt-1">
+          <div className="text-xs font-medium text-foreground mt-1">
             Card {currentIndex + 1} of {cards.length}
           </div>
         </div>
 
         <div className="flex items-center gap-2">
-          <button
+          <Button
+            variant="ghost"
+            size="sm"
             onClick={handleShuffle}
-            className="btn-kinetic flex items-center gap-1.5 px-3 py-1.5 bg-white hover:bg-slate-100 text-slate-900 rounded-xl border-2 border-slate-900 text-xs font-black shadow-neo-sm active:translate-x-0.5 active:translate-y-0.5 active:shadow-neo-xs"
             title="Shuffle deck"
           >
-            <Shuffle className="w-3.5 h-3.5" />
+            <Shuffle className="size-3.5" />
             Shuffle
-          </button>
+          </Button>
 
-          <button
+          <Button
+            variant="secondary"
+            size="sm"
             onClick={onClose}
-            className="btn-kinetic px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-900 rounded-xl border-2 border-slate-900 text-xs font-black shadow-neo-sm active:translate-x-0.5 active:translate-y-0.5 active:shadow-neo-xs"
           >
             Exit Drill
-          </button>
+          </Button>
         </div>
       </div>
 
       {/* Progress Bar */}
-      <div className="w-full bg-slate-200 h-2.5 border-2 border-slate-900 rounded-full overflow-hidden">
+      <div className="w-full bg-muted h-2.5 rounded-full overflow-hidden">
         <div
-          className="h-full bg-yellow-300 transition-all duration-200"
+          className="h-full bg-amber-500 transition-all duration-200"
           style={{ width: `${((currentIndex + 1) / cards.length) * 100}%` }}
         />
       </div>
 
       {/* Floating Explainer Tooltip */}
       {selectedText && (
-        <div className="mx-auto w-fit bg-slate-900 text-white px-4 py-2 rounded-xl border-2 border-yellow-300 shadow-neo-md flex items-center gap-2.5 animate-in zoom-in-95 duration-150">
-          <Sparkles className="w-4 h-4 text-yellow-300 shrink-0" />
-          <span className="text-xs font-bold">
-            Explain &ldquo;<strong className="text-yellow-200 font-black">{selectedText}</strong>&rdquo; with{' '}
-            <span className="font-ethiopic font-bold text-yellow-300 text-sm">ተማሪ</span> AI?
+        <div className="mx-auto w-fit bg-card border border-border rounded-xl p-3 text-xs font-medium text-foreground shadow-xs flex items-center gap-2.5 animate-in zoom-in-95 duration-150">
+          <Sparkles className="w-4 h-4 text-amber-500 shrink-0" />
+          <span>
+            Explain &ldquo;<strong className="text-amber-600 font-semibold">{selectedText}</strong>&rdquo; with{' '}
+            <span className="font-ethiopic font-semibold text-amber-600 text-sm">ተማሪ</span> AI?
           </span>
-          <button
+          <Button
+            size="sm"
+            variant="outline"
             onClick={(e) => {
               if (onHighlightTerm)
                 onHighlightTerm(
@@ -463,22 +427,21 @@ export const FlashcardView: React.FC<FlashcardViewProps> = ({
                 );
               setSelectedText(null);
             }}
-            className="px-2.5 py-1 bg-yellow-300 text-slate-950 font-black text-xs rounded-lg border border-slate-900 hover:bg-yellow-200 transition-colors shadow-neo-sm"
           >
             Explain
-          </button>
+          </Button>
         </div>
       )}
 
       {/* 3D Flashcard & Stacked Deck Container */}
       <div className="relative pt-2 pb-6 px-1">
-        {/* Physical Stacked Card Deck Illusion (pseudo-cards behind active card) */}
+        {/* Physical Stacked Card Deck Illusion */}
         {cards.length - 1 - currentIndex >= 3 && (
           <div
             aria-hidden="true"
-            className="deck-card deck-card-3 bg-slate-200/90 border-3 border-slate-900 rounded-2xl shadow-neo-sm flex items-end justify-center pb-1.5"
+            className="deck-card deck-card-3 bg-muted border border-border/80 rounded-2xl flex items-end justify-center pb-1.5"
           >
-            <span className="text-[9px] font-black uppercase tracking-wider text-slate-500/80">
+            <span className="text-[9px] font-medium uppercase tracking-wider text-muted-foreground">
               {cards.length - currentIndex - 1} cards below
             </span>
           </div>
@@ -487,9 +450,9 @@ export const FlashcardView: React.FC<FlashcardViewProps> = ({
         {cards.length - 1 - currentIndex >= 2 && (
           <div
             aria-hidden="true"
-            className="deck-card deck-card-2 bg-slate-100 border-3 border-slate-900 rounded-2xl shadow-neo-sm flex items-end justify-center pb-1.5"
+            className="deck-card deck-card-2 bg-card/50 border border-border/80 rounded-2xl flex items-end justify-center pb-1.5"
           >
-            <span className="text-[9px] font-black uppercase tracking-wider text-slate-500/80">
+            <span className="text-[9px] font-medium uppercase tracking-wider text-muted-foreground">
               {cards.length - currentIndex - 1} cards below
             </span>
           </div>
@@ -498,19 +461,19 @@ export const FlashcardView: React.FC<FlashcardViewProps> = ({
         {cards.length - 1 - currentIndex >= 1 && (
           <div
             aria-hidden="true"
-            className="deck-card deck-card-1 bg-[#FAF8F5] border-3 border-slate-900 rounded-2xl shadow-neo-sm flex items-end justify-center pb-1.5"
+            className="deck-card deck-card-1 bg-card border border-border/80 rounded-2xl flex items-end justify-center pb-1.5"
           >
-            <span className="text-[9px] font-black uppercase tracking-wider text-slate-500/80">
-              {cards.length - currentIndex - 1} {cards.length - currentIndex - 1 === 1 ? 'card' : 'cards'} in deck
+            <span className="text-[9px] font-medium uppercase tracking-wider text-muted-foreground">
+              {cards.length - currentIndex - 1} card in deck
             </span>
           </div>
         )}
 
-        {/* Peeking Edge Affordances (8px peeking edges for next/previous card) */}
+        {/* Peeking Edge Affordances */}
         {currentIndex < cards.length - 1 && (
           <div
             aria-hidden="true"
-            className="absolute top-4 bottom-8 right-0 w-2.5 md:w-3.5 bg-yellow-200/90 border-2 border-slate-900 rounded-r-xl shadow-neo-xs flex items-center justify-center transition-transform z-0 pointer-events-none"
+            className="absolute top-4 bottom-8 right-0 w-2.5 md:w-3.5 bg-amber-100/80 border border-border rounded-r-xl flex items-center justify-center transition-transform z-0 pointer-events-none"
             style={{
               transform:
                 dragOffset.x < 0
@@ -519,14 +482,14 @@ export const FlashcardView: React.FC<FlashcardViewProps> = ({
             }}
             title="Swipe left for next card"
           >
-            <span className="w-0.5 h-6 bg-slate-900/50 rounded-full" />
+            <span className="w-0.5 h-6 bg-foreground/20 rounded-full" />
           </div>
         )}
 
         {currentIndex > 0 && (
           <div
             aria-hidden="true"
-            className="absolute top-4 bottom-8 left-0 w-2.5 md:w-3.5 bg-yellow-200/90 border-2 border-slate-900 rounded-l-xl shadow-neo-xs flex items-center justify-center transition-transform z-0 pointer-events-none"
+            className="absolute top-4 bottom-8 left-0 w-2.5 md:w-3.5 bg-amber-100/80 border border-border rounded-l-xl flex items-center justify-center transition-transform z-0 pointer-events-none"
             style={{
               transform:
                 dragOffset.x > 0
@@ -535,11 +498,11 @@ export const FlashcardView: React.FC<FlashcardViewProps> = ({
             }}
             title="Swipe right for previous card"
           >
-            <span className="w-0.5 h-6 bg-slate-900/50 rounded-full" />
+            <span className="w-0.5 h-6 bg-foreground/20 rounded-full" />
           </div>
         )}
 
-        {/* Active Top Card Container with Pointer & Swipe Gestures */}
+        {/* Active Top Card Container */}
         <div
           className="relative h-80 md:h-88 w-full perspective-1000 cursor-grab active:cursor-grabbing select-text z-10"
           onPointerDown={handlePointerDown}
@@ -548,7 +511,6 @@ export const FlashcardView: React.FC<FlashcardViewProps> = ({
           onPointerCancel={handlePointerCancel}
           onMouseUp={handleSelection}
         >
-          {/* Keyed reveal: ease-out translation when entering from the deck */}
           <div
             key={currentIndex}
             ref={cardSurfaceRef}
@@ -560,11 +522,6 @@ export const FlashcardView: React.FC<FlashcardViewProps> = ({
                   : gestureAxis === 'vertical' && isFlipped
                   ? `translateY(${dragOffset.y}px)`
                   : undefined,
-              // The settle is a transition on the same property the gesture
-              // drives, so a new pointerdown (which sets isDragging) drops it
-              // to `none` and the card is back under the finger on the next
-              // frame. An in-flight settle never has to finish before the
-              // interface starts listening again.
               transition: isDragging
                 ? 'none'
                 : 'transform 260ms cubic-bezier(0.34, 1.3, 0.64, 1)',
@@ -577,19 +534,19 @@ export const FlashcardView: React.FC<FlashcardViewProps> = ({
               }`}
             >
               {/* Front Face (Question) */}
-              <div className="card-face flashcard-face flashcard-front absolute inset-0 w-full h-full bg-white border-3 border-slate-900 rounded-2xl p-6 md:p-8 shadow-neo-lg flex flex-col justify-between">
-                <div className="flex items-center justify-between text-xs text-slate-500 font-black">
-                  <span className="flex items-center gap-1.5 text-cyan-800">
-                    <BookOpen className="w-4 h-4" /> QUESTION
+              <div className="card-face flashcard-face flashcard-front absolute inset-0 w-full h-full bg-card border border-border/80 rounded-2xl p-6 md:p-8 shadow-xs flex flex-col justify-between">
+                <div className="flex items-center justify-between text-xs text-muted-foreground font-medium">
+                  <span className="flex items-center gap-1.5 text-amber-600">
+                    <BookOpen className="w-4 h-4" /> Question
                   </span>
                   {currentCard?.difficulty && (
                     <span
-                      className={`px-2 py-0.5 rounded-lg border border-slate-900 text-[10px] font-black uppercase shadow-xs ${
+                      className={`px-2 py-0.5 rounded-lg border border-border text-[10px] font-medium uppercase shadow-xs ${
                         currentCard.difficulty === 'Easy'
-                          ? 'bg-emerald-300 text-slate-950'
+                          ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/20'
                           : currentCard.difficulty === 'Medium'
-                          ? 'bg-amber-300 text-slate-950'
-                          : 'bg-rose-300 text-slate-950'
+                          ? 'bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/20'
+                          : 'bg-rose-500/10 text-rose-700 dark:text-rose-400 border-rose-500/20'
                       }`}
                     >
                       {currentCard.difficulty}
@@ -598,28 +555,28 @@ export const FlashcardView: React.FC<FlashcardViewProps> = ({
                 </div>
 
                 <div className="my-auto text-center py-4">
-                  <p className="text-lg md:text-xl font-black text-slate-950 leading-relaxed">
+                  <p className="text-lg md:text-xl font-semibold text-foreground leading-relaxed">
                     {currentCard?.question}
                   </p>
                 </div>
 
-                <div className="flex items-center justify-between text-[11px] font-bold text-slate-600 pt-3 border-t-2 border-slate-200">
+                <div className="flex items-center justify-between text-[11px] font-medium text-muted-foreground pt-3 border-t border-border">
                   <span className="flex items-center gap-1.5">
-                    <RotateCw className="w-3.5 h-3.5 text-slate-900" /> Tap or press Space to flip
+                    <RotateCw className="w-3.5 h-3.5" /> Tap or press Space to flip
                   </span>
-                  <span className="text-cyan-800 font-black">Highlight text for ተማሪ AI</span>
+                  <span className="text-amber-600 font-semibold">Highlight text for ተማሪ AI</span>
                 </div>
               </div>
 
               {/* Back Face (Answer) */}
-              <div className="card-face flashcard-face flashcard-back absolute inset-0 w-full h-full bg-[#FAF8F5] text-slate-950 border-3 border-slate-900 rounded-2xl p-6 md:p-8 shadow-neo-lg flex flex-col justify-between rotate-y-180 overflow-hidden">
+              <div className="card-face flashcard-face flashcard-back absolute inset-0 w-full h-full bg-card text-foreground border border-border/80 rounded-2xl p-6 md:p-8 shadow-xs flex flex-col justify-between rotate-y-180 overflow-hidden">
                 {/* Swipe Up: Rate Hard (Red Tint Preview during drag) */}
                 {isFlipped && gestureAxis === 'vertical' && dragOffset.y < 0 && (
                   <div
-                    className="absolute inset-0 bg-rose-500/25 border-3 border-rose-600 rounded-2xl z-20 flex flex-col items-center justify-center pointer-events-none transition-opacity"
+                    className="absolute inset-0 bg-rose-500/25 border border-rose-600 rounded-2xl z-20 flex flex-col items-center justify-center pointer-events-none transition-opacity"
                     style={{ opacity: Math.min(0.92, Math.abs(dragOffset.y) / 80) }}
                   >
-                    <div className="px-4 py-2 bg-rose-200 text-rose-950 border-2 border-slate-900 rounded-xl font-black text-xs shadow-neo flex items-center gap-2 transform -translate-y-2">
+                    <div className="px-4 py-2 bg-rose-100 text-rose-950 border-2 border-border rounded-xl font-semibold text-xs shadow-sm flex items-center gap-2 transform -translate-y-2">
                       <XCircle className="w-5 h-5 text-rose-700" />
                       <span>Release to rate <strong>Hard</strong> (Need Practice)</span>
                     </div>
@@ -629,52 +586,52 @@ export const FlashcardView: React.FC<FlashcardViewProps> = ({
                 {/* Swipe Down: Rate Easy (Green Tint Preview during drag) */}
                 {isFlipped && gestureAxis === 'vertical' && dragOffset.y > 0 && (
                   <div
-                    className="absolute inset-0 bg-emerald-500/25 border-3 border-emerald-600 rounded-2xl z-20 flex flex-col items-center justify-center pointer-events-none transition-opacity"
+                    className="absolute inset-0 bg-emerald-500/25 border border-emerald-600 rounded-2xl z-20 flex flex-col items-center justify-center pointer-events-none transition-opacity"
                     style={{ opacity: Math.min(0.92, dragOffset.y / 80) }}
                   >
-                    <div className="px-4 py-2 bg-emerald-200 text-emerald-950 border-2 border-slate-900 rounded-xl font-black text-xs shadow-neo flex items-center gap-2 transform translate-y-2">
+                    <div className="px-4 py-2 bg-emerald-100 text-emerald-950 border-2 border-border rounded-xl font-semibold text-xs shadow-sm flex items-center gap-2 transform translate-y-2">
                       <CheckCircle2 className="w-5 h-5 text-emerald-700" />
                       <span>Release to rate <strong>Easy</strong> (Mastered!)</span>
                     </div>
                   </div>
                 )}
 
-                <div className="flex items-center justify-between text-xs font-black text-slate-900">
-                  <span className="flex items-center gap-1.5 text-emerald-800">
-                    <Sparkles className="w-4 h-4 text-yellow-500" /> ANSWER & EXPLANATION
+                <div className="flex items-center justify-between text-xs font-medium text-foreground">
+                  <span className="flex items-center gap-1.5 text-emerald-600">
+                    <Sparkles className="w-4 h-4 text-amber-500" /> Answer & Explanation
                   </span>
-                  <span className="px-2 py-0.5 bg-white border border-slate-900 rounded text-slate-900 text-[10px] font-bold">
+                  <span className="px-2 py-0.5 bg-muted border border-border rounded text-foreground text-[10px] font-medium">
                     Card {currentIndex + 1} of {cards.length}
                   </span>
                 </div>
 
                 <div className="my-auto text-center py-4">
-                  <p className="text-sm md:text-base font-bold text-slate-900 leading-relaxed">
+                  <p className="text-sm md:text-base font-semibold text-foreground leading-relaxed">
                     {currentCard?.answer}
                   </p>
                 </div>
 
-                <div className="flex items-center justify-between text-[11px] font-bold text-slate-600 pt-3 border-t-2 border-slate-200">
+                <div className="flex items-center justify-between text-[11px] font-medium text-muted-foreground pt-3 border-t border-border">
                   <span className="flex items-center gap-1.5">
-                    <RotateCw className="w-3.5 h-3.5 text-slate-900" /> Swipe up for hard, down for easy
+                    <RotateCw className="w-3.5 h-3.5" /> Swipe up for hard, down for easy
                   </span>
-                  <span className="text-cyan-800 font-black">Highlight text for ተማሪ AI</span>
+                  <span className="text-amber-600 font-semibold">Highlight text for ተማሪ AI</span>
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Discoverability Pattern: Ghost-hand Animation (1.5s, plays once on first launch) */}
+          {/* Discoverability Pattern: Ghost-hand Animation */}
           {showGhostHand && (
             <div
               onClick={dismissGhostHand}
-              className="absolute inset-0 z-30 flex flex-col items-center justify-center bg-slate-950/20 backdrop-blur-[1px] rounded-2xl cursor-pointer select-none"
+              className="absolute inset-0 z-30 flex flex-col items-center justify-center bg-black/20 backdrop-blur-xs rounded-2xl cursor-pointer select-none"
             >
               <div className="ghost-hand-anim flex flex-col items-center gap-2">
-                <div className="p-3 bg-yellow-300 border-2 border-slate-900 rounded-2xl shadow-neo text-slate-950 flex items-center justify-center">
+                <div className="p-3 bg-amber-100 border border-border rounded-2xl shadow-sm text-foreground flex items-center justify-center">
                   <Hand className="w-7 h-7 transform -rotate-12" />
                 </div>
-                <div className="px-3.5 py-1.5 bg-slate-900 text-white text-[11px] font-black rounded-xl border border-yellow-300 shadow-neo flex items-center gap-1.5 whitespace-nowrap">
+                <div className="px-3.5 py-1.5 bg-card border border-amber-500/30 rounded-xl text-xs font-medium whitespace-nowrap shadow-sm flex items-center gap-1.5">
                   <span>Swipe sideways to move between cards</span>
                 </div>
               </div>
@@ -683,48 +640,56 @@ export const FlashcardView: React.FC<FlashcardViewProps> = ({
         </div>
       </div>
 
-      {/* Navigation & Self Assessment Buttons with Kinetic Physics */}
+      {/* Navigation & Self Assessment Buttons */}
       <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-1">
         <div className="flex items-center gap-2">
-          <button
+          <Button
+            variant="secondary"
+            size="sm"
             onClick={handlePrev}
             disabled={currentIndex === 0}
-            className="btn-kinetic flex items-center gap-1 px-3.5 py-2 bg-white hover:bg-slate-50 border-2 border-slate-900 rounded-xl text-xs font-black text-slate-900 disabled:opacity-40 shadow-neo-sm active:translate-x-0.5 active:translate-y-0.5 active:shadow-neo-xs"
           >
-            <ChevronLeft className="w-3.5 h-3.5" /> Previous
-          </button>
+            <ChevronLeft className="size-3.5" />
+            Previous
+          </Button>
 
-          <button
+          <Button
+            variant="ghost"
+            size="sm"
             onClick={() => setIsFlipped(!isFlipped)}
-            className="btn-kinetic flex items-center gap-1 px-3.5 py-2 bg-yellow-300 hover:bg-yellow-200 text-slate-950 rounded-xl border-2 border-slate-900 text-xs font-black shadow-neo-sm active:translate-x-0.5 active:translate-y-0.5 active:shadow-neo-xs"
           >
-            <RotateCw className="w-3.5 h-3.5" /> Flip Card
-          </button>
+            <RotateCw className="size-3.5" /> Flip Card
+          </Button>
 
-          <button
+          <Button
+            variant="secondary"
+            size="sm"
             onClick={handleNext}
-            className="btn-kinetic flex items-center gap-1 px-3.5 py-2 bg-white hover:bg-slate-50 border-2 border-slate-900 rounded-xl text-xs font-black text-slate-900 shadow-neo-sm active:translate-x-0.5 active:translate-y-0.5 active:shadow-neo-xs"
           >
-            Next <ChevronRight className="w-3.5 h-3.5" />
-          </button>
+            Next <ChevronRight className="size-3.5" />
+          </Button>
         </div>
 
         <div className="flex items-center gap-2">
-          <button
+          <Button
+            variant="ghost"
+            size="sm"
             onClick={markNeedReview}
-            className="btn-kinetic flex items-center gap-1.5 px-4 py-2 bg-rose-200 hover:bg-rose-100 text-rose-950 border-2 border-slate-900 rounded-xl text-xs font-black shadow-neo-sm active:translate-x-0.5 active:translate-y-0.5 active:shadow-neo-xs"
             title="Mark as Still Learning"
           >
-            <XCircle className="w-4 h-4" /> Need Practice
-          </button>
+            <XCircle className="size-4" />
+            Need Practice
+          </Button>
 
-          <button
+          <Button
+            variant="ghost"
+            size="sm"
             onClick={markMastered}
-            className="btn-kinetic flex items-center gap-1.5 px-4 py-2 bg-emerald-300 hover:bg-emerald-200 text-emerald-950 border-2 border-slate-900 rounded-xl text-xs font-black shadow-neo-sm active:translate-x-0.5 active:translate-y-0.5 active:shadow-neo-xs"
             title="Mark as Mastered"
           >
-            <CheckCircle2 className="w-4 h-4" /> Mastered!
-          </button>
+            <CheckCircle2 className="size-4" />
+            Mastered!
+          </Button>
         </div>
       </div>
     </div>
