@@ -7,6 +7,7 @@ import { studyStore } from '../../hooks/useStudyStore';
 import { useActiveSubject, useNotes } from '../../hooks/useStudyStore';
 import { NoteViewer } from './NoteViewer';
 import { Modal, type MorphOrigin } from '../ui/Modal';
+import { confirm } from '../ui/confirm';
 import { GenerationProgress } from '../ui/GenerationProgress';
 import { EmptyState } from '../ui/EmptyState';
 import { useModalOrigin } from '../ui/useModalOrigin';
@@ -134,9 +135,15 @@ export const NotesManager: React.FC<NotesManagerProps> = ({ onHighlightTerm }) =
     }
   };
 
-  const handleDeleteNote = (id: string, e: React.MouseEvent) => {
+  const handleDeleteNote = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    if (confirm('Are you sure you want to delete this study note?')) {
+    const ok = await confirm({
+      title: 'Delete note?',
+      body: 'This permanently removes the study note. This cannot be undone.',
+      confirmLabel: 'Delete',
+      danger: true,
+    });
+    if (ok) {
       studyStore.deleteNote(id);
     }
   };
@@ -163,7 +170,7 @@ export const NotesManager: React.FC<NotesManagerProps> = ({ onHighlightTerm }) =
   return (
     <div className="space-y-6">
       {/* Header Bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-card p-6 border border-border/80 rounded-2xl shadow-xs">
+      <div className="notes-hub-header flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-card p-6 border border-border/80 rounded-2xl shadow-xs">
         <div>
           <div className="flex items-center gap-2 mb-1.5 flex-wrap">
             <span className="font-ethiopic font-semibold text-amber-600 dark:text-amber-400 text-sm">
@@ -201,13 +208,13 @@ export const NotesManager: React.FC<NotesManagerProps> = ({ onHighlightTerm }) =
       </div>
 
       {generatedOffline && (
-        <OfflineBanner label="Offline draft. No AI Provider was reachable, so this note was assembled locally. Reconnect and regenerate for full AI notes." />
+        <OfflineBanner className="no-print" label="Offline draft. No AI Provider was reachable, so this note was assembled locally. Reconnect and regenerate for full AI notes." />
       )}
 
       {/* Main Grid: Sidebar List + Viewer */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+      <div className="notes-grid grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
         {/* Left Notes List */}
-        <div className="lg:col-span-4 space-y-3">
+        <div className="notes-list-col lg:col-span-4 space-y-3">
           <div className="bg-card border border-border/80 rounded-2xl p-4 shadow-xs space-y-3">
             <div className="relative">
               <Search className="w-4 h-4 text-muted-foreground absolute left-3 top-1/2 -translate-y-1/2" />
@@ -326,6 +333,7 @@ export const NotesManager: React.FC<NotesManagerProps> = ({ onHighlightTerm }) =
           ) : selectedNote ? (
             <NoteViewer
               note={selectedNote}
+              subjectName={activeSubject.name}
               onEdit={() => setEditingNote(selectedNote)}
               onHighlightTerm={onHighlightTerm}
               onRefresh={async () => {

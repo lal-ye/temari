@@ -84,6 +84,26 @@
   --chart-4: oklch(0.371 0 0);
   --chart-5: oklch(0.269 0 0);
   --radius: 0.625rem;
+
+  /* ======================================================================
+     Editorial surface ramp (ADR-0010 — Modern Academic Editorial system).
+
+     Depth is read from a hairline border + surface tint + whisper shadow,
+     never a hard offset shadow. Nesting "auto-bumps" one level down the
+     ramp, à la Cladd but in our paper/amber identity. Semantic classes below
+     reference these tokens so a screen's hierarchy comes from one place.
+
+       L0 page       warm paper            --surface-page
+       L1 well       recessed track/field  --surface-well   (inset)
+       L2 panel      raised card           --surface-panel  (hairline + shadow-xs)
+       L3 floating   popover/menu          --surface-float  (shadow-md)
+     ====================================================================== */
+  --surface-page: #FAF8F5;
+  --surface-well: var(--muted);
+  --surface-panel: var(--card);
+  --surface-float: var(--popover);
+  --elev-shadow-sm: 0 1px 2px 0 rgb(15 23 42 / 0.05);
+  --elev-shadow-md: 0 4px 16px -2px rgb(15 23 42 / 0.10);
   --sidebar: oklch(0.985 0 0);
   --sidebar-foreground: oklch(0.145 0 0);
   --sidebar-primary: oklch(0.205 0 0);
@@ -198,76 +218,24 @@
   letter-spacing: 0.06em;
 }
 
-/* Neo-Brutalist BeautifulUI Shadow Utilities */
-.shadow-neo-xs {
-  box-shadow: 1px 1px 0px 0px #0F172A;
-}
-
-.shadow-neo-sm {
-  box-shadow: 2px 2px 0px 0px #0F172A;
-}
-
-.shadow-neo {
-  box-shadow: 3px 3px 0px 0px #0F172A;
-}
-
-.shadow-neo-md {
-  box-shadow: 4px 4px 0px 0px #0F172A;
-}
-
-.shadow-neo-lg {
-  box-shadow: 6px 6px 0px 0px #0F172A;
-}
-
-.shadow-neo-xl {
-  box-shadow: 8px 8px 0px 0px #0F172A;
-}
-
-.shadow-neo-amber {
-  box-shadow: 4px 4px 0px 0px #F59E0B;
-}
-
-.shadow-neo-teal {
-  box-shadow: 4px 4px 0px 0px #0D9488;
-}
-
-.shadow-neo-rose {
-  box-shadow: 4px 4px 0px 0px #E11D48;
-}
+/* The neo-brutalist shadow/button utilities were retired with the editorial
+   redesign (ADR-0010); `.btn-kinetic` press feedback is kept below. */
 
 /* ==========================================================================
-   Kinetic Physics Engine (MOTION_INTENSITY: 5/10)
+   Kinetic press feedback (MOTION_INTENSITY: 5/10)
    ========================================================================== */
 
-/* Button press depress. Scoped to opted-in buttons only: a transition on every
-   `button` in the app taxes the highest-frequency interaction there is. Colour
-   changes (hover highlights, used tens of times a day) are deliberately NOT
-   transitioned — a fading highlight trails the cursor and always feels one step
-   behind the pointer. Only the press, which is direct manipulation, animates. */
-.btn-neo,
+/* Press depress, scoped to opted-in buttons only: a transition on every
+   `button` taxes the highest-frequency interaction there is. Colour changes
+   (hover highlights, tens of times a day) are NOT transitioned — a fading
+   highlight trails the cursor. Only the press, direct manipulation, animates. */
 .btn-kinetic {
-  transition: transform var(--dur-micro) var(--ease-spring),
-              box-shadow var(--dur-micro) var(--ease-spring);
-  will-change: transform, box-shadow;
+  transition: transform var(--dur-micro) var(--ease-spring);
+  will-change: transform;
 }
 
-.btn-neo:active:not(:disabled),
 .btn-kinetic:active:not(:disabled) {
-  transition: transform 80ms var(--ease-out),
-              box-shadow 80ms var(--ease-out) !important;
-}
-
-/* Hover lift applies instantly; only the release back to rest is eased. */
-.btn-neo:hover,
-.btn-kinetic:hover {
-  transform: translate(-1.5px, -1.5px);
-  box-shadow: 4px 4px 0px 0px #0F172A;
-}
-
-.btn-neo:active,
-.btn-kinetic:active {
-  transform: translate(1px, 1px);
-  box-shadow: 1px 1px 0px 0px #0F172A;
+  transition: transform 80ms var(--ease-out) !important;
 }
 
 button:disabled,
@@ -459,6 +427,17 @@ button:disabled:active {
 .modal-panel-in { animation: modal-panel-in 180ms cubic-bezier(0.2, 0.9, 0.3, 1.2) both; }
 .modal-panel-out { animation: modal-panel-out 150ms ease-in both; }
 
+/* Toast entrance — occasional panel tier (src/components/ui/toast.tsx). Slides
+   up from the bottom edge and settles; the eye tracks it as arriving from
+   where the corner is. */
+@keyframes toast-in {
+  from { opacity: 0; transform: translateY(8px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+.toast-row {
+  animation: toast-in var(--dur-panel) cubic-bezier(0, 0, 0.2, 1) both;
+}
+
 /* ==========================================================================
    App layout
 
@@ -470,6 +449,39 @@ button:disabled:active {
 .app-layout {
   display: flex;
   flex-direction: column;
+}
+
+/* ==========================================================================
+   Editorial surface primitives (ADR-0010).
+
+   Semantic handles for the depth ramp, so nested panels/wells/floating menus
+   read from one vocabulary instead of ad-hoc shadow/border classes. These are
+   opt-in: screens still compose the familiar Tailwind tokens; these classes
+   are the documented reference and the anchor for the print/design tests.
+
+     .surface-panel  — raised content card (L2)
+     .surface-well   — recessed track, input, code field (L1)
+     .surface-float  — dropdown / popover / menu / tooltip (L3)
+   ========================================================================== */
+.surface-panel {
+  background-color: var(--surface-panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-2xl);
+  box-shadow: var(--elev-shadow-sm);
+}
+
+.surface-well {
+  background-color: var(--surface-well);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: inset 0 1px 2px rgb(15 23 42 / 0.04);
+}
+
+.surface-float {
+  background-color: var(--surface-float);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--elev-shadow-md);
 }
 
 /* ==========================================================================
@@ -639,7 +651,8 @@ button:disabled:active {
   .ghost-hand-anim,
   .pulse-ring-indicator,
   .generation-stage-pulse,
-  .skeleton-shimmer {
+  .skeleton-shimmer,
+  .toast-row {
     animation: none !important;
   }
 
@@ -699,7 +712,6 @@ button:disabled:active {
   }
 
   /* Buttons */
-  .btn-neo,
   .btn-press,
   .btn-kinetic {
     transition: none !important;
@@ -707,17 +719,230 @@ button:disabled:active {
   }
 }
 
-/* Print Stylesheet for Notes Export */
-@media print {
-  body {
-    background: white !important;
-    color: black !important;
+/* ==========================================================================
+   Note print / export stylesheet (WS-4)
+
+   The browser's print pipeline renders KaTeX, the editorial SVG figures, web
+   fonts and the editorial CSS natively — so print/PDF reuses the on-screen
+   design rather than rebuilding the document in a foreign kit. What it needs
+   is craft: page geometry, a masthead, page numbers, break control, forced
+   light mode, and isolating the note card from the rest of the app chrome.
+   Runs entirely client-side, so it behaves identically on Netlify and Node.
+   ========================================================================== */
+
+/* Print-only elements stay hidden on screen regardless of context. */
+.print-only {
+  display: none;
+}
+
+/* Page geometry. `margin` reserves room for the margin boxes below; Chrome
+   131+ honours @bottom-*/@top-* margin boxes + counter(page) natively, and the
+   rule degrades gracefully (just no header/footer) in older engines. */
+@page {
+  margin: 18mm 16mm 20mm;
+  @bottom-right {
+    content: counter(page);
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    font-size: 9pt;
+    color: #64748b;
   }
-  .no-print {
+  @bottom-left {
+    content: "ተማሪ Temari";
+    font-family: Georgia, 'Times New Roman', serif;
+    font-size: 9pt;
+    color: #94a3b8;
+  }
+}
+
+@media print {
+  /* Force a clean, light page regardless of the learner's dark theme. A dark
+     note must never print a near-black sheet. */
+  html,
+  body {
+    background: #ffffff !important;
+  }
+
+  /* Transient UI never appears on paper. */
+  .toast-row {
     display: none !important;
   }
-  .print-only {
+
+  /* Reset the semantic surface tokens to a light ramp so token-driven
+     surfaces (card/muted/popover/border) print on white. */
+  .dark {
+    --background: oklch(1 0 0);
+    --foreground: oklch(0.145 0 0);
+    --card: oklch(1 0 0);
+    --card-foreground: oklch(0.145 0 0);
+    --popover: oklch(1 0 0);
+    --popover-foreground: oklch(0.145 0 0);
+    --primary: oklch(0.205 0 0);
+    --primary-foreground: oklch(0.985 0 0);
+    --secondary: oklch(0.97 0 0);
+    --muted: oklch(0.97 0 0);
+    --muted-foreground: oklch(0.45 0 0);
+    --accent: oklch(0.97 0 0);
+    --border: oklch(0.9 0 0);
+    --input: oklch(0.9 0 0);
+    color: #0f172a !important;
+  }
+
+  /* Hide app chrome, the notes hub around the viewer (header card, notes
+     list, offline banner), and every screen affordance. The note card keeps
+     its content. */
+  .no-print,
+  .app-header,
+  .app-hub-list,
+  .notes-hub-header,
+  .notes-list-col,
+  nav[aria-label="Study hub"] {
+    display: none !important;
+  }
+
+  /* Flatten the fixed/scroll/flex shell so the note becomes normal document
+     flow and paginates across pages instead of being clipped by overflow. */
+  #root,
+  .app-layout,
+  .app-layout > div,
+  .app-main,
+  .app-main > div {
     display: block !important;
+    height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    max-width: none !important;
+    background: #ffffff !important;
+  }
+
+  /* The notes list/hub is hidden above; collapse the 12-col grid so the
+     viewer column takes the full page width. */
+  .notes-grid {
+    display: block !important;
+  }
+  .notes-grid > .lg\:col-span-8 {
+    grid-column: auto !important;
+    max-width: none !important;
+  }
+
+  /* The note card prints edge-to-edge as a document: drop the rounded panel,
+     border and whisper shadow. */
+  .note-print-root {
+    border: none !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    background: #ffffff !important;
+    overflow: visible !important;
+    display: block !important;
+  }
+
+  /* Print masthead (page one). */
+  .note-print-masthead {
+    display: block !important;
+    border-bottom: 2px solid #0f172a;
+    padding-bottom: 10px;
+    margin-bottom: 18px;
+  }
+  .note-masthead-brand {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    font-size: 10pt;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #b45309;
+    margin-bottom: 6px;
+  }
+  .note-masthead-brand .font-ethiopic {
+    font-size: 13pt;
+    text-transform: none;
+    letter-spacing: 0;
+  }
+  .note-print-masthead h1 {
+    font-family: 'Playfair Display', Georgia, serif;
+    font-size: 24pt;
+    line-height: 1.15;
+    font-weight: 700;
+    color: #0f172a;
+    margin: 0 0 8px;
+  }
+  .note-masthead-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 14px;
+    font-size: 9.5pt;
+    color: #475569;
+  }
+
+  /* Body content: give the paper room, drop the on-screen max-width card
+     padding. */
+  .note-print-root .note-body {
+    padding: 0 !important;
+    max-width: none !important;
+    font-size: 11pt;
+    line-height: 1.65;
+    color: #0f172a;
+  }
+
+  /* Keep brand tints (callouts, highlights, figures) when printing. */
+  .note-body,
+  .note-body * {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /* Headings never sit alone at a page foot; figures/callouts/code/tables
+     don't split across pages. */
+  .note-body h1,
+  .note-body h2,
+  .note-body h3,
+  .note-body h4 {
+    break-after: avoid;
+    break-inside: avoid;
+  }
+  .note-figure,
+  .note-callout,
+  .note-codeblock,
+  .note-body svg,
+  .note-body .katex-display,
+  .note-body table,
+  .note-body tr,
+  .note-body thead {
+    break-inside: avoid;
+  }
+  .note-body p {
+    orphans: 2;
+    widows: 2;
+  }
+
+  /* Force the GitHub-style callouts to their light tints even when the
+     learner is in dark mode (the dark: *-950/25 washes out to grey on white). */
+  .note-callout[data-callout="note"]      { background: #eff6ff !important; border-left-color: #3b82f6 !important; color: #0f172a !important; }
+  .note-callout[data-callout="important"] { background: #fff1f2 !important; border-left-color: #f43f5e !important; color: #0f172a !important; }
+  .note-callout[data-callout="tip"]       { background: #ecfdf5 !important; border-left-color: #10b981 !important; color: #0f172a !important; }
+  .note-callout[data-callout="warning"]   { background: #fffbeb !important; border-left-color: #f59e0b !important; color: #0f172a !important; }
+  .note-callout[data-callout="caution"]   { background: #fef2f2 !important; border-left-color: #ef4444 !important; color: #0f172a !important; }
+  .note-callout[data-callout] > div:first-child { color: #0f172a !important; }
+
+  /* The amber <strong> highlight prints as a light highlight, never a dark
+     block (dark mode bg-amber-950/40 would). */
+  .note-body strong {
+    background: #fef3c7 !important;
+    color: #0f172a !important;
+  }
+
+  /* Code blocks keep their dark theme but wrap instead of clipping. */
+  .note-codeblock,
+  .note-codeblock pre {
+    white-space: pre-wrap;
+    word-break: break-word;
+    overflow: visible !important;
+  }
+
+  /* Links print in ink, underlined (no hover affordance needed). */
+  .note-body a {
+    color: #0f172a !important;
   }
 }
 
