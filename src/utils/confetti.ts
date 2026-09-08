@@ -1,9 +1,18 @@
+import { prefersReducedMotion } from './viewTransition';
+
 /**
  * Lightweight, zero-dependency confetti burst using native HTML5 Canvas.
  * Follows Ponytail's ladder: native platform capability replaces canvas-confetti.
+ *
+ * This is *celebration* — the rare/first-run tier of the motion budget
+ * (DEVELOPING.md) — and the one JavaScript-driven effect in the app, so the
+ * reduced-motion check lives here, inside the utility, rather than at each
+ * call site where it can be forgotten. Under `prefers-reduced-motion: reduce`
+ * the function is a no-op; the score itself is the feedback.
  */
 export function fireConfetti(options?: { particleCount?: number }) {
   if (typeof document === 'undefined') return;
+  if (prefersReducedMotion()) return;
 
   const count = options?.particleCount || 60;
   const canvas = document.createElement('canvas');

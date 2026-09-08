@@ -22,6 +22,7 @@ reachable.
   - [ADR-0009](./docs/adr/0009-landing-page-route-split.md) — landing page at `/`, study shell at `/app`, no router
   - [ADR-0010](./docs/adr/0010-editorial-design-system.md) — Modern Academic Editorial design system (surface ramp, type, accent; neo-brutalism retired)
 - Design plans:
+  - [docs/ui-plan-truthful-interaction.md](./docs/ui-plan-truthful-interaction.md) — truthful feedback, pointer ownership, modal focus, and reading continuity (phases 1–3 implemented on the working branch; device verification owed).
   - [docs/ui-plan-editorial-shell-export.md](./docs/ui-plan-editorial-shell-export.md) — the editorial design-system canon, landing-page realignment, and note export/PDF.
   - [docs/ui-plan-spatial-consistency.md](./docs/ui-plan-spatial-consistency.md) — the motion/spatial system (shipped).
   - [docs/ui-plan-landing-page.md](./docs/ui-plan-landing-page.md) — the landing-page plan and its guardrails.

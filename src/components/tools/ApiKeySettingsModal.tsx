@@ -23,7 +23,7 @@ import { resolveActiveModel, findRetiredModelReplacement } from '../../../shared
 import { diagnoseConnectionError, type Diagnosis } from '../../services/ai/diagnoseError';
 import { ModelPicker } from './ModelPicker';
 import { aiConnection } from '../../services/aiConnection';
-import { Modal, type MorphOrigin } from '../ui/Modal';
+import { Modal, ModalCloseButton, type MorphOrigin } from '../ui/Modal';
 import { Button } from '../ui/button';
 
 interface ApiKeySettingsModalProps {
@@ -93,8 +93,9 @@ export const ApiKeySettingsModal: React.FC<ApiKeySettingsModalProps> = ({
     }
   }, [isOpen]);
 
-  if (!isOpen) return null;
-
+  // No `if (!isOpen) return null` here: the Modal must stay mounted while
+  // closed so its exit animation and focus restoration can run. It renders
+  // nothing while `open` is false.
   const activeProviderConfig = getProviderConfig(selectedProvider);
   const activeModelOption = getModelOption(selectedProvider, selectedModel);
   const currentKeyForProvider =
@@ -519,9 +520,7 @@ API key (optional for local)
             </Button>
 
             <div className="flex items-center gap-2">
-              <Button type="button" variant="ghost" onClick={onClose}>
-                Cancel
-              </Button>
+              <ModalCloseButton variant="ghost">Cancel</ModalCloseButton>
               <Button type="button" onClick={handleSave}>
                 Save
               </Button>

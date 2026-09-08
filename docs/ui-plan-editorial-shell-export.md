@@ -272,8 +272,8 @@ Pure CSS + one button; zero runtime; Netlify/offline-safe.
   light tokens under print so dark mode never prints a near-black page.
 - `break-inside: avoid` on figures/SVG, callouts, `pre`, table rows,
   `.katex-display`; `break-after: avoid` on headings; orphans/widows.
-- Hide the action bar, Explain tooltip, pull-to-refresh banner, pulse ring
-  (`no-print`).
+- Hide the action bar, Explain tooltip, pulse ring (`no-print`). (The
+  pull-to-refresh banner was removed in `ui-plan-truthful-interaction.md` §1.)
 - Add **Download .md**.
 - **Acceptance:** Chromium "Save as PDF" shows margins, page numbers,
   masthead, preserved colour, unsplit figures/code; dark mode prints light;
