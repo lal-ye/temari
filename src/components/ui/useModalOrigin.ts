@@ -22,7 +22,7 @@ export function useModalOrigin() {
   const ref = useRef<MorphOrigin | null>(null);
 
   const capture = useCallback(
-    (e: { currentTarget: HTMLElement } | MorphOrigin | null) => {
+    (e: { currentTarget: MorphOrigin } | MorphOrigin | null) => {
       if (e === null) {
         ref.current = null;
       } else if ('currentTarget' in e) {

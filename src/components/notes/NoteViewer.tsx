@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { createContext, useEffect, useMemo, useRef, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
@@ -210,6 +210,8 @@ function CalloutBlockquote({ children }: { children: React.ReactNode }) {
   );
 }
 
+const InPreContext = createContext(false);
+
 export const NoteViewer: React.FC<NoteViewerProps> = ({
   note,
   subjectName,
@@ -416,45 +418,68 @@ export const NoteViewer: React.FC<NoteViewerProps> = ({
   // Markdown component mappings
   const markdownComponents = useMemo(() => ({
     blockquote: CalloutBlockquote,
-    code({ node, inline, className, children, ...props }: any) {
-      const lang = figureLanguage(className);
-
-      // Intercept programmatic diagram blocks and render EditorialDiagram
-      if (!inline && lang) {
-        const figIndex = Number((props as Record<string, unknown>)['data-fig-index']);
-        return (
-          <div className="note-figure my-6 not-prose">
-            <EditorialDiagram
-              content={String(children).trim()}
-              title={note.title}
-              figIndex={Number.isFinite(figIndex) && figIndex > 0 ? figIndex : undefined}
-              onNodeActivate={(label, context, el) => {
-                if (onHighlightTerm) {
-                  onHighlightTerm(label, context, el as HTMLElement);
-                }
-              }}
-            />
-          </div>
-        );
+    pre({ node, children, ...props }: any) {
+      const codeNode = node?.children?.find((c: any) => c?.tagName === 'code');
+      const classNames = codeNode?.properties?.className;
+      const cls = Array.isArray(classNames) ? classNames.join(' ') : (classNames || '');
+      const lang = figureLanguage(cls);
+      if (lang) {
+        return <InPreContext.Provider value={true}>{children}</InPreContext.Provider>;
       }
-
-      if (inline) {
-        return (
-          <code
-            className="px-1.5 py-0.5 rounded-md bg-muted font-mono text-[13px] text-foreground font-medium"
+      return (
+        <InPreContext.Provider value={true}>
+          <pre
+            className="note-codeblock my-4 p-4 rounded-xl bg-zinc-900 text-zinc-100 overflow-x-auto font-mono text-xs leading-relaxed dark:bg-zinc-950 border border-border"
             {...props}
           >
             {children}
-          </code>
-        );
-      }
-
+          </pre>
+        </InPreContext.Provider>
+      );
+    },
+    code({ node, className, children, ...props }: any) {
       return (
-        <pre className="note-codeblock my-4 p-4 rounded-xl bg-zinc-900 text-zinc-100 overflow-x-auto font-mono text-xs leading-relaxed dark:bg-zinc-950 border border-border">
-          <code className={className} {...props}>
-            {children}
-          </code>
-        </pre>
+        <InPreContext.Consumer>
+          {(inPre) => {
+            const lang = figureLanguage(className);
+
+            // Intercept programmatic diagram blocks and render EditorialDiagram
+            if (inPre && lang) {
+              const figIndex = Number((props as Record<string, unknown>)['data-fig-index']);
+              return (
+                <div className="note-figure my-6 not-prose">
+                  <EditorialDiagram
+                    content={String(children).trim()}
+                    title={note.title}
+                    figIndex={Number.isFinite(figIndex) && figIndex > 0 ? figIndex : undefined}
+                    onNodeActivate={(label, context, el) => {
+                      if (onHighlightTerm) {
+                        onHighlightTerm(label, context, el as HTMLElement);
+                      }
+                    }}
+                  />
+                </div>
+              );
+            }
+
+            if (inPre) {
+              return (
+                <code className={className} {...props}>
+                  {children}
+                </code>
+              );
+            }
+
+            return (
+              <code
+                className="px-1.5 py-0.5 rounded-md bg-muted font-mono text-[13px] text-foreground font-medium"
+                {...props}
+              >
+                {children}
+              </code>
+            );
+          }}
+        </InPreContext.Consumer>
       );
     },
     table({ children }: any) {
