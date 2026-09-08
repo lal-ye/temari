@@ -18,6 +18,24 @@ import {
 } from 'lucide-react';
 import { fireConfetti } from '../../utils/confetti';
 import { Button } from '../ui/button';
+import {
+  createGestureState,
+  reduce as reduceGesture,
+  type Axis,
+  type GestureEffect,
+  type GestureEvent,
+  type GestureState,
+} from './flashcardGesture';
+
+/**
+ * §6b decision (docs/ui-plan-truthful-interaction.md): vertical rating swipe
+ * is off. The card surface leaves vertical pans and pinches to the browser
+ * (`touch-action: pan-y pinch-zoom`) so a thumb on the card can still scroll
+ * and zoom the page; Need Practice / Mastered! are the rating controls.
+ * Flip to true to re-enable the swipe — the reducer, tint previews and
+ * `touch-action` all key off this one constant.
+ */
+const ALLOW_VERTICAL_RATING = false;
 
 interface FlashcardViewProps {
   quizName: string;
@@ -42,21 +60,25 @@ export const FlashcardView: React.FC<FlashcardViewProps> = ({
   const [selectedText, setSelectedText] = useState<string | null>(null);
   const [isComplete, setIsComplete] = useState(false);
 
-  // Responsive Swipe Gesture & Discoverability States
-  const [dragOffset, setDragOffset] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
-  const [isDragging, setIsDragging] = useState(false);
-  const [gestureAxis, setGestureAxis] = useState<'horizontal' | 'vertical' | null>(null);
+  // Swipe gesture. The reducer in flashcardGesture.ts owns the rules
+  // (pointer ownership, interruption, thresholds); the ref holds the
+  // authoritative state for synchronous reads inside handlers, and `drag`
+  // mirrors the render-relevant part of it.
+  const gestureRef = useRef<GestureState>(createGestureState());
+  const [drag, setDrag] = useState<{ offset: { x: number; y: number }; axis: Axis | null; dragging: boolean }>({
+    offset: { x: 0, y: 0 },
+    axis: null,
+    dragging: false,
+  });
   const [showGhostHand, setShowGhostHand] = useState(() => {
     if (typeof window === 'undefined') return false;
     return !localStorage.getItem('temari_swipe_hint_seen');
   });
 
-  const pointerStartRef = useRef<{ x: number; y: number; time: number } | null>(null);
-  const hasDraggedRef = useRef(false);
-  const committedDuringSwipeRef = useRef(false);
-  const lastSampleRef = useRef<{ x: number; y: number; time: number } | null>(null);
+  /** The focusable gesture surface (receives keys and pointer events). */
   const cardSurfaceRef = useRef<HTMLDivElement | null>(null);
-  const interruptOffsetRef = useRef<{ x: number; y: number } | null>(null);
+  /** The element whose transform tracks the drag and settles back. */
+  const cardMotionRef = useRef<HTMLDivElement | null>(null);
 
   const currentCard = cards[currentIndex];
 
@@ -84,24 +106,51 @@ export const FlashcardView: React.FC<FlashcardViewProps> = ({
     }
   };
 
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (isComplete) return;
-      if (e.code === 'Space' || e.code === 'Enter') {
-        e.preventDefault();
-        setIsFlipped((f) => !f);
-      } else if (e.code === 'ArrowRight') {
-        e.preventDefault();
-        handleNext();
-      } else if (e.code === 'ArrowLeft') {
-        e.preventDefault();
-        handlePrev();
-      }
-    };
+  /**
+   * Keyboard control of the Drill.
+   *
+   * Attached to the Drill's root rather than `window`, so keys only reach it
+   * while focus is inside the Drill. That is what makes a dialog opened over
+   * the Drill (the explainer, a confirm) own the keyboard: focus is trapped in
+   * the dialog, so Space, Enter and the arrows never arrive here. Before this
+   * a Space inside the explainer flipped the card underneath, and ArrowRight
+   * on the last card could finish the Drill and record an Attempt from behind
+   * a dialog.
+   *
+   * The card surface is focusable and receives focus on mount, so the keys
+   * work immediately after opening a Drill and the card is reachable by Tab.
+   */
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (isComplete || e.defaultPrevented) return;
+    const target = e.target as HTMLElement | null;
+    if (
+      target &&
+      (target.tagName === 'INPUT' ||
+        target.tagName === 'TEXTAREA' ||
+        target.tagName === 'SELECT' ||
+        target.isContentEditable)
+    ) {
+      return;
+    }
+    // Space/Enter on a button should press the button, not flip the card.
+    const onControl = target && target !== cardSurfaceRef.current && target.closest('button, a, [role="button"]');
 
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [currentIndex, isComplete, cards.length]);
+    if ((e.code === 'Space' || e.code === 'Enter') && !onControl) {
+      e.preventDefault();
+      setIsFlipped((f) => !f);
+    } else if (e.code === 'ArrowRight') {
+      e.preventDefault();
+      handleNext();
+    } else if (e.code === 'ArrowLeft') {
+      e.preventDefault();
+      handlePrev();
+    }
+  };
+
+  useEffect(() => {
+    // Focus the card, not the first button, so arrow keys work at once.
+    cardSurfaceRef.current?.focus({ preventScroll: true });
+  }, []);
 
   const handleNext = () => {
     setIsFlipped(false);
@@ -181,134 +230,86 @@ export const FlashcardView: React.FC<FlashcardViewProps> = ({
     }
   };
 
-  const DISTANCE_THRESHOLD = 65;
-  const VELOCITY_THRESHOLD = 0.4;
-
-  const sampleVelocity = () => {
-    const start = pointerStartRef.current;
-    const last = lastSampleRef.current;
-    if (!start || !last) return 0;
-    const elapsed = last.time - start.time;
-    if (elapsed <= 0) return 0;
-    return Math.hypot(last.x - start.x, last.y - start.y) / elapsed;
-  };
-
+  /** Live card offset from the computed transform, so a grab mid-settle continues from where the card is. */
   const readLiveOffset = () => {
-    const el = cardSurfaceRef.current;
+    const el = cardMotionRef.current;
     if (!el) return { x: 0, y: 0 };
     const t = new DOMMatrixReadOnly(getComputedStyle(el).transform);
     return { x: t.m41, y: t.m42 };
   };
 
+  const applyEffect = (effect: GestureEffect) => {
+    switch (effect) {
+      case 'next':
+        handleNext();
+        break;
+      case 'prev':
+        handlePrev();
+        break;
+      case 'rateHard':
+        markNeedReview();
+        break;
+      case 'rateEasy':
+        markMastered();
+        break;
+      case 'flip':
+        setIsFlipped((f) => !f);
+        break;
+    }
+  };
+
+  const dispatch = (event: GestureEvent) => {
+    const { state, effect } = reduceGesture(gestureRef.current, event, {
+      index: currentIndex,
+      count: cards.length,
+      flipped: isFlipped,
+      allowVerticalRating: ALLOW_VERTICAL_RATING,
+    });
+    gestureRef.current = state;
+    setDrag({ offset: state.offset, axis: state.axis, dragging: state.dragging });
+    if (effect) applyEffect(effect);
+  };
+
   const handlePointerDown = (e: React.PointerEvent) => {
     dismissGhostHand();
-
-    const live = readLiveOffset();
-    const interrupting = Math.abs(live.x) > 0.5 || Math.abs(live.y) > 0.5;
-    if (interrupting) {
-      setDragOffset(live);
-      setGestureAxis(Math.abs(live.x) >= Math.abs(live.y) ? 'horizontal' : 'vertical');
-      hasDraggedRef.current = true;
-    }
-    interruptOffsetRef.current = interrupting ? live : null;
-
-    committedDuringSwipeRef.current = false;
-    lastSampleRef.current = { x: e.clientX, y: e.clientY, time: Date.now() };
-    pointerStartRef.current = { x: e.clientX, y: e.clientY, time: Date.now() };
-    hasDraggedRef.current = false;
-    setIsDragging(true);
-    setGestureAxis(null);
-    try {
-      e.currentTarget.setPointerCapture(e.pointerId);
-    } catch {
+    dispatch({
+      type: 'down',
+      pointerId: e.pointerId,
+      x: e.clientX,
+      y: e.clientY,
+      time: e.timeStamp,
+      isPrimary: e.isPrimary,
+      button: e.button,
+      live: readLiveOffset(),
+    });
+    // Capture only for the pointer that won ownership. Capture routes this
+    // pointer's events to the card even when it leaves the element; it does
+    // not make the gesture exclusive — the reducer does that.
+    if (gestureRef.current.activePointerId === e.pointerId) {
+      try {
+        e.currentTarget.setPointerCapture(e.pointerId);
+      } catch {
+        // Capture is best-effort (e.g. pointer already gone).
+      }
     }
   };
 
   const handlePointerMove = (e: React.PointerEvent) => {
-    if (!pointerStartRef.current || !isDragging) return;
-    if (committedDuringSwipeRef.current) return;
-
-    lastSampleRef.current = { x: e.clientX, y: e.clientY, time: Date.now() };
-
-    const dx = e.clientX - pointerStartRef.current.x;
-    const dy = e.clientY - pointerStartRef.current.y;
-
-    const base = interruptOffsetRef.current ?? { x: 0, y: 0 };
-
-    if (!hasDraggedRef.current && Math.hypot(dx, dy) > 8) {
-      hasDraggedRef.current = true;
-      if (isFlipped && Math.abs(dy) > Math.abs(dx)) {
-        setGestureAxis('vertical');
-      } else {
-        setGestureAxis('horizontal');
-      }
-    }
-
-    if (gestureAxis === 'horizontal') {
-      const atStart = currentIndex === 0 && dx > 0;
-      const atEnd = currentIndex === cards.length - 1 && dx < 0;
-      const factor = atStart || atEnd ? 0.25 : 0.85;
-      const offset = base.x + dx * factor;
-      setDragOffset({ x: offset, y: 0 });
-
-      const canAdvance = !atStart && !atEnd;
-      if (canAdvance && Math.abs(offset) > DISTANCE_THRESHOLD) {
-        committedDuringSwipeRef.current = true;
-        if (offset < 0) handleNext();
-        else handlePrev();
-        setDragOffset({ x: 0, y: 0 });
-        setGestureAxis(null);
-      }
-    } else if (gestureAxis === 'vertical' && isFlipped) {
-      setDragOffset({ x: 0, y: base.y + dy * 0.85 });
-    }
+    if (gestureRef.current.activePointerId === null) return;
+    dispatch({ type: 'move', pointerId: e.pointerId, x: e.clientX, y: e.clientY, time: e.timeStamp });
   };
 
   const handlePointerUp = (e: React.PointerEvent) => {
-    try {
-      e.currentTarget.releasePointerCapture(e.pointerId);
-    } catch {
-    }
-
-    const velocity = sampleVelocity();
-    const flicked = velocity > VELOCITY_THRESHOLD;
-
-    if (committedDuringSwipeRef.current) {
-    } else if (!hasDraggedRef.current) {
-      setIsFlipped((f) => !f);
-    } else if (gestureAxis === 'horizontal') {
-      if (dragOffset.x < 0 && (dragOffset.x < -DISTANCE_THRESHOLD || flicked)) {
-        handleNext();
-      } else if (dragOffset.x > 0 && (dragOffset.x > DISTANCE_THRESHOLD || flicked)) {
-        handlePrev();
-      }
-    } else if (gestureAxis === 'vertical' && isFlipped) {
-      if (dragOffset.y < 0 && (dragOffset.y < -DISTANCE_THRESHOLD || flicked)) {
-        markNeedReview();
-      } else if (dragOffset.y > 0 && (dragOffset.y > DISTANCE_THRESHOLD || flicked)) {
-        markMastered();
-      }
-    }
-
-    committedDuringSwipeRef.current = false;
-    lastSampleRef.current = null;
-    interruptOffsetRef.current = null;
-    setIsDragging(false);
-    setDragOffset({ x: 0, y: 0 });
-    setGestureAxis(null);
-    pointerStartRef.current = null;
-    hasDraggedRef.current = false;
+    dispatch({ type: 'up', pointerId: e.pointerId, x: e.clientX, y: e.clientY, time: e.timeStamp });
   };
 
-  const handlePointerCancel = () => {
-    setIsDragging(false);
-    setDragOffset({ x: 0, y: 0 });
-    setGestureAxis(null);
-    pointerStartRef.current = null;
-    hasDraggedRef.current = false;
-    committedDuringSwipeRef.current = false;
-    lastSampleRef.current = null;
-    interruptOffsetRef.current = null;
+  // The browser took the pointer (vertical pan, pinch, system gesture) or
+  // capture was lost: commit nothing, settle back.
+  const handlePointerCancel = (e: React.PointerEvent) => {
+    dispatch({ type: 'cancel', pointerId: e.pointerId });
+  };
+  const handleLostPointerCapture = (e: React.PointerEvent) => {
+    dispatch({ type: 'lostCapture', pointerId: e.pointerId });
   };
 
   if (isComplete) {
@@ -366,7 +367,7 @@ export const FlashcardView: React.FC<FlashcardViewProps> = ({
   }
 
   return (
-    <div className="max-w-2xl mx-auto space-y-4">
+    <div className="max-w-2xl mx-auto space-y-4" onKeyDown={handleKeyDown}>
       {/* Top Header & Controls */}
       <div className="flex items-center justify-between bg-card p-4 border border-border/80 rounded-2xl shadow-xs">
         <div>
@@ -476,8 +477,8 @@ export const FlashcardView: React.FC<FlashcardViewProps> = ({
             className="absolute top-4 bottom-8 right-0 w-2.5 md:w-3.5 bg-amber-100/80 border border-border rounded-r-xl flex items-center justify-center transition-transform z-0 pointer-events-none"
             style={{
               transform:
-                dragOffset.x < 0
-                  ? `translateX(${Math.min(12, 6 + Math.abs(dragOffset.x) * 0.12)}px)`
+                drag.offset.x < 0
+                  ? `translateX(${Math.min(12, 6 + Math.abs(drag.offset.x) * 0.12)}px)`
                   : 'translateX(6px)',
             }}
             title="Swipe left for next card"
@@ -492,8 +493,8 @@ export const FlashcardView: React.FC<FlashcardViewProps> = ({
             className="absolute top-4 bottom-8 left-0 w-2.5 md:w-3.5 bg-amber-100/80 border border-border rounded-l-xl flex items-center justify-center transition-transform z-0 pointer-events-none"
             style={{
               transform:
-                dragOffset.x > 0
-                  ? `translateX(-${Math.min(12, 6 + dragOffset.x * 0.12)}px)`
+                drag.offset.x > 0
+                  ? `translateX(-${Math.min(12, 6 + drag.offset.x * 0.12)}px)`
                   : 'translateX(-6px)',
             }}
             title="Swipe right for previous card"
@@ -504,28 +505,35 @@ export const FlashcardView: React.FC<FlashcardViewProps> = ({
 
         {/* Active Top Card Container */}
         <div
-          className="relative h-80 md:h-88 w-full perspective-1000 cursor-grab active:cursor-grabbing select-text z-10"
+          ref={cardSurfaceRef}
+          tabIndex={0}
+          role="group"
+          aria-label={`Flashcard ${currentIndex + 1} of ${cards.length}, showing the ${isFlipped ? 'answer' : 'question'}. Space flips; arrow keys move between cards.`}
+          className="relative h-80 md:h-88 w-full perspective-1000 cursor-grab active:cursor-grabbing select-text z-10 rounded-2xl outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
+          style={{
+            // Horizontal swipes are ours; vertical pans and pinches stay with
+            // the browser, which reports them as pointercancel (§6b, A).
+            touchAction: ALLOW_VERTICAL_RATING ? 'pinch-zoom' : 'pan-y pinch-zoom',
+          }}
           onPointerDown={handlePointerDown}
           onPointerMove={handlePointerMove}
           onPointerUp={handlePointerUp}
           onPointerCancel={handlePointerCancel}
+          onLostPointerCapture={handleLostPointerCapture}
           onMouseUp={handleSelection}
         >
           <div
             key={currentIndex}
-            ref={cardSurfaceRef}
-            className="w-full h-full flashcard-reveal"
+            ref={cardMotionRef}
+            className="w-full h-full flashcard-reveal flashcard-motion"
+            data-dragging={drag.dragging ? 'true' : 'false'}
             style={{
               transform:
-                gestureAxis === 'horizontal'
-                  ? `translateX(${dragOffset.x}px) rotate(${dragOffset.x * 0.035}deg)`
-                  : gestureAxis === 'vertical' && isFlipped
-                  ? `translateY(${dragOffset.y}px)`
+                drag.axis === 'horizontal'
+                  ? `translateX(${drag.offset.x}px) rotate(${drag.offset.x * 0.035}deg)`
+                  : drag.axis === 'vertical' && isFlipped
+                  ? `translateY(${drag.offset.y}px)`
                   : undefined,
-              transition: isDragging
-                ? 'none'
-                : 'transform 260ms cubic-bezier(0.34, 1.3, 0.64, 1)',
-              touchAction: 'none',
             }}
           >
             <div
@@ -571,10 +579,10 @@ export const FlashcardView: React.FC<FlashcardViewProps> = ({
               {/* Back Face (Answer) */}
               <div className="card-face flashcard-face flashcard-back absolute inset-0 w-full h-full bg-card text-foreground border border-border/80 rounded-2xl p-6 md:p-8 shadow-xs flex flex-col justify-between rotate-y-180 overflow-hidden">
                 {/* Swipe Up: Rate Hard (Red Tint Preview during drag) */}
-                {isFlipped && gestureAxis === 'vertical' && dragOffset.y < 0 && (
+                {isFlipped && drag.axis === 'vertical' && drag.offset.y < 0 && (
                   <div
                     className="absolute inset-0 bg-rose-500/25 border border-rose-600 rounded-2xl z-20 flex flex-col items-center justify-center pointer-events-none transition-opacity"
-                    style={{ opacity: Math.min(0.92, Math.abs(dragOffset.y) / 80) }}
+                    style={{ opacity: Math.min(0.92, Math.abs(drag.offset.y) / 80) }}
                   >
                     <div className="px-4 py-2 bg-rose-100 text-rose-950 border-2 border-border rounded-xl font-semibold text-xs shadow-sm flex items-center gap-2 transform -translate-y-2">
                       <XCircle className="w-5 h-5 text-rose-700" />
@@ -584,10 +592,10 @@ export const FlashcardView: React.FC<FlashcardViewProps> = ({
                 )}
 
                 {/* Swipe Down: Rate Easy (Green Tint Preview during drag) */}
-                {isFlipped && gestureAxis === 'vertical' && dragOffset.y > 0 && (
+                {isFlipped && drag.axis === 'vertical' && drag.offset.y > 0 && (
                   <div
                     className="absolute inset-0 bg-emerald-500/25 border border-emerald-600 rounded-2xl z-20 flex flex-col items-center justify-center pointer-events-none transition-opacity"
-                    style={{ opacity: Math.min(0.92, dragOffset.y / 80) }}
+                    style={{ opacity: Math.min(0.92, drag.offset.y / 80) }}
                   >
                     <div className="px-4 py-2 bg-emerald-100 text-emerald-950 border-2 border-border rounded-xl font-semibold text-xs shadow-sm flex items-center gap-2 transform translate-y-2">
                       <CheckCircle2 className="w-5 h-5 text-emerald-700" />
@@ -613,7 +621,8 @@ export const FlashcardView: React.FC<FlashcardViewProps> = ({
 
                 <div className="flex items-center justify-between text-[11px] font-medium text-muted-foreground pt-3 border-t border-border">
                   <span className="flex items-center gap-1.5">
-                    <RotateCw className="w-3.5 h-3.5" /> Swipe up for hard, down for easy
+                    <RotateCw className="w-3.5 h-3.5" />{' '}
+                    {ALLOW_VERTICAL_RATING ? 'Swipe up for hard, down for easy' : 'Rate with the buttons below'}
                   </span>
                   <span className="text-amber-600 font-semibold">Highlight text for ተማሪ AI</span>
                 </div>
@@ -670,22 +679,25 @@ export const FlashcardView: React.FC<FlashcardViewProps> = ({
           </Button>
         </div>
 
+        {/* Primary rating controls (§6b): buttons, not a vertical swipe. */}
         <div className="flex items-center gap-2">
           <Button
-            variant="ghost"
+            variant="outline"
             size="sm"
             onClick={markNeedReview}
             title="Mark as Still Learning"
+            className="text-rose-700 dark:text-rose-400 hover:bg-rose-500/10 hover:text-rose-700"
           >
             <XCircle className="size-4" />
             Need Practice
           </Button>
 
           <Button
-            variant="ghost"
+            variant="outline"
             size="sm"
             onClick={markMastered}
             title="Mark as Mastered"
+            className="text-emerald-700 dark:text-emerald-400 hover:bg-emerald-500/10 hover:text-emerald-700"
           >
             <CheckCircle2 className="size-4" />
             Mastered!

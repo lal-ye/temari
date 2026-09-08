@@ -5,6 +5,7 @@ import {
   GenerateExamParams,
   GenerateNotesParams,
   GenerateQuizParams,
+  FallbackReason,
   GenerationAdapter,
   GenerationResult,
   GradeExamParams,
@@ -13,8 +14,12 @@ import {
 } from './contracts';
 import { createHttpAdapter } from './http';
 import { createOfflineAdapter } from './offline';
+import { resolveCredentials } from './credentials';
+import { diagnoseConnectionError } from './diagnoseError';
+import { getProviderInfo } from '../../../shared/aiCatalog';
 
 export * from './contracts';
+export type { FailureKind } from './diagnoseError';
 
 /**
  * AI-Generation module
@@ -34,7 +39,10 @@ export * from './contracts';
  *
  * Fallback policy (one place): any server failure — network error, HTTP
  * error, malformed payload — falls back to the offline adapter. User aborts
- * propagate (the learner cancelled; do not substitute content).
+ * propagate (the learner cancelled; do not substitute content). The result
+ * carries a `fallback` reason so the UI can say why the Provider was not
+ * used and offer the matching recovery; auto-fallback is a product policy,
+ * and labelling it honestly is the least it owes the learner.
  *
  * Adapters sit at an internal seam (GenerationAdapter): HTTP for the
  * self-hosted deployment, offline heuristics for static/Netlify deploys and
@@ -49,6 +57,21 @@ export function createAiGenerator(deps: { getSettings: SettingsSource }): AiGene
   const isAbort = (err: unknown): boolean =>
     !!err && typeof err === 'object' && (err as { name?: string }).name === 'AbortError';
 
+  function explainFailure(err: unknown): FallbackReason {
+    const detail = err instanceof Error ? err.message : String(err);
+    const creds = resolveCredentials(deps.getSettings());
+    const isLocal = creds.provider === 'custom';
+    const providerName = getProviderInfo(creds.provider).name;
+    const diagnosis = diagnoseConnectionError({
+      message: detail,
+      provider: providerName,
+      hasKey: Boolean(creds.apiKey),
+      isLocal,
+      baseUrl: creds.baseUrl,
+    });
+    return { kind: diagnosis.kind, title: diagnosis.title, fix: diagnosis.fix, provider: providerName, detail };
+  }
+
   async function withFallback<T>(
     label: string,
     op: () => Promise<T>,
@@ -58,8 +81,9 @@ export function createAiGenerator(deps: { getSettings: SettingsSource }): AiGene
       return { source: 'model', value: await op() };
     } catch (err) {
       if (isAbort(err)) throw err;
-      console.warn(`[ai] ${label} unavailable via Provider, serving offline draft:`, err);
-      return { source: 'offline', value: await fallback() };
+      const reason = explainFailure(err);
+      console.warn(`[ai] ${label} unavailable via Provider (${reason.kind}), serving offline draft:`, err);
+      return { source: 'offline', value: await fallback(), fallback: reason };
     }
   }
 
