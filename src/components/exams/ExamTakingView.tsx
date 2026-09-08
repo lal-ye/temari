@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { CognitiveMixId, ExamQuestion, ExamResult, Article, StoredAttempt } from '../../types';
-import { ai } from '../../services/ai';
+import { ai, type FallbackReason } from '../../services/ai';
+import { isAbortError } from '../../services/ai/isAbortError';
 import { COGNITIVE_MIXES } from '../../services/examBlueprint';
 import { BloomBadge } from '../ui/BloomBadge';
 import {
@@ -12,6 +13,8 @@ import {
   Loader2,
 } from 'lucide-react';
 import { GenerationProgress } from '../ui/GenerationProgress';
+import { confirm } from '../ui/confirm';
+import { registerWorkInProgress } from '../ui/workInProgress';
 import { Button } from '../ui/button';
 import { fireConfetti } from '../../utils/confetti';
 
@@ -22,6 +25,8 @@ interface ExamTakingViewProps {
   questions: ExamQuestion[];
   timeLimitMinutes?: number;
   offlineDraft?: boolean;
+  /** Why the Provider was not used, when `offlineDraft` is set. */
+  offlineReason?: FallbackReason;
   /** Which Bloom distribution this exam was generated with, recorded on the Attempt. */
   cognitiveMix?: CognitiveMixId;
   /** True when questions were written against extracted Knowledge Units. */
@@ -43,6 +48,7 @@ export const ExamTakingView: React.FC<ExamTakingViewProps> = ({
   questions,
   timeLimitMinutes = 20,
   offlineDraft,
+  offlineReason,
   cognitiveMix,
   knowledgeUnitTargeted,
   onCompleted,
@@ -53,29 +59,46 @@ export const ExamTakingView: React.FC<ExamTakingViewProps> = ({
   const [flagged, setFlagged] = useState<boolean[]>(() => new Array(questions.length).fill(false));
   const [timeLeft, setTimeLeft] = useState<number>(timeLimitMinutes * 60);
   const [isGrading, setIsGrading] = useState(false);
-  const timerRef = useRef<any>(null);
-  // Guards so an exam is only ever submitted once — including when the
-  // countdown expires while the user has unanswered questions.
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  /**
+   * The one and only "already submitted" latch. `handleSubmitExam` owns it;
+   * the countdown and the Submit button both go through that function.
+   *
+   * There used to be a second copy of this guard in the countdown path,
+   * which set the latch *before* calling `handleSubmitExam` — whose first
+   * line then saw the latch and returned. Time expiry submitted nothing,
+   * and every manual Submit afterwards was swallowed too: the learner sat
+   * on a 00:00 exam with a button that did nothing.
+   */
   const submittedRef = useRef(false);
   const submitRef = useRef<() => void>(() => {});
+  /** Grading in flight; aborted on unmount so a stale result never records. */
+  const gradingRef = useRef<AbortController | null>(null);
 
   const currentQ = questions[currentIndex];
 
   // Keep the latest submit handler (fresh answers) available to the countdown.
   useEffect(() => {
     submitRef.current = () => {
-      if (submittedRef.current || isGrading) return;
-      submittedRef.current = true;
       void handleSubmitExam();
     };
   });
+
+  useEffect(() => () => gradingRef.current?.abort(), []);
+
+  // While the exam is live, hub navigation asks before unmounting it and the
+  // browser asks before unloading the tab. Grading counts too: the answers
+  // are in flight and a hub switch would drop the result.
+  useEffect(() => registerWorkInProgress('exam', 'your exam'), []);
 
   useEffect(() => {
     timerRef.current = setInterval(() => {
       setTimeLeft((prev) => (prev > 0 ? prev - 1 : prev));
     }, 1000);
 
-    return () => clearInterval(timerRef.current);
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current);
+    };
   }, []);
 
   // When time expires, submit with the answers the student actually gave.
@@ -98,16 +121,21 @@ export const ExamTakingView: React.FC<ExamTakingViewProps> = ({
   };
 
   const handleSubmitExam = async () => {
-    if (submittedRef.current || isGrading) return;
+    if (submittedRef.current) return;
     submittedRef.current = true;
-    clearInterval(timerRef.current);
+    if (timerRef.current) clearInterval(timerRef.current);
     setIsGrading(true);
+
+    const controller = new AbortController();
+    gradingRef.current = controller;
 
     try {
       const { source: gradeSource, value: grading } = await ai.gradeExam({
         exam: questions,
         userAnswers: answers,
+        signal: controller.signal,
       });
+      if (controller.signal.aborted) return;
 
       const correctCount = grading.results.filter((r) => r.isCorrect).length;
       const attempt: Omit<StoredAttempt, 'id' | 'date'> = {
@@ -134,8 +162,10 @@ export const ExamTakingView: React.FC<ExamTakingViewProps> = ({
 
       onCompleted(attempt);
     } catch (err) {
+      // Unmounted mid-grade (hub switch, Subject switch): nothing to record.
+      if (controller.signal.aborted || isAbortError(err)) return;
       console.error('Grading error:', err);
-      // Fallback local grading
+      // Last-resort local grading, for when even the offline adapter threw.
       const results: ExamResult[] = questions.map((q, idx) => ({
         question: q.question,
         type: q.type,
@@ -158,10 +188,12 @@ export const ExamTakingView: React.FC<ExamTakingViewProps> = ({
         subjectName,
         name: examTitle,
         type: 'Exam',
+        gradedOffline: true,
+        timeSpentSeconds: timeLimitMinutes * 60 - timeLeft,
         overallScore: score,
         totalQuestions: questions.length,
         correctQuestions: correctCount,
-        topicsToReview: ['Key Principles Review'],
+        topicsToReview: Array.from(new Set(results.filter((r) => !r.isCorrect).map((r) => r.topic))),
         examQuestions: questions,
         examResults: results,
         cognitiveMix,
@@ -170,7 +202,8 @@ export const ExamTakingView: React.FC<ExamTakingViewProps> = ({
 
       onCompleted(attempt);
     } finally {
-      setIsGrading(false);
+      if (gradingRef.current === controller) gradingRef.current = null;
+      if (!controller.signal.aborted) setIsGrading(false);
     }
   };
 
@@ -208,7 +241,9 @@ export const ExamTakingView: React.FC<ExamTakingViewProps> = ({
             </span>
             {offlineDraft && (
               <span
-                title="Offline drafts are built by extracting sentences, which cannot produce analysis or synthesis questions. Every item here tests recall."
+                title={`${
+                  offlineReason ? `${offlineReason.provider}: ${offlineReason.title}. ` : ''
+                }Offline drafts are built by extracting sentences, which cannot produce analysis or synthesis questions. Every item here tests recall.`}
                 className="px-2 py-0.5 bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/20 rounded text-[10px] font-semibold uppercase tracking-wider"
               >
                 Offline draft · recall only
@@ -245,10 +280,37 @@ export const ExamTakingView: React.FC<ExamTakingViewProps> = ({
           </div>
 
           <Button
-            onClick={() => {
-              if (confirm('Submit exam now and generate your AI score breakdown?')) {
-                handleSubmitExam();
-              }
+            variant="outline"
+            onClick={async () => {
+              const ok = await confirm({
+                title: 'Leave this exam?',
+                body: 'Your answers are discarded and nothing is recorded. The questions stay on the original Attempt, so you can retake it later.',
+                confirmLabel: 'Leave exam',
+                cancelLabel: 'Keep going',
+                danger: true,
+              });
+              if (ok) onCancel();
+            }}
+          >
+            Leave
+          </Button>
+
+          <Button
+            onClick={async () => {
+              const answered = answers.filter((a) => a && a.trim()).length;
+              const unanswered = questions.length - answered;
+              const ok = await confirm({
+                title: 'Submit the Exam?',
+                body:
+                  unanswered > 0
+                    ? `${unanswered} of ${questions.length} questions are unanswered and will be marked wrong. Your answers are graded and recorded as an Attempt.`
+                    : 'Your answers are graded and recorded as an Attempt. You cannot return to the questions afterwards.',
+                confirmLabel: 'Submit Exam',
+                // Submitting is what the learner just asked for; Enter should
+                // do that, not land on the dialog's Close button.
+                initialFocus: 'confirm',
+              });
+              if (ok) handleSubmitExam();
             }}
           >
             <CheckCircle2 className="size-4" />

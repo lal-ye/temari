@@ -9,6 +9,7 @@ import {
   escalatedLevel,
 } from '../../utils/analytics';
 import { BloomBadge } from '../ui/BloomBadge';
+import { confirm } from '../ui/confirm';
 import { ExamResultsView } from '../exams/ExamResultsView';
 import {
   TrendingUp,
@@ -73,11 +74,15 @@ export const AnalyticsView: React.FC = () => {
   const reviewQueue = useMemo(() => computeReviewQueue(filteredAttempts), [filteredAttempts]);
   const dueNow = useMemo(() => dueForReview(reviewQueue), [reviewQueue]);
 
-  const handleDeleteAttempt = (id: string, e: React.MouseEvent) => {
+  const handleDeleteAttempt = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    if (confirm('Delete this attempt record?')) {
-      deleteAttempt(id);
-    }
+    const ok = await confirm({
+      title: 'Delete this Attempt?',
+      body: 'The graded record is removed from your history and from these charts. This cannot be undone.',
+      confirmLabel: 'Delete',
+      danger: true,
+    });
+    if (ok) deleteAttempt(id);
   };
 
   if (selectedAttempt) {

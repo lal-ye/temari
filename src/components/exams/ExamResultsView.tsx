@@ -166,11 +166,17 @@ export const ExamResultsView: React.FC<ExamResultsViewProps> = ({ attempt, onRet
                 </div>
               ))}
             </div>
-          ) : (
+          ) : attempt.correctQuestions >= attempt.totalQuestions ? (
             <div className="p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-xl text-xs font-medium text-emerald-700 dark:text-emerald-400 flex items-center gap-2.5">
               <CheckCircle2 className="w-5 h-5 shrink-0" />
-              <span>Flawless performance! No major concept gaps detected.</span>
+              <span>Every question correct. No concept gaps detected in this sitting.</span>
             </div>
+          ) : (
+            // An empty list is not a clean bill of health: older Attempts and
+            // some grades carry no topic list even with wrong answers.
+            <p className="text-xs font-medium text-muted-foreground">
+              No topic list was recorded for this Attempt. The question breakdown below shows what was missed.
+            </p>
           )}
         </div>
 

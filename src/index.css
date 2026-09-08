@@ -383,6 +383,45 @@ button:disabled:active {
   animation: pulse-ring-expand 300ms cubic-bezier(0, 0, 0.2, 1) forwards;
 }
 
+/* Touch-content proxy for the long-press explainer: the recognised term is
+   under the finger, so it is repeated in a chip above the contact point, and
+   its real text range is highlighted. Both are fixed-position and inert. */
+.term-proxy-chip {
+  position: fixed;
+  transform: translate(-50%, calc(-100% - 28px));
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  max-width: min(70vw, 20rem);
+  padding: 0.375rem 0.75rem;
+  border-radius: 0.75rem;
+  background: oklch(0.21 0.006 285.885);
+  color: oklch(0.985 0 0);
+  border: 1px solid oklch(0.37 0.013 285.805);
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.25);
+  font-size: 0.9375rem;
+  line-height: 1.25;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  pointer-events: none;
+  z-index: 9999;
+  animation: term-proxy-in var(--dur-micro) var(--ease-out) both;
+}
+@keyframes term-proxy-in {
+  from { opacity: 0; transform: translate(-50%, calc(-100% - 20px)) scale(0.96); }
+  to { opacity: 1; transform: translate(-50%, calc(-100% - 28px)) scale(1); }
+}
+.term-range-highlight {
+  position: fixed;
+  border-radius: 0.2rem;
+  background: rgba(250, 204, 21, 0.35);
+  box-shadow: 0 0 0 2px rgba(234, 179, 8, 0.55);
+  pointer-events: none;
+  z-index: 9998;
+}
+
 /* Callout Styling */
 .callout-note {
   border-left: 4px solid #3B82F6;
@@ -635,6 +674,17 @@ button:disabled:active {
   animation: flashcard-reveal 240ms cubic-bezier(0, 0, 0.2, 1) both;
 }
 
+/* Flashcard drag/settle. While a pointer owns the card the transform tracks
+   the finger with no transition; on release it springs back (or on to the
+   next card). The settle is interruptible: pointerdown reads the computed
+   transform mid-transition and adopts it (flashcardGesture.ts). */
+.flashcard-motion {
+  transition: transform var(--dur-panel) var(--ease-spring);
+}
+.flashcard-motion[data-dragging="true"] {
+  transition: none;
+}
+
 /* Reduced Motion — Non-Negotiable Accessibility */
 @media (prefers-reduced-motion: reduce) {
   ::view-transition-group(*),
@@ -653,6 +703,14 @@ button:disabled:active {
   .generation-stage-pulse,
   .skeleton-shimmer,
   .toast-row {
+    animation: none !important;
+  }
+
+  /* Dragged card still follows the finger; it just snaps rather than springs. */
+  .flashcard-motion {
+    transition: none !important;
+  }
+  .term-proxy-chip {
     animation: none !important;
   }
 
@@ -795,6 +853,9 @@ button:disabled:active {
   .app-hub-list,
   .notes-hub-header,
   .notes-list-col,
+  .pulse-ring-indicator,
+  .term-proxy-chip,
+  .term-range-highlight,
   nav[aria-label="Study hub"] {
     display: none !important;
   }

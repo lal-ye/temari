@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Sparkles, ExternalLink, BookOpen } from 'lucide-react';
-import { ai } from '../../services/ai';
+import { ai, type FallbackReason } from '../../services/ai';
+import { isAbortError } from '../../services/ai/isAbortError';
 import { Article } from '../../types';
-import { Modal, type MorphOrigin } from '../ui/Modal';
+import { Modal, ModalCloseButton, type MorphOrigin } from '../ui/Modal';
 import { GenerationProgress } from '../ui/GenerationProgress';
 import { OfflineBanner } from './OfflineBanner';
 import { Button } from '../ui/button';
@@ -21,35 +22,46 @@ export const ExplainTermModal: React.FC<ExplainTermModalProps> = ({ term, contex
   const [links, setLinks] = useState<Article[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [offline, setOffline] = useState(false);
+  const [offlineReason, setOfflineReason] = useState<FallbackReason | undefined>(undefined);
+  /** Bumps to re-run the request after a "Retry with the Provider". */
+  const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
     if (!term) return;
 
-    let isMounted = true;
+    // Closing the explainer cancels its request, rather than merely ignoring
+    // the answer when it arrives. The AI module propagates AbortError instead
+    // of substituting an offline draft (aiGenerator.test.ts), and the
+    // transport forwards the signal to fetch. This stops the client waiting;
+    // it does not guarantee the upstream Provider stops computing.
+    const controller = new AbortController();
     setLoading(true);
     setError(null);
     setOffline(false);
+    setOfflineReason(undefined);
+    setExplanation('');
+    setLinks([]);
 
-    ai.explainTerm({ term, context })
-      .then(({ source, value }) => {
-        if (isMounted) {
-          setExplanation(value.explanation);
-          setLinks(value.relatedLinks || []);
-          setOffline(source === 'offline');
-          setLoading(false);
-        }
+    ai.explainTerm({ term, context, signal: controller.signal })
+      .then(({ source, value, fallback }) => {
+        if (controller.signal.aborted) return;
+        setExplanation(value.explanation);
+        setLinks(value.relatedLinks || []);
+        setOffline(source === 'offline');
+        setOfflineReason(fallback);
+        setLoading(false);
       })
-      .catch((err) => {
-        if (isMounted) {
-          setError(err.message || 'Failed to explain term');
-          setLoading(false);
-        }
+      .catch((err: unknown) => {
+        // Cancellation is not a failure; never paint it as one.
+        if (controller.signal.aborted || isAbortError(err)) return;
+        setError(err instanceof Error && err.message ? err.message : 'Failed to explain term');
+        setLoading(false);
       });
 
     return () => {
-      isMounted = false;
+      controller.abort();
     };
-  }, [term, context]);
+  }, [term, context, attempt]);
 
   if (!term) return null;
 
@@ -88,7 +100,11 @@ export const ExplainTermModal: React.FC<ExplainTermModalProps> = ({ term, contex
             {/* Offline output must be identifiable, not just implied by the
                 subtitle (CONTEXT.md: Offline generation). */}
             {offline && (
-              <OfflineBanner label="Offline draft. No AI Provider was reachable, so this explanation was assembled locally. Reconnect and regenerate for a full AI explanation." />
+              <OfflineBanner
+                what="this explanation"
+                fallback={offlineReason}
+                onRetry={() => setAttempt((n) => n + 1)}
+              />
             )}
             <div className="bg-muted/50 border border-border rounded-xl p-4 space-y-2">
               <p className="whitespace-pre-line text-sm text-foreground/90 leading-relaxed">{explanation}</p>
@@ -125,7 +141,7 @@ export const ExplainTermModal: React.FC<ExplainTermModalProps> = ({ term, contex
         )}
 
         <div className="pt-3.5 border-t border-border flex justify-end">
-          <Button onClick={onClose}>Done</Button>
+          <ModalCloseButton variant="default">Done</ModalCloseButton>
         </div>
       </div>
     </Modal>

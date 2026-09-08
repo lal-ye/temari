@@ -81,6 +81,83 @@ describe('AiGenerator', () => {
     expect(quiz.value[0].question).toContain('what is the primary mechanism');
   });
 
+  describe('fallback reason (provenance ≠ reason)', () => {
+    function fetchFail(status: number, error: string) {
+      return vi.fn().mockResolvedValue({
+        ok: false,
+        status,
+        text: async () => JSON.stringify({ error }),
+        json: async () => ({ error }),
+      });
+    }
+
+    it('a rejected key is reported as bad-key, naming the Provider', async () => {
+      vi.stubGlobal('fetch', fetchFail(401, 'Incorrect API key provided'));
+
+      const result = await makeGenerator().generateNotes({ material });
+
+      expect(result.source).toBe('offline');
+      expect(result.fallback?.kind).toBe('bad-key');
+      expect(result.fallback?.provider).toBe('OpenAI');
+      expect(result.fallback?.detail).toBe('Incorrect API key provided');
+    });
+
+    it('a rate limit is reported as rate-limited', async () => {
+      vi.stubGlobal('fetch', fetchFail(429, 'Rate limit reached for requests'));
+
+      const result = await makeGenerator().generateQuiz({ material, quizLength: 3, difficulty: 'Easy' });
+
+      expect(result.fallback?.kind).toBe('rate-limited');
+    });
+
+    it('a browser fetch TypeError is reported as no-server (Temari server unreachable)', async () => {
+      vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('Failed to fetch')));
+
+      const result = await makeGenerator().explainTerm({ term: 'Osmosis' });
+
+      expect(result.source).toBe('offline');
+      expect(result.fallback?.kind).toBe('no-server');
+    });
+
+    it('an unknown model is reported as unknown-model', async () => {
+      vi.stubGlobal('fetch', fetchFail(404, 'The model `gpt-9` does not exist'));
+
+      const result = await makeGenerator().generateExam({ material });
+
+      expect(result.fallback?.kind).toBe('unknown-model');
+    });
+
+    it('a missing key on a cloud Provider is reported as missing-key', async () => {
+      vi.stubGlobal('fetch', fetchFail(401, 'API key missing'));
+      const noKey = createAiGenerator({
+        getSettings: () => ({ selectedProvider: 'openai' as const, selectedModel: 'gpt-4o-mini', providerKeys: {} }),
+      });
+
+      const result = await noKey.generateNotes({ material });
+
+      expect(result.fallback?.kind).toBe('missing-key');
+    });
+
+    it('a model result carries no fallback', async () => {
+      vi.stubGlobal('fetch', fetchOk({ notes: '# Real' }));
+
+      const result = await makeGenerator().generateNotes({ material });
+
+      expect(result.source).toBe('model');
+      expect(result.fallback).toBeUndefined();
+    });
+
+    it('the signal reaches fetch', async () => {
+      const fetchMock = fetchOk({ notes: '# Real' });
+      vi.stubGlobal('fetch', fetchMock);
+      const controller = new AbortController();
+
+      await makeGenerator().generateNotes({ material, signal: controller.signal });
+
+      expect(fetchMock.mock.calls[0][1].signal).toBe(controller.signal);
+    });
+  });
+
   it('propagates user aborts instead of substituting offline content', async () => {
     const abortError = Object.assign(new Error('The operation was aborted'), { name: 'AbortError' });
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(abortError));

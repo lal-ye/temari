@@ -1,11 +1,13 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Flashcard } from '../../types';
-import { ai } from '../../services/ai';
+import { ai, type FallbackReason } from '../../services/ai';
+import { isAbortError } from '../../services/ai/isAbortError';
 import { OfflineBanner } from '../tools/OfflineBanner';
 import { studyStore } from '../../hooks/useStudyStore';
 import { useActiveSubject, useNotes, useQuizzes } from '../../hooks/useStudyStore';
 import { FlashcardView } from './FlashcardView';
-import { Modal, type MorphOrigin } from '../ui/Modal';
+import { Modal, ModalCloseButton, type MorphOrigin } from '../ui/Modal';
+import { confirm } from '../ui/confirm';
 import { GenerationProgress } from '../ui/GenerationProgress';
 import { EmptyState } from '../ui/EmptyState';
 import { SourceMaterialSelector } from '../ui/SourceMaterialSelector';
@@ -46,7 +48,12 @@ export const QuizzesManager: React.FC<QuizzesManagerProps> = ({ onHighlightTerm 
   const [selectedNoteId, setSelectedNoteId] = useState<string>('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [generatedOffline, setGeneratedOffline] = useState(false);
+  /** Why the last generation was served offline (undefined when it was not). */
+  const [offlineReason, setOfflineReason] = useState<FallbackReason | null | undefined>(undefined);
+  const generatedOffline = offlineReason !== undefined;
+  /** In-flight generation; Cancel aborts it (stop waiting, no error). */
+  const generationRef = useRef<AbortController | null>(null);
+  useEffect(() => () => generationRef.current?.abort(), []);
 
   // Notes from useNotes() are already scoped to the active subject.
   const subjectNotes = notes;
@@ -77,13 +84,19 @@ export const QuizzesManager: React.FC<QuizzesManagerProps> = ({ onHighlightTerm 
     setIsGenerating(true);
     setError(null);
 
+    generationRef.current?.abort();
+    const controller = new AbortController();
+    generationRef.current = controller;
+
     try {
-      const { source: quizSource, value: flashcards } = await ai.generateQuiz({
+      const { source: quizSource, value: flashcards, fallback } = await ai.generateQuiz({
         material: textToUse,
         quizLength,
         difficulty,
+        signal: controller.signal,
       });
-      setGeneratedOffline(quizSource === 'offline');
+      if (controller.signal.aborted) return;
+      setOfflineReason(quizSource === 'offline' ? fallback ?? null : undefined);
 
       const newQuiz = studyStore.addQuiz({
         name: quizName.trim() || `${activeSubject.name} Flashcard Drill`,
@@ -98,18 +111,24 @@ export const QuizzesManager: React.FC<QuizzesManagerProps> = ({ onHighlightTerm 
       // Reset form
       setQuizName('');
       setCustomMaterial('');
-    } catch (err: any) {
-      setError(err.message || 'Failed to generate quiz. Please try again.');
+    } catch (err: unknown) {
+      if (controller.signal.aborted || isAbortError(err)) return;
+      setError(err instanceof Error && err.message ? err.message : 'Failed to generate quiz. Please try again.');
     } finally {
-      setIsGenerating(false);
+      if (generationRef.current === controller) generationRef.current = null;
+      if (!controller.signal.aborted) setIsGenerating(false);
     }
   };
 
-  const handleDeleteQuiz = (id: string, e: React.MouseEvent) => {
+  const handleDeleteQuiz = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    if (confirm('Delete this flashcard quiz?')) {
-      studyStore.deleteQuiz(id);
-    }
+    const ok = await confirm({
+      title: 'Delete quiz?',
+      body: 'This permanently removes the quiz and its flashcards. Past Attempts stay in your history.',
+      confirmLabel: 'Delete',
+      danger: true,
+    });
+    if (ok) studyStore.deleteQuiz(id);
   };
 
   const handleFinishDrill = (score: number, masteredCount: number) => {
@@ -185,7 +204,14 @@ export const QuizzesManager: React.FC<QuizzesManagerProps> = ({ onHighlightTerm 
       </div>
 
       {generatedOffline && (
-        <OfflineBanner label="Offline draft. No AI Provider was reachable, so these flashcards were assembled locally. Reconnect and regenerate for full AI flashcards." />
+        <OfflineBanner
+          what="these flashcards"
+          fallback={offlineReason ?? undefined}
+          onRetry={() => {
+            generateOrigin.capture(null);
+            setShowGenerateModal(true);
+          }}
+        />
       )}
 
       {/* Quizzes Grid */}
@@ -294,7 +320,15 @@ export const QuizzesManager: React.FC<QuizzesManagerProps> = ({ onHighlightTerm 
 
         <form onSubmit={handleGenerateQuiz} className="space-y-4">
           {isGenerating && (
-            <GenerationProgress kind="quiz" detail={`Subject: ${activeSubject.name}`} />
+            <GenerationProgress
+              kind="quiz"
+              detail={`Subject: ${activeSubject.name}`}
+              onCancel={() => {
+                generationRef.current?.abort();
+                generationRef.current = null;
+                setIsGenerating(false);
+              }}
+            />
           )}
 
               <div>
@@ -360,14 +394,15 @@ export const QuizzesManager: React.FC<QuizzesManagerProps> = ({ onHighlightTerm 
               />
 
               <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-border">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setShowGenerateModal(false)}
-                  disabled={isGenerating}
+                <ModalCloseButton
+                  onBeforeClose={() => {
+                    generationRef.current?.abort();
+                    generationRef.current = null;
+                    setIsGenerating(false);
+                  }}
                 >
-                  Cancel
-                </Button>
+                  {isGenerating ? 'Stop and close' : 'Cancel'}
+                </ModalCloseButton>
 
                 <Button
                   type="submit"

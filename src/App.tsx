@@ -20,7 +20,7 @@ import { SkeletonAnalytics } from './components/ui/Skeleton';
 import { CommandPalette, type Command } from './components/ui/CommandPalette';
 import { Kbd } from './components/ui/kbd';
 import { ToastRegion } from './components/ui/toast';
-import { ConfirmRegion } from './components/ui/confirm';
+import { ConfirmRegion, confirm } from './components/ui/confirm';
 import { ShortcutsOverlay } from './components/ui/ShortcutsOverlay';
 import { SubjectSwitcher } from './components/nav/SubjectSwitcher';
 import { StreakPill } from './components/nav/StreakPill';
@@ -33,7 +33,10 @@ import { PomodoroTimer } from './components/tools/PomodoroTimer';
 import { ExplainTermModal } from './components/tools/ExplainTermModal';
 import { ApiKeySettingsModal } from './components/tools/ApiKeySettingsModal';
 import { ModelPicker } from './components/tools/ModelPicker';
-import { Modal, type MorphOrigin } from './components/ui/Modal';
+import { Modal, ModalCloseButton, type MorphOrigin } from './components/ui/Modal';
+import { isAnyModalOpen, registerOpenModal } from './components/ui/modalRegistry';
+import { getWorkInProgress } from './components/ui/workInProgress';
+import { onProviderSettingsRequest } from './components/tools/providerSettingsRequest';
 import { useModalOrigin } from './components/ui/useModalOrigin';
 import { Button } from './components/ui/button';
 import {
@@ -137,8 +140,21 @@ export default function App() {
    * instant — keys 1-5 are used many times a session and an animation the
    * learner did not ask to watch is pure latency.
    */
-  const handleTabChange = (tab: TabType, origin: InteractionOrigin = 'pointer') => {
+  const handleTabChange = async (tab: TabType, origin: InteractionOrigin = 'pointer') => {
     if (tab === activeTab) return;
+    // Hubs are unmounted on switch. If one of them holds time-bound work (a
+    // timed exam), leaving is a destructive act and the learner decides.
+    const live = getWorkInProgress();
+    if (live) {
+      const ok = await confirm({
+        title: `Leave ${live.label}?`,
+        body: 'Switching hubs discards your answers; nothing is recorded. Submit first if you want a score.',
+        confirmLabel: 'Leave anyway',
+        cancelLabel: 'Stay',
+        danger: true,
+      });
+      if (!ok) return;
+    }
     navAnimateRef.current = origin === 'pointer';
     runViewTransition(() => setActiveTab(tab), { origin });
   };
@@ -177,7 +193,7 @@ export default function App() {
       group: 'Go to',
       icon: item.icon,
       hint: String(index + 1),
-      run: () => handleTabChange(item.id as TabType, 'keyboard'),
+      run: () => void handleTabChange(item.id as TabType, 'keyboard'),
     })),
     {
       id: 'new-subject',
@@ -214,7 +230,26 @@ export default function App() {
     },
   ];
 
-  // Desktop keyboard navigation (1-5 for study hubs, Escape to close drawer/modals)
+  // The command palette is not a `Modal`, so it registers itself: while it is
+  // open, the Drill and the hub shortcuts must stand down like for any dialog.
+  useEffect(() => {
+    if (!paletteOpen) return;
+    return registerOpenModal('command-palette');
+  }, [paletteOpen]);
+
+  // Offline banners deep in the hubs can send the learner straight to the
+  // Provider settings when the failure was configuration, not connectivity.
+  useEffect(
+    () =>
+      onProviderSettingsRequest(() => {
+        modalOrigin.capture(null);
+        setOpenModal('api-key');
+      }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    []
+  );
+
+  // Desktop keyboard navigation (1-5 for study hubs, "?" for the reference).
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       // Cmd/Ctrl+K works from anywhere, including inside a text field: it is
@@ -225,8 +260,13 @@ export default function App() {
         return;
       }
 
-      // The palette owns the keyboard while it is open.
-      if (paletteOpen) return;
+      // Whoever has a dialog open owns the keyboard — every `Modal` in the
+      // app (including the ones hubs render for generation and editing), the
+      // palette, `confirm()`, and the shortcuts overlay all register in the
+      // modal registry. Each closes itself on Escape; nothing here should
+      // second-guess that, and hub shortcuts must not fire behind a dialog
+      // (pressing "2" used to unmount a Generate modal mid-generation).
+      if (isAnyModalOpen()) return;
 
       const target = e.target as HTMLElement | null;
       if (
@@ -239,18 +279,11 @@ export default function App() {
         return;
       }
 
-      // The shortcuts overlay owns the keyboard while open; Escape closes it.
-      if (shortcutsOpen) {
-        if (e.key === 'Escape') setShortcutsOpen(false);
-        return;
-      }
-
-      if (openModal || confirmDeleteSubjectId || explainTermData) {
-        if (e.key === 'Escape') {
-          setOpenModal(null);
-          setConfirmDeleteSubjectId(null);
-          setExplainTermData(null);
-        }
+      // The focus timer is a floating panel, not a dialog: it does not own
+      // the keyboard (hub shortcuts keep working while a timer runs), but
+      // Escape still puts it away.
+      if (e.key === 'Escape' && openModal === 'pomodoro') {
+        setOpenModal(null);
         return;
       }
 
@@ -272,13 +305,13 @@ export default function App() {
       const shortcutTab = shortcutTabs[e.key];
       if (shortcutTab) {
         // Keyboard path: no view transition, no indicator travel.
-        handleTabChange(shortcutTab, 'keyboard');
+        void handleTabChange(shortcutTab, 'keyboard');
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [openModal, confirmDeleteSubjectId, explainTermData, activeTab, paletteOpen, shortcutsOpen]);
+  }, [activeTab, openModal]);
 
   return (
     <div className="app-layout h-screen w-full bg-background text-foreground font-sans overflow-hidden">
@@ -320,7 +353,7 @@ export default function App() {
                 items={navItems}
                 activeId={activeTab}
                 animate={navAnimateRef.current}
-                onSelect={(id) => handleTabChange(id as TabType, 'pointer')}
+                onSelect={(id) => void handleTabChange(id as TabType, 'pointer')}
               />
             </div>
           </div>
@@ -398,7 +431,7 @@ export default function App() {
         <HubBottomBar
           items={navItems}
           activeId={activeTab}
-          onSelect={(id) => handleTabChange(id as TabType, 'pointer')}
+          onSelect={(id) => void handleTabChange(id as TabType, 'pointer')}
         />
       </div>
 
@@ -480,9 +513,7 @@ export default function App() {
           </div>
 
           <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-border">
-            <Button type="button" variant="outline" onClick={() => setOpenModal(null)}>
-              Cancel
-            </Button>
+            <ModalCloseButton>Cancel</ModalCloseButton>
             <Button type="submit">Create Subject</Button>
           </div>
         </form>
@@ -543,9 +574,7 @@ export default function App() {
           and all of its Notes, Quizzes, Exams and Study Tasks?
         </p>
         <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-border">
-          <Button type="button" variant="outline" onClick={() => setConfirmDeleteSubjectId(null)}>
-            Cancel
-          </Button>
+          <ModalCloseButton>Cancel</ModalCloseButton>
           <Button
             type="button"
             variant="destructive"

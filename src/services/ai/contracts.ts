@@ -9,6 +9,7 @@ import {
   UserSettings,
 } from '../../types';
 import { AIProviderId } from '../../../shared/aiCatalog';
+import type { FailureKind } from './diagnoseError';
 
 /**
  * Public contracts of the AI-Generation module (src/services/ai).
@@ -93,9 +94,30 @@ export interface ExplainTermResult {
 /** Which adapter served a generation: the configured Provider, or offline. */
 export type GenerationSource = 'model' | 'offline';
 
+/**
+ * Why an offline draft was served instead of Provider output. Provenance
+ * (`source`) says *what* produced the content; this says *why* the Provider
+ * did not, so the UI can name the right recovery: a rejected key needs the
+ * settings dialog, an unreachable network needs a retry — never the other
+ * way round (docs/ui-plan-truthful-interaction.md §4b).
+ */
+export interface FallbackReason {
+  kind: FailureKind;
+  /** One line, sentence case: what went wrong. */
+  title: string;
+  /** What to do about it. */
+  fix: string;
+  /** Display name of the Provider that failed, e.g. "OpenAI". */
+  provider: string;
+  /** Raw error message, for the console and support. */
+  detail: string;
+}
+
 export interface GenerationResult<T> {
   source: GenerationSource;
   value: T;
+  /** Present only when `source === 'offline'`. */
+  fallback?: FallbackReason;
 }
 
 export interface AiGenerator {

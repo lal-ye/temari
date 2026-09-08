@@ -1,17 +1,22 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { CognitiveMixId, KnowledgeUnit, StoredAttempt, ExamQuestion } from '../../types';
 import {
   buildBloomPlan,
   buildExamBlueprint,
   previouslySeenStems,
+  retakeTimeLimit,
+  shuffleExamOptions,
   COGNITIVE_MIXES,
+  TIME_LIMIT_OPTIONS,
 } from '../../services/examBlueprint';
 import { studyStore } from '../../hooks/useStudyStore';
 import { useActiveSubject, useAttempts, useNotes } from '../../hooks/useStudyStore';
-import { ai } from '../../services/ai';
+import { ai, type FallbackReason } from '../../services/ai';
+import { isAbortError } from '../../services/ai/isAbortError';
 import { ExamTakingView } from './ExamTakingView';
 import { ExamResultsView } from './ExamResultsView';
-import { Modal } from '../ui/Modal';
+import { Modal, ModalCloseButton } from '../ui/Modal';
+import { confirm } from '../ui/confirm';
 import { GenerationProgress } from '../ui/GenerationProgress';
 import { EmptyState } from '../ui/EmptyState';
 import { useModalOrigin } from '../ui/useModalOrigin';
@@ -41,9 +46,14 @@ export const ExamsManager: React.FC = () => {
   const [viewingAttempt, setViewingAttempt] = useState<StoredAttempt | null>(null);
   const [takingExam, setTakingExam] = useState<{
     title: string;
+    /** The Subject the exam belongs to — captured at start, not read live, so
+     *  switching Subjects mid-exam cannot file the Attempt under the wrong one. */
+    subjectId: string;
+    subjectName: string;
     questions: ExamQuestion[];
     timeLimitMinutes: number;
     offlineDraft?: boolean;
+    offlineReason?: FallbackReason;
     cognitiveMix?: CognitiveMixId;
     knowledgeUnitTargeted?: boolean;
   } | null>(null);
@@ -62,6 +72,15 @@ export const ExamsManager: React.FC = () => {
   /** Which half of the two-stage pipeline is in flight, for the progress copy. */
   const [stage, setStage] = useState<'units' | 'questions'>('questions');
   const [error, setError] = useState<string | null>(null);
+  /** In-flight generation (both stages share one signal); Cancel aborts it. */
+  const generationRef = useRef<AbortController | null>(null);
+  useEffect(() => () => generationRef.current?.abort(), []);
+
+  const stopGenerating = () => {
+    generationRef.current?.abort();
+    generationRef.current = null;
+    setIsGenerating(false);
+  };
 
   if (!activeSubject) return null;
 
@@ -96,6 +115,10 @@ export const ExamsManager: React.FC = () => {
     setIsGenerating(true);
     setError(null);
 
+    generationRef.current?.abort();
+    const controller = new AbortController();
+    generationRef.current = controller;
+
     try {
       const plan = buildBloomPlan(questionCount, cognitiveMix);
 
@@ -108,7 +131,9 @@ export const ExamsManager: React.FC = () => {
         const extracted = await ai.extractKnowledgeUnits({
           material: textToUse,
           maxUnits: Math.min(24, Math.max(6, questionCount)),
+          signal: controller.signal,
         });
+        if (controller.signal.aborted) return;
         knowledgeUnits = extracted.value;
       }
 
@@ -118,13 +143,15 @@ export const ExamsManager: React.FC = () => {
       // rather than a memorised answer string.
       const avoidStems = previouslySeenStems(attempts).slice(-40);
 
-      const { source: examSource, value: generatedQuestions } = await ai.generateExam({
+      const { source: examSource, value: generatedQuestions, fallback } = await ai.generateExam({
         material: textToUse,
         numberOfQuestions: questionCount,
         bloomPlan: plan,
         knowledgeUnits: knowledgeUnits.length > 0 ? knowledgeUnits : undefined,
         avoidStems: avoidStems.length > 0 ? avoidStems : undefined,
+        signal: controller.signal,
       });
+      if (controller.signal.aborted) return;
 
       if (generatedQuestions.length === 0) {
         throw new Error('The Provider returned no questions. Try again or shorten the material.');
@@ -142,19 +169,24 @@ export const ExamsManager: React.FC = () => {
       setShowGenerateModal(false);
       setTakingExam({
         title: examTitle.trim() || `${activeSubject.name} Comprehensive Mock Exam`,
+        subjectId: activeSubject.id,
+        subjectName: activeSubject.name,
         questions: blueprint.questions,
         timeLimitMinutes: timeLimit,
         offlineDraft: examSource === 'offline',
+        offlineReason: examSource === 'offline' ? fallback : undefined,
         cognitiveMix,
         knowledgeUnitTargeted: knowledgeUnits.length > 0,
       });
       // Reset form
       setExamTitle('');
       setCustomMaterial('');
-    } catch (err: any) {
-      setError(err.message || 'Failed to generate mock exam. Please try again.');
+    } catch (err: unknown) {
+      if (controller.signal.aborted || isAbortError(err)) return;
+      setError(err instanceof Error && err.message ? err.message : 'Failed to generate mock exam. Please try again.');
     } finally {
-      setIsGenerating(false);
+      if (generationRef.current === controller) generationRef.current = null;
+      if (!controller.signal.aborted) setIsGenerating(false);
     }
   };
 
@@ -166,22 +198,28 @@ export const ExamsManager: React.FC = () => {
     setViewingAttempt(recorded);
   };
 
-  const handleDeleteAttempt = (id: string, e: React.MouseEvent) => {
+  const handleDeleteAttempt = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    if (confirm('Delete this exam attempt record?')) {
-      studyStore.deleteAttempt(id);
-    }
+    const ok = await confirm({
+      title: 'Delete this Attempt?',
+      body: 'The graded record is removed from your history and from Analytics. This cannot be undone.',
+      confirmLabel: 'Delete',
+      danger: true,
+    });
+    if (ok) studyStore.deleteAttempt(id);
   };
 
   if (takingExam) {
     return (
       <ExamTakingView
+        key={takingExam.subjectId + takingExam.title}
         examTitle={takingExam.title}
-        subjectName={activeSubject.name}
-        subjectId={activeSubject.id}
+        subjectName={takingExam.subjectName}
+        subjectId={takingExam.subjectId}
         questions={takingExam.questions}
         timeLimitMinutes={takingExam.timeLimitMinutes}
         offlineDraft={takingExam.offlineDraft}
+        offlineReason={takingExam.offlineReason}
         cognitiveMix={takingExam.cognitiveMix}
         knowledgeUnitTargeted={takingExam.knowledgeUnitTargeted}
         onCompleted={handleExamCompleted}
@@ -191,19 +229,36 @@ export const ExamsManager: React.FC = () => {
   }
 
   if (viewingAttempt) {
+    const retakeable = (viewingAttempt.examQuestions?.length ?? 0) > 0;
     return (
       <ExamResultsView
         attempt={viewingAttempt}
-        onRetake={() => {
-          if (viewingAttempt.examQuestions && viewingAttempt.examQuestions.length > 0) {
-            setViewingAttempt(null);
-            setTakingExam({
-              title: `${viewingAttempt.name} (Retake)`,
-              questions: viewingAttempt.examQuestions,
-              timeLimitMinutes: 15,
-            });
-          }
-        }}
+        // Attempts recorded without their questions (seeded history, or a
+        // pre-export record) have nothing to retake: no button, rather than
+        // one that silently does nothing.
+        onRetake={
+          retakeable
+            ? () => {
+                const questions = viewingAttempt.examQuestions ?? [];
+                setViewingAttempt(null);
+                setTakingExam({
+                  // "(Retake)" once, however many times it is retaken.
+                  title: /\(Retake\)$/.test(viewingAttempt.name)
+                    ? viewingAttempt.name
+                    : `${viewingAttempt.name} (Retake)`,
+                  subjectId: viewingAttempt.subjectId,
+                  subjectName: viewingAttempt.subjectName,
+                  // Same paper, same conditions: the original time limit
+                  // (reconstructed from the sitting when it was not stored),
+                  // the same cognitive mix, the same provenance flags.
+                  timeLimitMinutes: retakeTimeLimit(viewingAttempt),
+                  cognitiveMix: viewingAttempt.cognitiveMix,
+                  knowledgeUnitTargeted: viewingAttempt.knowledgeUnitTargeted,
+                  questions: shuffleExamOptions(questions, Date.now() % 2147483647),
+                });
+              }
+            : undefined
+        }
         onBack={() => setViewingAttempt(null)}
       />
     );
@@ -356,6 +411,7 @@ export const ExamsManager: React.FC = () => {
                   ? `Naming assessable ideas in ${activeSubject.name}`
                   : `Writing ${questionCount} questions for ${activeSubject.name}`
               }
+              onCancel={stopGenerating}
             />
           )}
 
@@ -401,10 +457,11 @@ export const ExamsManager: React.FC = () => {
                     className={fieldClass}
                     disabled={isGenerating}
                   >
-                    <option value={10}>10 Minutes</option>
-                    <option value={15}>15 Minutes</option>
-                    <option value={25}>25 Minutes</option>
-                    <option value={45}>45 Minutes</option>
+                    {TIME_LIMIT_OPTIONS.map((m) => (
+                      <option key={m} value={m}>
+                        {m} Minutes
+                      </option>
+                    ))}
                   </select>
                 </div>
               </div>
@@ -460,14 +517,9 @@ export const ExamsManager: React.FC = () => {
               />
 
               <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-border">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setShowGenerateModal(false)}
-                  disabled={isGenerating}
-                >
-                  Cancel
-                </Button>
+                <ModalCloseButton onBeforeClose={stopGenerating}>
+                  {isGenerating ? 'Stop and close' : 'Cancel'}
+                </ModalCloseButton>
 
                 <Button type="submit" disabled={isGenerating}>
                   {isGenerating ? (

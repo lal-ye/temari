@@ -25,6 +25,14 @@ interface GenerationProgressProps {
   kind: GenerationKind;
   /** Shown under the stages; use it to name the Subject or Material. */
   detail?: string;
+  /**
+   * Stop waiting for this generation. The progress card owns the elapsed
+   * counter, so it is where the learner decides they have waited long enough
+   * (docs/ui-plan-truthful-interaction.md §4a). The label says "stop
+   * waiting" deliberately: the client aborts its request; the server does
+   * not yet cancel the Provider's work upstream.
+   */
+  onCancel?: () => void;
   className?: string;
 }
 
@@ -43,6 +51,7 @@ interface GenerationProgressProps {
 export const GenerationProgress: React.FC<GenerationProgressProps> = ({
   kind,
   detail,
+  onCancel,
   className = '',
 }) => {
   const stages = STAGES[kind];
@@ -105,10 +114,19 @@ export const GenerationProgress: React.FC<GenerationProgressProps> = ({
         })}
       </ol>
 
-      {detail && (
-        <p className="mt-3 pt-2.5 border-t border-border rounded-md text-[11px] font-bold text-foreground">
-          {detail}
-        </p>
+      {(detail || onCancel) && (
+        <div className="mt-3 pt-2.5 border-t border-border flex items-center justify-between gap-3">
+          {detail ? <p className="text-[11px] font-bold text-foreground">{detail}</p> : <span />}
+          {onCancel && (
+            <button
+              type="button"
+              onClick={onCancel}
+              className="text-[11px] font-semibold text-muted-foreground hover:text-foreground underline-offset-2 hover:underline outline-hidden focus-visible:ring-2 focus-visible:ring-ring rounded-sm px-1 shrink-0"
+            >
+              Stop waiting
+            </button>
+          )}
+        </div>
       )}
     </div>
   );

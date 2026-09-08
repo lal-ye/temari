@@ -85,6 +85,11 @@ Swipe ◄ ► to navigate • Swipe ▲ ▼ on back to rate
 Now reads "Swipe sideways to move between cards" and "Swipe up for hard, down
 for easy" — the gesture described in words.
 
+> **Update (2026-09-08):** the vertical rating swipe was retired
+> (`ui-plan-truthful-interaction.md` §6b, option A) so the page can scroll
+> and pinch-zoom with a thumb on the card. The back face now reads "Rate
+> with the buttons below".
+
 ### 6. Generic loading states (fixed)
 
 Spinner-and-grey-box fallbacks replaced with skeletons shaped like the content

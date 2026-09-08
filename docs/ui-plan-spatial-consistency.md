@@ -177,6 +177,16 @@ In `FlashcardView`:
 3. **Interruptible settles.** The snap-back animation must be cancellable by a new
    `pointerdown`; today a fresh gesture during the CSS transition fights it. Track
    settle as a `WAAPI` animation and `.cancel()` it on `pointerdown`.
+   > **Correction (2026-09-08):** shipped as a computed-transform read plus a
+   > CSS transition, and the interruption state is reset in the same handler
+   > that sets it, so the card hard-cuts on re-grab. Multi-pointer ownership
+   > was never implemented. Both were re-specified in
+   > [`ui-plan-truthful-interaction.md` §2](./ui-plan-truthful-interaction.md)
+   > and are now implemented as a pure reducer
+   > (`src/components/quizzes/flashcardGesture.ts`, unit-tested). The settle
+   > remains a CSS transition (`.flashcard-motion`, tokenised); interruption
+   > adopts the computed transform and *keeps* it, which is what item 3 needed.
+   > Vertical rating swipe is off by default (§6b, option A).
 4. Mirror the same rules in the mobile sidebar drawer swipe in `App.tsx`
    (currently `-55px` distance only): add velocity, keep dismissal on release.
 

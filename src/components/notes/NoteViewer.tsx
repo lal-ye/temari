@@ -1,4 +1,4 @@
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
@@ -7,6 +7,7 @@ import rehypeRaw from 'rehype-raw';
 import 'katex/dist/katex.min.css';
 
 import { StoredNote } from '../../types';
+import { takeReturnPoint, useReturnPoint } from '../../services/readingPlace';
 import {
   Copy,
   Check,
@@ -20,10 +21,15 @@ import {
   Info,
   AlertTriangle,
   Lightbulb,
-  CheckCircle2,
+  CornerLeftUp,
+  X,
 } from 'lucide-react';
 import { EditorialDiagram } from '../diagrams/EditorialDiagram';
 import { pointOrigin, type MorphOrigin } from '../ui/Modal';
+import { contextWindow, termAtOffset } from '../../utils/segmentTerm';
+import { useReadingPlace } from './useReadingPlace';
+import { OnThisPage } from './OnThisPage';
+import { figureLanguage, rehypeNoteAnchors } from './rehypeNoteAnchors';
 import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
 import { toast } from '../ui/toast';
@@ -34,71 +40,77 @@ interface NoteViewerProps {
   subjectName?: string;
   onEdit?: () => void;
   onHighlightTerm?: (term: string, context?: string, origin?: MorphOrigin) => void;
-  onRefresh?: () => void | Promise<void>;
+}
+
+/** What the long-press recognised: the term, its context, and where it is on screen. */
+interface RecognisedTerm {
+  term: string;
+  context: string;
+  /** Client rects of the term's text range, for the highlight. */
+  rects: DOMRect[];
 }
 
 /**
- * Extracts a word/term and surrounding sentence context from DOM coordinates
+ * Resolves the word under a screen point to a text range, using
+ * `caretPositionFromPoint` (WebKit's `caretRangeFromPoint` as a fallback)
+ * and the Unicode-aware segmenter in `utils/segmentTerm`. Returns the
+ * term's client rects so the UI can show *which* text was recognised — the
+ * word is under the learner's finger for the whole press, so without this
+ * they are guessing (docs/ui-plan-truthful-interaction.md §3).
  */
-function getWordAtPoint(x: number, y: number): { word: string; context: string } | null {
+function recogniseTermAtPoint(x: number, y: number, within: HTMLElement | null): RecognisedTerm | null {
   if (typeof document === 'undefined') return null;
 
-  let range: Range | null = null;
-  if (document.caretRangeFromPoint) {
-    range = document.caretRangeFromPoint(x, y);
-  } else if ((document as any).caretPositionFromPoint) {
-    const pos = (document as any).caretPositionFromPoint(x, y);
-    if (pos && pos.offsetNode) {
-      range = document.createRange();
-      range.setStart(pos.offsetNode, pos.offset);
-      range.setEnd(pos.offsetNode, pos.offset);
+  let node: Node | null = null;
+  let offset = 0;
+  const doc = document as Document & {
+    caretPositionFromPoint?: (x: number, y: number) => { offsetNode: Node; offset: number } | null;
+    caretRangeFromPoint?: (x: number, y: number) => Range | null;
+  };
+  if (typeof doc.caretPositionFromPoint === 'function') {
+    const pos = doc.caretPositionFromPoint(x, y);
+    if (pos) {
+      node = pos.offsetNode;
+      offset = pos.offset;
+    }
+  } else if (typeof doc.caretRangeFromPoint === 'function') {
+    const r = doc.caretRangeFromPoint(x, y);
+    if (r) {
+      node = r.startContainer;
+      offset = r.startOffset;
     }
   }
 
-  if (range && range.startContainer && range.startContainer.nodeType === Node.TEXT_NODE) {
-    const textNode = range.startContainer;
-    const text = textNode.textContent || '';
-    const offset = range.startOffset;
+  if (!node || node.nodeType !== Node.TEXT_NODE) return null;
+  if (within && !within.contains(node)) return null;
+  // Not inside code or maths: those are not "terms" in the learner's sense.
+  const parentEl = node.parentElement;
+  if (parentEl?.closest('pre, code, .katex, svg')) return null;
 
-    // Word character regex supporting English, digits, and Ge'ez/Amharic Unicode range \u1200-\u137F
-    const isWordChar = (char: string) => /[\w\-\u1200-\u137F]/.test(char);
-    let start = offset;
-    let end = offset;
+  const text = node.textContent ?? '';
+  const found = termAtOffset(text, offset);
+  if (!found) return null;
 
-    while (start > 0 && isWordChar(text.charAt(start - 1))) {
-      start--;
-    }
-    while (end < text.length && isWordChar(text.charAt(end))) {
-      end++;
-    }
-
-    const word = text.slice(start, end).trim();
-    if (word.length >= 2) {
-      const parentNode = textNode.parentElement;
-      const context = parentNode?.textContent?.slice(0, 200) || '';
-      return { word, context };
-    }
+  // The highlight is a bonus; the term is the point. Never let a missing
+  // rect API stop recognition.
+  let rects: DOMRect[] = [];
+  try {
+    const range = document.createRange();
+    range.setStart(node, found.start);
+    range.setEnd(node, found.end);
+    rects = typeof range.getClientRects === 'function' ? Array.from(range.getClientRects()) : [];
+  } catch {
+    rects = [];
   }
 
-  // Fallback: Check if user has an active window selection
-  const sel = window.getSelection();
-  if (sel && sel.toString().trim().length >= 2) {
-    return {
-      word: sel.toString().trim(),
-      context: sel.anchorNode?.parentElement?.textContent?.slice(0, 200) || '',
-    };
-  }
+  // Context: the enclosing block's text, windowed around the term.
+  const block = parentEl?.closest('p, li, td, th, h1, h2, h3, h4, h5, h6, blockquote, dd, dt, figcaption') ?? parentEl;
+  const blockText = block?.textContent ?? text;
+  const idxInBlock = blockText.indexOf(found.term);
+  const context =
+    idxInBlock >= 0 ? contextWindow(blockText, idxInBlock, idxInBlock + found.term.length) : found.context;
 
-  // Fallback: Check element under point
-  const elem = document.elementFromPoint(x, y);
-  if (elem && elem.textContent) {
-    const words = elem.textContent.trim().split(/\s+/);
-    if (words.length > 0 && words[0].length >= 2) {
-      return { word: words[0].slice(0, 32), context: elem.textContent.slice(0, 200) };
-    }
-  }
-
-  return null;
+  return { term: found.term, context, rects };
 }
 
 /**
@@ -203,28 +215,52 @@ export const NoteViewer: React.FC<NoteViewerProps> = ({
   subjectName,
   onEdit,
   onHighlightTerm,
-  onRefresh,
 }) => {
   const [copied, setCopied] = useState(false);
-  const [selectedTerm, setSelectedTerm] = useState<string | null>(null);
-  const [termContext, setTermContext] = useState<string | undefined>(undefined);
+  /**
+   * The candidate term awaiting the learner's Explain. Both paths — mouse
+   * selection and long-press — end here; generation starts only when the
+   * Explain button is pressed. One path, one behaviour.
+   */
+  const [candidate, setCandidate] = useState<{
+    term: string;
+    context: string;
+    /** Screen origin for the explainer's morph (the pressed word or the button). */
+    origin: MorphOrigin | null;
+    /** Highlight rects for a long-pressed term (a mouse selection paints itself). */
+    rects: DOMRect[];
+  } | null>(null);
   const contentRef = useRef<HTMLDivElement>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
 
-  // Gesture: Long-Press Term Explainer States
-  const [pulseRingCoords, setPulseRingCoords] = useState<{ x: number; y: number } | null>(null);
-  const pressTimerRef = useRef<any>(null);
-  const pressStartRef = useRef<{ x: number; y: number } | null>(null);
+  // Long-press (touch): acknowledgment ring at the contact point, plus a chip
+  // above the finger naming the term as it is recognised — the touch-content
+  // proxy. The ring is acknowledgment only; it is gated to touch because a
+  // mouse click already knows where it landed.
+  const [press, setPress] = useState<{ x: number; y: number; ring: boolean } | null>(null);
+  const [preview, setPreview] = useState<RecognisedTerm | null>(null);
+  const pressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pressRef = useRef<{ pointerId: number; x: number; y: number } | null>(null);
 
-  // Gesture: Pull-down Rubber-band Refresh States
-  const [pullY, setPullY] = useState(0);
-  const [isPulling, setIsPulling] = useState(false);
-  const [isRefreshing, setIsRefreshing] = useState(false);
-  const [refreshSuccess, setRefreshSuccess] = useState(false);
-  const pullStartRef = useRef<{ y: number; scrollTop: number } | null>(null);
+  const clearPress = () => {
+    if (pressTimerRef.current) {
+      clearTimeout(pressTimerRef.current);
+      pressTimerRef.current = null;
+    }
+    pressRef.current = null;
+    setPress(null);
+    setPreview(null);
+  };
 
-  // Keep track of diagram figure numbering during markdown render
-  let figureCounter = 0;
+  // Note change or unmount: no stale timer may fire into the next Note.
+  useEffect(() => {
+    setCandidate(null);
+    return clearPress;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [note.id]);
+
+  // Heading ids (`sec-N`) and figure numbers come from `rehypeNoteAnchors`,
+  // which runs once per parse. (A counter here would be captured by the
+  // memoised renderers below and never reset between re-renders.)
 
   // Clean note content for citations and HTML tags
   const processedContent = useMemo(() => {
@@ -233,117 +269,91 @@ export const NoteViewer: React.FC<NoteViewerProps> = ({
     return note.content.replace(/<span class="citation">\[\[(\d+)\]\]<\/span>/g, '<sup>[$1]</sup>');
   }, [note.content]);
 
-  // Handle text highlight for "Explain with AI"
+  /** Mouse path: a text selection proposes itself as the candidate. */
   const handleMouseUp = () => {
     const selection = window.getSelection();
     if (!selection) return;
     const text = selection.toString().trim();
     if (text && text.length > 1 && text.length < 60) {
-      setSelectedTerm(text);
-      const parentText = selection.anchorNode?.parentElement?.textContent || '';
-      setTermContext(parentText.slice(0, 200));
-    } else if (!pulseRingCoords) {
-      setSelectedTerm(null);
+      const blockText = selection.anchorNode?.parentElement?.textContent || text;
+      const idx = blockText.indexOf(text);
+      setCandidate({
+        term: text,
+        context: idx >= 0 ? contextWindow(blockText, idx, idx + text.length) : blockText.slice(0, 240),
+        origin: null,
+        rects: [],
+      });
+    } else if (!pressRef.current) {
+      setCandidate(null);
     }
   };
 
-  // Long-press detection on note terms (300ms hold)
+  /**
+   * Touch path: a 300ms press recognises the word under the finger. While
+   * the press is held the chip shows the candidate; on release the same
+   * Explain tooltip the mouse path uses appears, and nothing is generated
+   * until the learner presses Explain (§3: explicit action before
+   * generation). Slop is 8px — a scroll is not a press.
+   */
+  const LONG_PRESS_MS = 300;
+  const PRESS_SLOP_PX = 8;
+
   const handlePointerDown = (e: React.PointerEvent) => {
-    if (e.button !== 0) return;
-    pressStartRef.current = { x: e.clientX, y: e.clientY };
+    if (e.button !== 0 || !e.isPrimary) return;
+    // One press at a time; a second finger does not restart the timer.
+    if (pressRef.current) return;
+    // Mouse users select text; the long-press is a touch (and pen) affordance.
+    if (e.pointerType === 'mouse') return;
 
-    // Show pulse ring immediately at touch coordinates
-    setPulseRingCoords({ x: e.clientX, y: e.clientY });
-
-    if (pressTimerRef.current) clearTimeout(pressTimerRef.current);
+    pressRef.current = { pointerId: e.pointerId, x: e.clientX, y: e.clientY };
+    setPress({ x: e.clientX, y: e.clientY, ring: e.pointerType === 'touch' });
 
     pressTimerRef.current = setTimeout(() => {
-      if (pressStartRef.current) {
-        const { x, y } = pressStartRef.current;
-        const result = getWordAtPoint(x, y);
-        if (result && result.word) {
-          setSelectedTerm(result.word);
-          setTermContext(result.context);
-          if (onHighlightTerm) {
-            onHighlightTerm(result.word, result.context, pointOrigin(x, y));
-          }
-          if (typeof navigator !== 'undefined' && navigator.vibrate) {
-            navigator.vibrate(25);
-          }
+      const held = pressRef.current;
+      pressTimerRef.current = null;
+      if (!held) return;
+      const found = recogniseTermAtPoint(held.x, held.y, contentRef.current);
+      if (found) {
+        setPreview(found);
+        if (typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function') {
+          navigator.vibrate(25);
         }
+      } else {
+        clearPress();
       }
-      setPulseRingCoords(null);
-    }, 300);
+    }, LONG_PRESS_MS);
   };
 
   const handlePointerMove = (e: React.PointerEvent) => {
-    if (!pressStartRef.current) return;
-    const dist = Math.hypot(e.clientX - pressStartRef.current.x, e.clientY - pressStartRef.current.y);
-    if (dist > 8) {
-      if (pressTimerRef.current) clearTimeout(pressTimerRef.current);
-      setPulseRingCoords(null);
-      pressStartRef.current = null;
+    const held = pressRef.current;
+    if (!held || e.pointerId !== held.pointerId) return;
+    if (Math.hypot(e.clientX - held.x, e.clientY - held.y) > PRESS_SLOP_PX) {
+      // The finger moved: this is a scroll or a selection, not a press.
+      clearPress();
     }
   };
 
-  const handlePointerUp = () => {
-    if (pressTimerRef.current) clearTimeout(pressTimerRef.current);
-    setPulseRingCoords(null);
-    pressStartRef.current = null;
-  };
-
-  // Pull-down Rubber-band Handlers on Note Top
-  const handlePullDownStart = (e: React.PointerEvent | React.TouchEvent) => {
-    const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
-    const scrollY = containerRef.current?.scrollTop ?? window.scrollY;
-
-    if (scrollY <= 2) {
-      pullStartRef.current = { y: clientY, scrollTop: scrollY };
-      setIsPulling(true);
+  const handlePointerUp = (e: React.PointerEvent) => {
+    const held = pressRef.current;
+    if (!held || e.pointerId !== held.pointerId) return;
+    const recognised = preview;
+    clearPress();
+    if (recognised) {
+      // Hand over to the shared confirmation; the explainer will morph from
+      // the pressed word.
+      setCandidate({
+        term: recognised.term,
+        context: recognised.context,
+        origin: pointOrigin(held.x, held.y),
+        rects: recognised.rects,
+      });
     }
   };
 
-  const handlePullDownMove = (e: React.PointerEvent | React.TouchEvent) => {
-    if (!pullStartRef.current || isRefreshing) return;
-    const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
-    const deltaY = clientY - pullStartRef.current.y;
-
-    if (deltaY > 0) {
-      const damped = Math.min(84, Math.pow(deltaY, 0.76) * 2.2);
-      setPullY(damped);
-    } else {
-      setPullY(0);
-    }
-  };
-
-  const handlePullDownEnd = async () => {
-    if (!pullStartRef.current) return;
-    pullStartRef.current = null;
-    setIsPulling(false);
-
-    if (pullY >= 55) {
-      setIsRefreshing(true);
-      setPullY(52);
-
-      try {
-        if (onRefresh) {
-          await onRefresh();
-        } else {
-          await new Promise((resolve) => setTimeout(resolve, 850));
-        }
-        setRefreshSuccess(true);
-        setTimeout(() => {
-          setRefreshSuccess(false);
-          setPullY(0);
-          setIsRefreshing(false);
-        }, 600);
-      } catch {
-        setPullY(0);
-        setIsRefreshing(false);
-      }
-    } else {
-      setPullY(0);
-    }
+  const handlePointerCancel = (e: React.PointerEvent) => {
+    const held = pressRef.current;
+    if (!held || e.pointerId !== held.pointerId) return;
+    clearPress();
   };
 
   const copyToClipboard = () => {
@@ -407,19 +417,17 @@ export const NoteViewer: React.FC<NoteViewerProps> = ({
   const markdownComponents = useMemo(() => ({
     blockquote: CalloutBlockquote,
     code({ node, inline, className, children, ...props }: any) {
-      const match = /language-(\w+)/.exec(className || '');
-      const lang = match ? match[1].toLowerCase() : '';
+      const lang = figureLanguage(className);
 
       // Intercept programmatic diagram blocks and render EditorialDiagram
-      if (!inline && ['diagram', 'mindmap', 'flow', 'stack', 'figure', 'mermaid'].includes(lang)) {
-        figureCounter += 1;
-        const currentFigIndex = figureCounter;
+      if (!inline && lang) {
+        const figIndex = Number((props as Record<string, unknown>)['data-fig-index']);
         return (
           <div className="note-figure my-6 not-prose">
             <EditorialDiagram
               content={String(children).trim()}
               title={note.title}
-              figIndex={currentFigIndex}
+              figIndex={Number.isFinite(figIndex) && figIndex > 0 ? figIndex : undefined}
               onNodeActivate={(label, context, el) => {
                 if (onHighlightTerm) {
                   onHighlightTerm(label, context, el as HTMLElement);
@@ -468,24 +476,24 @@ export const NoteViewer: React.FC<NoteViewerProps> = ({
     td({ children }: any) {
       return <td className="p-3.5 text-sm text-foreground/90 border-r border-border/40 last:border-r-0 leading-normal">{children}</td>;
     },
-    h1({ children }: any) {
+    h1({ children, id }: any) {
       return (
-        <h1 className="font-editorial text-2xl md:text-3xl font-bold text-foreground mt-8 mb-4 pb-2.5 border-b border-border tracking-tight leading-tight">
+        <h1 id={id} className="font-editorial text-2xl md:text-3xl font-bold text-foreground mt-8 mb-4 pb-2.5 border-b border-border tracking-tight leading-tight scroll-mt-3">
           {children}
         </h1>
       );
     },
-    h2({ children }: any) {
+    h2({ children, id }: any) {
       return (
-        <h2 className="font-editorial text-xl md:text-2xl font-bold text-foreground mt-7 mb-3.5 flex items-center gap-2.5 tracking-tight leading-snug">
+        <h2 id={id} className="font-editorial text-xl md:text-2xl font-bold text-foreground mt-7 mb-3.5 flex items-center gap-2.5 tracking-tight leading-snug scroll-mt-3">
           <span className="w-2 h-2 rounded-full bg-amber-500 shrink-0" />
           {children}
         </h2>
       );
     },
-    h3({ children }: any) {
+    h3({ children, id }: any) {
       return (
-        <h3 className="font-editorial text-lg md:text-xl font-semibold text-foreground/90 mt-5 mb-2.5 tracking-tight">
+        <h3 id={id} className="font-editorial text-lg md:text-xl font-semibold text-foreground/90 mt-5 mb-2.5 tracking-tight scroll-mt-3">
           {children}
         </h3>
       );
@@ -522,15 +530,23 @@ export const NoteViewer: React.FC<NoteViewerProps> = ({
     },
   }), [note.title, onHighlightTerm]);
 
+  // Reading continuity: remember where the learner is in this Note and put
+  // them back there after a hub switch or reload; let them return after an
+  // outline jump.
+  const { headings, jumpTo, returnToReading } = useReadingPlace({
+    subjectId: note.subjectId,
+    noteId: note.id,
+    contentRevision: note.updatedAt,
+    contentRef,
+  });
+  const returnPoint = useReturnPoint(note.subjectId);
+  const returnLabel =
+    returnPoint && returnPoint.noteId === note.id
+      ? headings.find((h) => h.id === returnPoint.anchorId)?.text ?? null
+      : null;
+
   return (
     <div
-      ref={containerRef}
-      onPointerDown={handlePullDownStart}
-      onPointerMove={handlePullDownMove}
-      onPointerUp={handlePullDownEnd}
-      onTouchStart={handlePullDownStart}
-      onTouchMove={handlePullDownMove}
-      onTouchEnd={handlePullDownEnd}
       className="note-print-root bg-card border border-border/80 rounded-2xl shadow-xs overflow-hidden flex flex-col relative select-text"
     >
       {/* Print-only masthead (page one). Hidden on screen via the base
@@ -549,52 +565,33 @@ export const NoteViewer: React.FC<NoteViewerProps> = ({
         </div>
       </header>
 
-      {/* Pulse Ring Indicator for 300ms Long-press Gesture */}
-      {pulseRingCoords && (
-        <div
-          className="pulse-ring-indicator"
-          style={{
-            left: `${pulseRingCoords.x}px`,
-            top: `${pulseRingCoords.y}px`,
-          }}
-        />
+      {/* Long-press acknowledgment: ring at the contact point (touch only). */}
+      {press?.ring && !preview && (
+        <div className="pulse-ring-indicator" style={{ left: `${press.x}px`, top: `${press.y}px` }} />
       )}
 
-      {/* Rubber-band Pull-down Banner with Spinner Reveal */}
-      <div
-        className="overflow-hidden bg-muted/40 border-b border-border flex items-center justify-center gap-2.5 text-xs font-medium text-foreground transition-all duration-150 ease-out"
-        style={{
-          height: `${pullY}px`,
-          opacity: pullY > 0 ? 1 : 0,
-        }}
-      >
-        <div className="flex items-center gap-2">
-          {refreshSuccess ? (
-            <div className="flex items-center gap-1.5 text-emerald-700 bg-emerald-50 dark:bg-emerald-950/40 px-3 py-1 rounded-lg border border-emerald-200 dark:border-emerald-800 text-xs">
-              <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-              <span>Note Refreshed with ተማሪ AI</span>
-            </div>
-          ) : (
-            <>
-              <div
-                className="p-1.5 bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 rounded-lg border border-amber-300 dark:border-amber-700 transition-transform"
-                style={{
-                  transform: isRefreshing ? undefined : `rotate(${pullY * 4.5}deg)`,
-                }}
-              >
-                <Sparkles className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin' : ''}`} />
-              </div>
-              <span className="font-medium text-muted-foreground text-xs">
-                {isRefreshing
-                  ? 'Re-summarizing with ተማሪ AI...'
-                  : pullY >= 55
-                  ? 'Release to refresh note'
-                  : 'Pull down to refresh'}
-              </span>
-            </>
-          )}
-        </div>
-      </div>
+      {/* Touch-content proxy: the recognised term, shown above the finger, and
+          its actual text range highlighted. Purely presentational. */}
+      {press && preview && (
+        <>
+          {preview.rects.map((r, i) => (
+            <div
+              key={i}
+              aria-hidden="true"
+              className="term-range-highlight"
+              style={{ left: r.left, top: r.top, width: r.width, height: r.height }}
+            />
+          ))}
+          <div
+            role="status"
+            className="term-proxy-chip"
+            style={{ left: `${press.x}px`, top: `${press.y}px` }}
+          >
+            <span className="font-semibold">{preview.term}</span>
+            <span className="text-[10px] font-medium opacity-80">release to explain</span>
+          </div>
+        </>
+      )}
 
       {/* Top Action Bar */}
       <div className="p-4 bg-card border-b border-border flex flex-wrap items-center justify-between gap-3 shrink-0 no-print">
@@ -623,6 +620,8 @@ export const NoteViewer: React.FC<NoteViewerProps> = ({
         </div>
 
         <div className="flex items-center gap-2">
+          {headings.length >= 2 && <OnThisPage headings={headings} onJump={jumpTo} />}
+
           {onEdit && (
             <Button
               onClick={onEdit}
@@ -670,25 +669,74 @@ export const NoteViewer: React.FC<NoteViewerProps> = ({
         </div>
       </div>
 
-      {/* Floating Highlight / Long-Press Explainer Tooltip */}
-      {selectedTerm && (
-        <div className="sticky top-3 z-30 mx-auto -mb-8 w-fit bg-zinc-900 text-zinc-100 px-4 py-2 rounded-xl border border-zinc-700 shadow-lg flex items-center gap-3 animate-in zoom-in-95 duration-150 no-print">
-          <Sparkles className="w-4 h-4 text-amber-400 shrink-0" />
-          <span className="text-xs font-medium">
-            Explain &ldquo;<strong className="text-amber-300 font-semibold">{selectedTerm}</strong>&rdquo; with{' '}
-            <span className="font-ethiopic font-bold text-amber-400 text-sm">ተማሪ</span> AI?
-          </span>
-          <Button
-            size="xs"
-            variant="default"
-            onClick={(e) => {
-              if (onHighlightTerm) onHighlightTerm(selectedTerm, termContext, e.currentTarget);
-              setSelectedTerm(null);
-            }}
-            className="bg-amber-500 hover:bg-amber-600 text-zinc-950 font-semibold text-xs"
+      {/* Explain confirmation — the single path for selection and long-press.
+          Generation starts only here. */}
+      {candidate && (
+        <>
+          {candidate.rects.map((r, i) => (
+            <div
+              key={i}
+              aria-hidden="true"
+              className="term-range-highlight"
+              style={{ left: r.left, top: r.top, width: r.width, height: r.height }}
+            />
+          ))}
+          <div className="sticky top-3 z-30 mx-auto -mb-8 w-fit max-w-[calc(100%-2rem)] bg-zinc-900 text-zinc-100 px-4 py-2 rounded-xl border border-zinc-700 shadow-lg flex items-center gap-3 animate-in zoom-in-95 duration-150 no-print">
+            <Sparkles className="w-4 h-4 text-amber-400 shrink-0" />
+            <span className="text-xs font-medium truncate">
+              Explain &ldquo;<strong className="text-amber-300 font-semibold">{candidate.term}</strong>&rdquo; with{' '}
+              <span className="font-ethiopic font-bold text-amber-400 text-sm">ተማሪ</span> AI?
+            </span>
+            <Button
+              size="xs"
+              variant="ghost"
+              onClick={() => setCandidate(null)}
+              className="text-zinc-300 hover:text-zinc-100 hover:bg-zinc-800 text-xs"
+              aria-label="Dismiss"
+            >
+              Not now
+            </Button>
+            <Button
+              size="xs"
+              variant="default"
+              onClick={(e) => {
+                if (onHighlightTerm) onHighlightTerm(candidate.term, candidate.context, candidate.origin ?? e.currentTarget);
+                setCandidate(null);
+              }}
+              className="bg-amber-500 hover:bg-amber-600 text-zinc-950 font-semibold text-xs"
+            >
+              Explain
+            </Button>
+          </div>
+        </>
+      )}
+
+      {/* Return to reading — the departure point saved before an outline
+          jump. Persistent until used or until the Note changes; not a timed
+          toast (§5). */}
+      {returnPoint && returnPoint.noteId === note.id && (
+        <div className="sticky top-3 z-20 mx-auto -mb-8 w-fit max-w-[calc(100%-2rem)] flex items-center gap-1 pl-3 pr-1 py-1 bg-card border border-border rounded-full shadow-md text-xs font-medium text-foreground animate-in fade-in-0 slide-in-from-top-1 duration-150 no-print">
+          <button
+            type="button"
+            onClick={returnToReading}
+            className="flex items-center gap-1.5 py-0.5 rounded-full outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
           >
-            Explain
-          </Button>
+            <CornerLeftUp className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" aria-hidden="true" />
+            <span>
+              Return to reading
+              {returnLabel && (
+                <span className="text-muted-foreground"> · {truncate(returnLabel, 32)}</span>
+              )}
+            </span>
+          </button>
+          <button
+            type="button"
+            onClick={() => takeReturnPoint(note.subjectId)}
+            className="p-1 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
+            aria-label="Dismiss"
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
         </div>
       )}
 
@@ -715,12 +763,12 @@ export const NoteViewer: React.FC<NoteViewerProps> = ({
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
-        onPointerCancel={handlePointerUp}
+        onPointerCancel={handlePointerCancel}
         className="note-body p-6 md:p-8 text-foreground select-text max-w-4xl mx-auto w-full"
       >
         <ReactMarkdown
           remarkPlugins={[remarkGfm, remarkMath]}
-          rehypePlugins={[rehypeRaw, rehypeKatex]}
+          rehypePlugins={[rehypeRaw, rehypeKatex, rehypeNoteAnchors]}
           components={markdownComponents}
         >
           {processedContent}
@@ -729,3 +777,7 @@ export const NoteViewer: React.FC<NoteViewerProps> = ({
     </div>
   );
 };
+
+function truncate(text: string, max: number): string {
+  return text.length > max ? `${text.slice(0, max - 1).trimEnd()}…` : text;
+}

@@ -447,3 +447,22 @@ export function buildExamBlueprint(input: ExamBlueprintInput): ExamBlueprint {
 
   return { questions, droppedDuplicates: dropped, distribution: distributionOf(questions) };
 }
+
+// --- Retakes -----------------------------------------------------------------
+
+/** The time-limit choices offered in the Generate form, in minutes. */
+export const TIME_LIMIT_OPTIONS = [10, 15, 25, 45] as const;
+
+/**
+ * The time limit for retaking an Attempt. Attempts do not store the limit
+ * they were sat under, so it is reconstructed: the smallest offered limit
+ * that is at least as long as the original sitting (a learner who used 22
+ * minutes of a 25-minute exam gets 25 again, not 15). Falls back to the
+ * form default when the sitting length is unknown.
+ */
+export function retakeTimeLimit(attempt: Pick<StoredAttempt, 'timeSpentSeconds'>): number {
+  const spent = attempt.timeSpentSeconds;
+  if (spent === undefined || !Number.isFinite(spent) || spent <= 0) return 15;
+  const minutes = spent / 60;
+  return TIME_LIMIT_OPTIONS.find((m) => m >= minutes) ?? TIME_LIMIT_OPTIONS[TIME_LIMIT_OPTIONS.length - 1];
+}

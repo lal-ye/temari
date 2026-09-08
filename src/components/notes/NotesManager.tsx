@@ -1,12 +1,14 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { StoredNote } from '../../types';
-import { ai } from '../../services/ai';
+import { ai, type FallbackReason } from '../../services/ai';
+import { isAbortError } from '../../services/ai/isAbortError';
 import { aiConnection } from '../../services/aiConnection';
 import { OfflineBanner } from '../tools/OfflineBanner';
 import { studyStore } from '../../hooks/useStudyStore';
+import { clearReadingPlace, getReadingPlace } from '../../services/readingPlace';
 import { useActiveSubject, useNotes } from '../../hooks/useStudyStore';
 import { NoteViewer } from './NoteViewer';
-import { Modal, type MorphOrigin } from '../ui/Modal';
+import { Modal, ModalCloseButton, type MorphOrigin } from '../ui/Modal';
 import { confirm } from '../ui/confirm';
 import { GenerationProgress } from '../ui/GenerationProgress';
 import { EmptyState } from '../ui/EmptyState';
@@ -39,7 +41,12 @@ export const NotesManager: React.FC<NotesManagerProps> = ({ onHighlightTerm }) =
 
   // Selection derives from the (subject-scoped) notes collection, so switching
   // the active subject or deleting a note never leaves a stale note on screen.
-  const [selectedNoteId, setSelectedNoteId] = useState<string | null>(null);
+  // The initial selection is the Note the learner was last reading in this
+  // Subject (reading continuity across hub switches and reloads); if that
+  // Note is gone, the newest one.
+  const [selectedNoteId, setSelectedNoteId] = useState<string | null>(
+    () => getReadingPlace(activeSubject.id)?.noteId ?? null
+  );
   const selectedNote = notes.find((n) => n.id === selectedNoteId) || notes[0] || null;
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -55,7 +62,16 @@ export const NotesManager: React.FC<NotesManagerProps> = ({ onHighlightTerm }) =
   const [customTags, setCustomTags] = useState('');
   const [isExtractingPdf, setIsExtractingPdf] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [generatedOffline, setGeneratedOffline] = useState(false);
+  /** Why the last generation was served offline (undefined when it was not). */
+  const [offlineReason, setOfflineReason] = useState<FallbackReason | null | undefined>(undefined);
+  const generatedOffline = offlineReason !== undefined;
+  /**
+   * The in-flight generation. Cancel aborts it: the client stops waiting and
+   * no error is shown. (The server does not yet forward the abort upstream,
+   * so this is "stop waiting", not "stop the model".)
+   */
+  const generationRef = useRef<AbortController | null>(null);
+  useEffect(() => () => generationRef.current?.abort(), []);
 
   if (!activeSubject) return null;
 
@@ -103,12 +119,18 @@ export const NotesManager: React.FC<NotesManagerProps> = ({ onHighlightTerm }) =
     setIsGenerating(true);
     setError(null);
 
+    generationRef.current?.abort();
+    const controller = new AbortController();
+    generationRef.current = controller;
+
     try {
-      const { source: noteSource, value: generatedMarkdown } = await ai.generateNotes({
+      const { source: noteSource, value: generatedMarkdown, fallback } = await ai.generateNotes({
         material: materialText,
         sourceName: sourceFileName || 'Course Lecture Material',
+        signal: controller.signal,
       });
-      setGeneratedOffline(noteSource === 'offline');
+      if (controller.signal.aborted) return;
+      setOfflineReason(noteSource === 'offline' ? fallback ?? null : undefined);
 
       const tagsArray = customTags
         ? customTags.split(',').map((t) => t.trim()).filter(Boolean)
@@ -128,10 +150,13 @@ export const NotesManager: React.FC<NotesManagerProps> = ({ onHighlightTerm }) =
       setSourceFileName('');
       setCustomTitle('');
       setCustomTags('');
-    } catch (err: any) {
-      setError(err.message || 'Failed to generate dynamic notes. Please try again.');
+    } catch (err: unknown) {
+      // Cancellation is the learner's decision, not a failure.
+      if (controller.signal.aborted || isAbortError(err)) return;
+      setError(err instanceof Error && err.message ? err.message : 'Failed to generate dynamic notes. Please try again.');
     } finally {
-      setIsGenerating(false);
+      if (generationRef.current === controller) generationRef.current = null;
+      if (!controller.signal.aborted) setIsGenerating(false);
     }
   };
 
@@ -144,6 +169,8 @@ export const NotesManager: React.FC<NotesManagerProps> = ({ onHighlightTerm }) =
       danger: true,
     });
     if (ok) {
+      // A deleted Note has no place to return to.
+      if (getReadingPlace(activeSubject.id)?.noteId === id) clearReadingPlace(activeSubject.id);
       studyStore.deleteNote(id);
     }
   };
@@ -208,7 +235,15 @@ export const NotesManager: React.FC<NotesManagerProps> = ({ onHighlightTerm }) =
       </div>
 
       {generatedOffline && (
-        <OfflineBanner className="no-print" label="Offline draft. No AI Provider was reachable, so this note was assembled locally. Reconnect and regenerate for full AI notes." />
+        <OfflineBanner
+          className="no-print"
+          what="this note"
+          fallback={offlineReason ?? undefined}
+          onRetry={() => {
+            generateOrigin.capture(null);
+            setShowGenerateModal(true);
+          }}
+        />
       )}
 
       {/* Main Grid: Sidebar List + Viewer */}
@@ -336,10 +371,6 @@ export const NotesManager: React.FC<NotesManagerProps> = ({ onHighlightTerm }) =
               subjectName={activeSubject.name}
               onEdit={() => setEditingNote(selectedNote)}
               onHighlightTerm={onHighlightTerm}
-              onRefresh={async () => {
-                // Kinetic feedback delay simulating AI note polish
-                await new Promise((resolve) => setTimeout(resolve, 850));
-              }}
             />
           ) : (
             <EmptyState
@@ -380,7 +411,15 @@ export const NotesManager: React.FC<NotesManagerProps> = ({ onHighlightTerm }) =
 
         <form onSubmit={handleGenerate} className="space-y-4">
           {isGenerating && (
-            <GenerationProgress kind="notes" detail={`Subject: ${activeSubject.name}`} />
+            <GenerationProgress
+              kind="notes"
+              detail={`Subject: ${activeSubject.name}`}
+              onCancel={() => {
+                generationRef.current?.abort();
+                generationRef.current = null;
+                setIsGenerating(false);
+              }}
+            />
           )}
 
               {/* File Upload Box */}
@@ -470,14 +509,16 @@ export const NotesManager: React.FC<NotesManagerProps> = ({ onHighlightTerm }) =
               </div>
 
               <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-border">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setShowGenerateModal(false)}
-                  disabled={isGenerating}
+                <ModalCloseButton
+                  onBeforeClose={() => {
+                    // Cancel while generating: stop waiting, keep the form.
+                    generationRef.current?.abort();
+                    generationRef.current = null;
+                    setIsGenerating(false);
+                  }}
                 >
-                  Cancel
-                </Button>
+                  {isGenerating ? 'Stop and close' : 'Cancel'}
+                </ModalCloseButton>
 
                 <Button type="submit" disabled={isGenerating || !materialText.trim()}>
                   {isGenerating ? (
