@@ -97,6 +97,31 @@ Example: "generate a mindmap from Material".
    `useStudyStore`; attribution for offline drafts.
 6. **Verify**: `npm run lint` (tsc), `npm test` (vitest), `npm run build`.
 
+## Testing
+
+Three layers, cheapest first. All run under one `npm test`.
+
+1. **Pure logic (node).** The default, and the reason ground rule 1 exists:
+   extract the decision into a function and test that. `flashcardGesture.ts`,
+   `segmentTerm.ts`, `readingPlace.ts`, `examBlueprint.ts`, `studyStore.ts`.
+   Extracting a reducer is still the right move even now that jsdom exists —
+   a pure function says *why* a gesture committed, a DOM test can only say
+   *that* it did.
+2. **Source guards (node).** `designSystem.test.ts`, `keyboardOwnership.test.ts`,
+   `glossary.test.ts` read a component or the stylesheet and assert on the
+   contract: retired tokens stay retired, dialogs are Base UI, canonical nouns
+   reach the learner. Use these for "this decision must not silently regress"
+   where a rendered assertion would be slower and no more precise.
+3. **DOM behaviour (jsdom).** Opt in per file with `// @vitest-environment jsdom`
+   plus `@testing-library/react`; the suite stays on node otherwise. Reserved
+   for bugs that only exist when the real component is driven — stale closures
+   across a state update, focus moving between surfaces, an event that arrives
+   from behind a dialog. `FlashcardView.test.tsx` is the worked example: rating
+   the last Flashcard used to be dropped from the recorded Attempt, which no
+   amount of reading the component would have shown.
+
+Do not reach for layer 3 when layer 1 can express the rule.
+
 ## Commands
 
 ```bash
