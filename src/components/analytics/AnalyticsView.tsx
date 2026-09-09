@@ -130,7 +130,7 @@ export const AnalyticsView: React.FC = () => {
             value={effectiveSubjectId}
             onChange={(e) => setFilterOverride(e.target.value === 'ALL' ? 'ALL' : e.target.value)}
             className="px-3 py-1.5 text-xs bg-muted/50 border border-border rounded-lg text-foreground font-medium focus:outline-hidden focus:ring-2 focus:ring-ring transition-colors shadow-2xs"
-            aria-label="Filter analytics by course subject"
+            aria-label="Filter analytics by Subject"
           >
             <option value="ALL">All Subjects Combined</option>
             {subjects.map((s) => (
@@ -179,7 +179,7 @@ export const AnalyticsView: React.FC = () => {
 
         <div className="bg-card p-5 border border-border/80 rounded-2xl shadow-xs flex flex-col justify-between">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-muted-foreground">Mock Exams</span>
+            <span className="text-xs font-medium text-muted-foreground">Exams</span>
             <div className="p-2 bg-muted text-muted-foreground rounded-lg">
               <GraduationCap className="w-4 h-4" />
             </div>
@@ -263,7 +263,7 @@ export const AnalyticsView: React.FC = () => {
               </ResponsiveContainer>
             ) : (
               <div className="h-full flex items-center justify-center text-xs text-muted-foreground font-medium">
-                Complete flashcard drills or mock exams to visualize your score progression.
+                Complete Flashcard Drills or Exams to visualize your score progression.
               </div>
             )}
           </div>
@@ -359,7 +359,7 @@ export const AnalyticsView: React.FC = () => {
             </div>
           ) : (
             <p className="text-xs text-muted-foreground py-6 text-center">
-              Complete mock exams to generate granular topic-by-topic accuracy diagnostics.
+              Complete Exams to generate granular topic-by-topic accuracy diagnostics.
             </p>
           )}
         </div>
@@ -550,7 +550,7 @@ export const AnalyticsView: React.FC = () => {
             <Calendar className="w-4 h-4 text-muted-foreground" /> Assessment History Log
           </h3>
           <p className="text-xs text-muted-foreground mt-0.5">
-            Detailed record of individual quiz and mock exam attempts
+            Detailed record of individual Quiz and Exam Attempts
           </p>
         </div>
 

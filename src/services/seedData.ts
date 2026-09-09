@@ -180,7 +180,7 @@ export const SEED_ATTEMPTS: StoredAttempt[] = [
     id: 'att-1',
     subjectId: 'subj-cell-bio',
     subjectName: 'Cellular Biology & Genetics',
-    name: 'Midterm Practice Mock Exam #1',
+    name: 'Midterm Practice Exam #1',
     type: 'Exam',
     date: new Date(Date.now() - 1000 * 60 * 60 * 24 * 4).toISOString(),
     overallScore: 86.6,
@@ -269,7 +269,7 @@ export const SEED_TASKS: StudyTask[] = [
   {
     id: 'task-3',
     subjectId: 'subj-comp-sci',
-    title: 'Complete TCP 3-Way Handshake mock exam',
+    title: 'Complete TCP 3-Way Handshake Exam',
     dueDate: new Date(Date.now() + 86400000).toISOString().split('T')[0],
     estimatedMinutes: 45,
     completed: false,

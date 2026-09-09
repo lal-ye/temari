@@ -1,9 +1,9 @@
 # Temari (ተማሪ)
 
 An intelligent AI study companion in a **modern academic-editorial** style:
-interactive notes with hand-built editorial figures and diagrams (no charting
-runtime), flashcard active-recall quizzes, timed mock exams, analytics, and a
-study planner — with graceful offline fallbacks when no AI Provider is
+interactive Notes with hand-built editorial figures and diagrams (no charting
+runtime), Flashcard active-recall Quizzes, timed Exams, analytics, and a
+Study Planner — with graceful offline fallbacks when no AI Provider is
 reachable.
 
 ## Start here

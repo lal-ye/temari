@@ -108,7 +108,7 @@ export const ExamsManager: React.FC = () => {
     }
 
     if (!textToUse) {
-      setError('Please select a study note or provide course material text.');
+      setError('Please select a Note or paste Material to build the Exam from.');
       return;
     }
 
@@ -168,7 +168,7 @@ export const ExamsManager: React.FC = () => {
 
       setShowGenerateModal(false);
       setTakingExam({
-        title: examTitle.trim() || `${activeSubject.name} Comprehensive Mock Exam`,
+        title: examTitle.trim() || `${activeSubject.name} Comprehensive Exam`,
         subjectId: activeSubject.id,
         subjectName: activeSubject.name,
         questions: blueprint.questions,
@@ -183,7 +183,7 @@ export const ExamsManager: React.FC = () => {
       setCustomMaterial('');
     } catch (err: unknown) {
       if (controller.signal.aborted || isAbortError(err)) return;
-      setError(err instanceof Error && err.message ? err.message : 'Failed to generate mock exam. Please try again.');
+      setError(err instanceof Error && err.message ? err.message : 'Failed to generate the Exam. Please try again.');
     } finally {
       if (generationRef.current === controller) generationRef.current = null;
       if (!controller.signal.aborted) setIsGenerating(false);
@@ -285,10 +285,10 @@ export const ExamsManager: React.FC = () => {
             )}
           </div>
           <h2 className="font-editorial text-2xl font-bold text-foreground tracking-tight flex items-center gap-2">
-            <GraduationCap className="w-5 h-5 text-amber-600 dark:text-amber-400 shrink-0" /> Comprehensive Mock Exams & Diagnostics
+            <GraduationCap className="w-5 h-5 text-amber-600 dark:text-amber-400 shrink-0" /> Comprehensive Exams & Diagnostics
           </h2>
           <p className="text-sm text-muted-foreground mt-1">
-            Test yourself with timed mock exams featuring multiple-choice, true/false, and short answer questions with automated AI grading.
+            Test yourself with timed Exams featuring multiple-choice, true/false, and short answer questions with automated AI grading.
           </p>
         </div>
 
@@ -300,7 +300,7 @@ export const ExamsManager: React.FC = () => {
           className="shrink-0"
         >
           <Sparkles className="size-3.5" />
-          Generate Mock Exam
+          Generate Exam
         </Button>
       </div>
 
@@ -309,7 +309,7 @@ export const ExamsManager: React.FC = () => {
         <EmptyState
           icon={GraduationCap}
           title="No Exam Attempts Yet"
-          description="Generate your first timed mock exam to test your mastery and receive automated diagnostic reports from Temari AI."
+          description="Generate your first timed Exam to test your mastery and receive automated diagnostic reports from Temari AI."
           action={
             <Button
               onClick={(e) => {
@@ -390,7 +390,7 @@ export const ExamsManager: React.FC = () => {
         open={showGenerateModal}
         onClose={() => setShowGenerateModal(false)}
         originRef={generateOrigin.ref}
-        title="Generate Practice Mock Exam"
+        title="Generate Practice Exam"
         subtitle={`Subject: ${activeSubject.name}`}
         icon={<Sparkles className="w-5 h-5" />}
         iconClassName="bg-amber-500/10 text-amber-600 dark:text-amber-400"
@@ -423,7 +423,7 @@ export const ExamsManager: React.FC = () => {
                   type="text"
                   value={examTitle}
                   onChange={(e) => setExamTitle(e.target.value)}
-                  placeholder={`e.g. ${activeSubject.name} Midterm Mock Simulator`}
+                  placeholder={`e.g. ${activeSubject.name} Midterm Exam`}
                   className={fieldClass}
                   disabled={isGenerating}
                 />
@@ -440,9 +440,9 @@ export const ExamsManager: React.FC = () => {
                     className={fieldClass}
                     disabled={isGenerating}
                   >
-                    <option value={5}>5 Questions (Quick Test)</option>
+                    <option value={5}>5 Questions (Quick Check)</option>
                     <option value={10}>10 Questions (Standard Quiz)</option>
-                    <option value={15}>15 Questions (Full Mock)</option>
+                    <option value={15}>15 Questions (Full Exam)</option>
                     <option value={30}>30 Questions (Comprehensive Exam)</option>
                   </select>
                 </div>
