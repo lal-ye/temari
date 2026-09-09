@@ -507,9 +507,19 @@ to a class / token. Gate the pulse ring to touch (§3).
 
 ## 7. Verification protocol
 
-There is no jsdom/React test setup in this repo, deliberately. The strategy
-is the repo's own: **make the interface the test surface** by extracting pure
-logic, then use a short human device matrix for what only devices can show.
+The strategy is the repo's own: **make the interface the test surface** by
+extracting pure logic, then use a short human device matrix for what only
+devices can show.
+
+> **Update (2026-09-09):** this section was written when the repo had no
+> jsdom, and the throwaway harness recommended in §9.6 has since been
+> promoted. `jsdom` + `@testing-library/react` are devDependencies; a file
+> opts in with `// @vitest-environment jsdom` (`FlashcardView.test.tsx`).
+> The layering and when to use each layer is in
+> [DEVELOPING.md §Testing](../DEVELOPING.md). Pure extraction remains the
+> default — jsdom is for behaviour that only appears when the real component
+> is driven. What follows below is unchanged, and still describes the node
+> layer.
 
 Unit tests (vitest, node):
 
@@ -676,9 +686,13 @@ Not changed, noted for later:
 6. **jsdom paid for itself again.** All three "does nothing" bugs and the
    wrong-Subject filing reproduced in the harness in under a second each;
    none was visible from reading the code in review. The harness recipe
-   lives under `.cache/smoke/` (git-ignored); it is worth promoting to a
-   real `vitest --environment jsdom` project when the repo next touches
-   test infrastructure.
+   lives under `.cache/smoke/` (git-ignored). **Promoted (2026-09-09):** the
+   repo now has a real jsdom setup (`jsdom` + `@testing-library/react`, opted
+   into per file), and it immediately caught one this plan had not found — a
+   stale closure that dropped the *last* Flashcard's rating from the recorded
+   Attempt, so a learner who mastered every card was told 80% and had 80%
+   stored while the summary screen showed 100%. See `FlashcardView.test.tsx`
+   and DEVELOPING.md §Testing.
 
 ---
 

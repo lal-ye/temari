@@ -12,7 +12,7 @@ interface SubjectSwitcherProps {
 
 /**
  * The active subject dropdown switcher in the header.
- * Clean, accessible popover with Amharic typography and course codes.
+ * Clean, accessible popover with Amharic typography and Subject codes.
  */
 export const SubjectSwitcher: React.FC<SubjectSwitcherProps> = ({
   subjects,

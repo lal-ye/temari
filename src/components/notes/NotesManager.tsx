@@ -112,7 +112,7 @@ export const NotesManager: React.FC<NotesManagerProps> = ({ onHighlightTerm }) =
   const handleGenerate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!materialText.trim()) {
-      setError('Please provide course material text or upload a document.');
+      setError('Please paste Material or upload a document.');
       return;
     }
 
@@ -126,7 +126,7 @@ export const NotesManager: React.FC<NotesManagerProps> = ({ onHighlightTerm }) =
     try {
       const { source: noteSource, value: generatedMarkdown, fallback } = await ai.generateNotes({
         material: materialText,
-        sourceName: sourceFileName || 'Course Lecture Material',
+        sourceName: sourceFileName || 'Pasted Material',
         signal: controller.signal,
       });
       if (controller.signal.aborted) return;
@@ -246,16 +246,16 @@ export const NotesManager: React.FC<NotesManagerProps> = ({ onHighlightTerm }) =
         />
       )}
 
-      {/* Main Grid: Sidebar List + Viewer */}
+      {/* Main grid: Notes list + viewer */}
       <div className="notes-grid grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
-        {/* Left Notes List */}
+        {/* Notes list (stacks above the viewer below lg) */}
         <div className="notes-list-col lg:col-span-4 space-y-3">
           <div className="bg-card border border-border/80 rounded-2xl p-4 shadow-xs space-y-3">
             <div className="relative">
               <Search className="w-4 h-4 text-muted-foreground absolute left-3 top-1/2 -translate-y-1/2" />
               <input
                 type="text"
-                placeholder="Search notes or tags..."
+                placeholder="Search Notes or tags..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full pl-9 pr-3 py-2 text-sm bg-background border border-border rounded-lg font-medium focus:outline-hidden focus:ring-2 focus:ring-ring/50 shadow-2xs"
@@ -376,7 +376,7 @@ export const NotesManager: React.FC<NotesManagerProps> = ({ onHighlightTerm }) =
             <EmptyState
               icon={FileText}
               title="No Note Selected"
-              description="Choose a note from the left sidebar or generate an interactive study note with Temari AI."
+              description="Choose a Note from the list or generate an interactive study Note with Temari AI."
               action={
                 <Button
                   onClick={(e) => {
@@ -425,7 +425,7 @@ export const NotesManager: React.FC<NotesManagerProps> = ({ onHighlightTerm }) =
               {/* File Upload Box */}
               <div>
                 <label className="block text-xs font-bold uppercase tracking-wider text-foreground mb-1.5">
-                  Upload Course Material (.pdf, .txt)
+                  Upload Material (.pdf, .txt)
                 </label>
                 <div className="border border-dashed border-border hover:border-amber-500/40 hover:bg-amber-500/5 rounded-xl p-4 bg-muted/30 text-center relative transition-colors">
                   <input

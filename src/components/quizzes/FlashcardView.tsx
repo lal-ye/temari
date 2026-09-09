@@ -59,6 +59,13 @@ export const FlashcardView: React.FC<FlashcardViewProps> = ({
   const [reviewIds, setReviewIds] = useState<Set<string>>(new Set());
   const [selectedText, setSelectedText] = useState<string | null>(null);
   const [isComplete, setIsComplete] = useState(false);
+  /**
+   * The score the Drill finished with — the exact value handed to `onFinish`
+   * and written to the Attempt. The summary screen renders this rather than
+   * recomputing from state, so what the learner reads is always what was
+   * recorded; two derivations of the same number can drift.
+   */
+  const [result, setResult] = useState<{ score: number; masteredCount: number } | null>(null);
 
   // Swipe gesture. The reducer in flashcardGesture.ts owns the rules
   // (pointer ownership, interruption, thresholds); the ref holds the
@@ -153,13 +160,7 @@ export const FlashcardView: React.FC<FlashcardViewProps> = ({
   }, []);
 
   const handleNext = () => {
-    setIsFlipped(false);
-    setSelectedText(null);
-    if (currentIndex < cards.length - 1) {
-      setCurrentIndex((i) => i + 1);
-    } else {
-      finishDrill();
-    }
+    advance();
   };
 
   const handlePrev = () => {
@@ -178,44 +179,67 @@ export const FlashcardView: React.FC<FlashcardViewProps> = ({
     setSelectedText(null);
   };
 
+  /**
+   * Move to the next Flashcard, or finish the Drill on the last one.
+   *
+   * `mastered` is the set to score with. Rating the last card and advancing
+   * happen inside one event, so the set that includes that rating exists only
+   * in the caller that just built it — `masteredIds` in this closure is still
+   * the previous render's. Callers that rated a card pass the set they
+   * computed; callers that only navigate leave it out.
+   */
+  const advance = (mastered: Set<string> = masteredIds) => {
+    setIsFlipped(false);
+    setSelectedText(null);
+    if (currentIndex < cards.length - 1) {
+      setCurrentIndex((i) => i + 1);
+    } else {
+      finishDrill(mastered);
+    }
+  };
+
   const markMastered = () => {
     if (!currentCard) return;
-    setMasteredIds((prev) => {
-      const next = new Set(prev);
-      next.add(currentCard.id);
-      return next;
-    });
-    setReviewIds((prev) => {
-      const next = new Set(prev);
-      next.delete(currentCard.id);
-      return next;
-    });
-    handleNext();
+    const nextMastered = new Set(masteredIds);
+    nextMastered.add(currentCard.id);
+    const nextReview = new Set(reviewIds);
+    nextReview.delete(currentCard.id);
+    setMasteredIds(nextMastered);
+    setReviewIds(nextReview);
+    advance(nextMastered);
   };
 
   const markNeedReview = () => {
     if (!currentCard) return;
-    setReviewIds((prev) => {
-      const next = new Set(prev);
-      next.add(currentCard.id);
-      return next;
-    });
-    setMasteredIds((prev) => {
-      const next = new Set(prev);
-      next.delete(currentCard.id);
-      return next;
-    });
-    handleNext();
+    const nextReview = new Set(reviewIds);
+    nextReview.add(currentCard.id);
+    const nextMastered = new Set(masteredIds);
+    nextMastered.delete(currentCard.id);
+    setReviewIds(nextReview);
+    setMasteredIds(nextMastered);
+    advance(nextMastered);
   };
 
-  const finishDrill = () => {
+  /**
+   * End the Drill and record the Attempt.
+   *
+   * Takes the final mastered set explicitly rather than reading state. This
+   * used to be a stale-closure bug: pressing "Mastered!" on the last
+   * Flashcard called `setMasteredIds(...)` and then finished the Drill in the
+   * same event, so the score was computed from the set *before* that rating.
+   * A learner who mastered every card but rated the last one was told 80% and
+   * had an 80% Attempt written to the store — and the summary screen, reading
+   * settled state a moment later, showed 100%, contradicting the record.
+   */
+  const finishDrill = (mastered: Set<string>) => {
+    const score = Math.round((mastered.size / Math.max(1, cards.length)) * 100);
+    setResult({ score, masteredCount: mastered.size });
     setIsComplete(true);
-    const score = Math.round((masteredIds.size / Math.max(1, cards.length)) * 100);
     if (score >= 70) {
       fireConfetti({ particleCount: 60 });
     }
     if (onFinish) {
-      onFinish(score, masteredIds.size);
+      onFinish(score, mastered.size);
     }
   };
 
@@ -313,7 +337,10 @@ export const FlashcardView: React.FC<FlashcardViewProps> = ({
   };
 
   if (isComplete) {
-    const score = Math.round((masteredIds.size / Math.max(1, cards.length)) * 100);
+    // The recorded result, not a fresh derivation: these three numbers are the
+    // Attempt the learner just earned.
+    const score = result?.score ?? Math.round((masteredIds.size / Math.max(1, cards.length)) * 100);
+    const masteredCount = result?.masteredCount ?? masteredIds.size;
     return (
       <div className="bg-card border border-border/80 rounded-2xl p-6 shadow-xs text-center max-w-xl mx-auto space-y-5 animate-in zoom-in-95 duration-150">
         <div className="w-14 h-14 bg-amber-100 border border-border rounded-2xl flex items-center justify-center">
@@ -334,11 +361,11 @@ export const FlashcardView: React.FC<FlashcardViewProps> = ({
           </div>
           <div>
             <span className="text-[11px] font-medium text-muted-foreground uppercase">Mastered</span>
-            <p className="text-2xl font-semibold text-emerald-600 font-mono tabular-nums">{masteredIds.size}</p>
+            <p className="text-2xl font-semibold text-emerald-600 font-mono tabular-nums">{masteredCount}</p>
           </div>
           <div>
             <span className="text-[11px] font-medium text-muted-foreground uppercase">Need Review</span>
-            <p className="text-2xl font-semibold text-rose-600 font-mono tabular-nums">{cards.length - masteredIds.size}</p>
+            <p className="text-2xl font-semibold text-rose-600 font-mono tabular-nums">{cards.length - masteredCount}</p>
           </div>
         </div>
 
@@ -350,6 +377,9 @@ export const FlashcardView: React.FC<FlashcardViewProps> = ({
               setIsFlipped(false);
               setMasteredIds(new Set());
               setReviewIds(new Set());
+              // Clear the previous run's recorded result, or the next summary
+              // would render the old score until this drill finishes again.
+              setResult(null);
             }}
             variant="outline"
           >

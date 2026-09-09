@@ -125,7 +125,7 @@ const MODELS: Record<AIProviderId, AIModelOption[]> = {
         'Slower and pricier, but better at multi-step derivations and marking exam answers where the reasoning matters more than the speed.',
       speed: 'Standard',
       reasoning: 'Deep',
-      recommendedFor: 'Mock exams, STEM problem sets, and grading.',
+      recommendedFor: 'Exams, STEM problem sets, and grading.',
     },
     {
       id: 'gemini-3.8-flash',

@@ -75,6 +75,11 @@ function noop() {}
  * path. Use this instead of wiring a footer button to the parent's setter,
  * which would unmount the dialog with no exit animation and skip focus
  * restoration.
+ *
+ * `Button`'s own `onClick` is replaced rather than forwarded: clicking this
+ * button always means "close". `onBeforeClose` runs first, for the cases where
+ * something has to happen on the way out — abort an in-flight generation,
+ * commit a destructive action.
  */
 export function ModalCloseButton({
   children = 'Cancel',

@@ -108,7 +108,17 @@ export default function App() {
   // Whichever control opened the current app-level modal, so it can morph from it.
   const modalOrigin = useModalOrigin();
   const explainOrigin = useModalOrigin();
-  const [confirmDeleteSubjectId, setConfirmDeleteSubjectId] = useState<string | null>(null);
+  /**
+   * The Subject awaiting delete confirmation. The name is snapshotted with the
+   * id rather than looked up from the store at render time: `deleteSubject`
+   * cascades immediately, but the Modal only unmounts after its exit morph, so
+   * a live lookup would blank the name mid-animation — the dialog would say
+   * Delete "" while it shrinks away.
+   */
+  const [confirmDeleteSubject, setConfirmDeleteSubject] = useState<{
+    id: string;
+    name: string;
+  } | null>(null);
   const [explainTermData, setExplainTermData] = useState<{ term: string; context?: string } | null>(
     null
   );
@@ -159,11 +169,11 @@ export default function App() {
     runViewTransition(() => setActiveTab(tab), { origin });
   };
 
-  const handleDeleteSubject = (id: string, e: React.MouseEvent) => {
+  const handleDeleteSubject = (id: string, name: string, e: React.MouseEvent) => {
     e.stopPropagation();
     // The delete button is hidden when one Subject remains; guard anyway.
     if (subjects.length <= 1) return;
-    setConfirmDeleteSubjectId(id);
+    setConfirmDeleteSubject({ id, name });
   };
 
   const handleHighlightExplain = (term: string, context?: string, origin?: MorphOrigin) => {
@@ -173,18 +183,27 @@ export default function App() {
     setExplainTermData({ term, context });
   };
 
+  /**
+   * Hub names use the canonical nouns from CONTEXT.md — Subject, Note, Quiz,
+   * Exam — not the near-misses they replaced ("Mock Exams", "Course"). The
+   * glossary is the contract; the chrome is where a learner reads it most.
+   *
+   * `shortLabel` is what the mobile bottom bar shows: five tabs across a phone
+   * cannot carry "Analytics & Progress" at 10px without truncating. The full
+   * label stays the accessible name in both bars.
+   */
   const navItems = [
-    { id: 'notes', label: 'Interactive Notes', icon: BookOpen },
-    { id: 'quizzes', label: 'Flashcard Quizzes', icon: Layers },
-    { id: 'exams', label: 'Mock Exams', icon: GraduationCap },
-    { id: 'analytics', label: 'Analytics & Progress', icon: TrendingUp },
-    { id: 'planner', label: 'Study Planner', icon: Calendar },
+    { id: 'notes', label: 'Interactive Notes', shortLabel: 'Notes', icon: BookOpen },
+    { id: 'quizzes', label: 'Flashcard Quizzes', shortLabel: 'Quizzes', icon: Layers },
+    { id: 'exams', label: 'Exams', shortLabel: 'Exams', icon: GraduationCap },
+    { id: 'analytics', label: 'Analytics & Progress', shortLabel: 'Progress', icon: TrendingUp },
+    { id: 'planner', label: 'Study Planner', shortLabel: 'Planner', icon: Calendar },
   ];
 
   /**
    * Every navigation and creation action, reachable from one keystroke. The
-   * palette is the fast path for returning learners; the sidebar stays the
-   * discoverable one.
+   * palette is the fast path for returning learners; the hub tabs in the
+   * header and the bottom bar stay the discoverable one.
    */
   const commands: Command[] = [
     ...navItems.map((item, index) => ({
@@ -197,10 +216,14 @@ export default function App() {
     })),
     {
       id: 'new-subject',
-      label: 'Add a subject',
+      // Canonical label is "Subject"; `keywords` keeps the words CONTEXT.md
+      // tells us not to *display*, so a learner who still types "course"
+      // finds the command. Matching on a retired term is not the same as
+      // showing one.
+      label: 'Add a Subject',
       group: 'Create',
       icon: FolderPlus,
-      keywords: 'course new',
+      keywords: 'course class new',
       run: () => {
         modalOrigin.capture(null);
         setOpenModal('add-subject');
@@ -252,21 +275,27 @@ export default function App() {
   // Desktop keyboard navigation (1-5 for study hubs, "?" for the reference).
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Cmd/Ctrl+K works from anywhere, including inside a text field: it is
-      // the one shortcut a learner should never have to click out of first.
-      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
-        e.preventDefault();
-        setPaletteOpen((v) => !v);
-        return;
-      }
-
       // Whoever has a dialog open owns the keyboard — every `Modal` in the
       // app (including the ones hubs render for generation and editing), the
       // palette, `confirm()`, and the shortcuts overlay all register in the
       // modal registry. Each closes itself on Escape; nothing here should
       // second-guess that, and hub shortcuts must not fire behind a dialog
       // (pressing "2" used to unmount a Generate modal mid-generation).
+      //
+      // This guard is first, ahead of Cmd/Ctrl+K on purpose. Opening the
+      // palette over a live dialog stacks two surfaces that both believe they
+      // own the keyboard and the Escape that closes one lands on the other;
+      // the registry would also name the wrong modal topmost. The palette is
+      // one Escape away: close the dialog, then press it.
       if (isAnyModalOpen()) return;
+
+      // Cmd/Ctrl+K works from anywhere else, including inside a text field: it
+      // is the one shortcut a learner should never have to click out of first.
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        setPaletteOpen((v) => !v);
+        return;
+      }
 
       const target = e.target as HTMLElement | null;
       if (
@@ -321,8 +350,9 @@ export default function App() {
         {/* Top Header Bar */}
         <header className="app-header bg-card/95 backdrop-blur-md border-b border-border flex items-center justify-between gap-3 px-3 sm:px-5 py-2 shrink-0 z-10 shadow-xs">
           <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
-            {/* Brand. With the sidebar gone this is the only place the app
-                names itself, so it stays visible down to the smallest width. */}
+            {/* Brand. With no sidebar (ADR-0006) this is the only place the
+                app names itself, so it stays visible down to the smallest
+                width. */}
             <div className="flex items-center gap-2 shrink-0">
               <div className="w-8 h-8 bg-primary text-primary-foreground rounded-lg border border-border/60 flex items-center justify-center font-ethiopic font-bold text-sm shadow-xs">
                 ተ
@@ -373,9 +403,13 @@ export default function App() {
             >
               <Search className="w-3.5 h-3.5" aria-hidden="true" />
               <span className="hidden xl:inline text-xs font-medium">Search actions</span>
+              {/* Two keys, so the hint reads "⌘ K" on a Mac and "Ctrl K"
+                  everywhere else. The modifier is the only part that varies;
+                  collapsing both into one <Kbd> used to render a bare "⌘"
+                  with no letter. */}
               <span className="hidden xl:inline-flex items-center gap-0.5">
-                {!isMac && <Kbd>Ctrl</Kbd>}
-                <Kbd>{isMac ? '⌘' : 'K'}</Kbd>
+                <Kbd>{isMac ? '⌘' : 'Ctrl'}</Kbd>
+                <Kbd>K</Kbd>
               </span>
             </button>
 
@@ -466,15 +500,15 @@ export default function App() {
         open={openModal === 'add-subject'}
         onClose={() => setOpenModal(null)}
         originRef={modalOrigin.ref}
-        title="Add Course Subject"
-        subtitle="Create a dedicated subject folder in Temari"
+        title="Add Subject"
+        subtitle="Every Note, Quiz, Exam and Study Task belongs to one Subject."
         icon={<FolderPlus className="w-5 h-5" />}
         iconClassName="bg-amber-500/10 text-amber-600 dark:text-amber-400"
       >
         <form onSubmit={handleAddSubject} className="space-y-3.5">
           <div>
             <label className="block text-xs font-bold uppercase tracking-wider text-foreground mb-1">
-              Subject / Course Name
+              Subject Name
             </label>
             <input
               type="text"
@@ -501,7 +535,7 @@ export default function App() {
 
           <div>
             <label className="block text-xs font-bold uppercase tracking-wider text-foreground mb-1">
-              Course Code (Optional)
+              Subject Code (Optional)
             </label>
             <input
               type="text"
@@ -542,7 +576,7 @@ export default function App() {
                   </div>
                   {subjects.length > 1 && (
                     <button
-                      onClick={(e) => handleDeleteSubject(s.id, e)}
+                      onClick={(e) => handleDeleteSubject(s.id, s.name, e)}
                       className="text-muted-foreground hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 p-1 rounded-md transition-colors"
                       title="Delete subject"
                       aria-label={`Delete ${s.name}`}
@@ -559,8 +593,8 @@ export default function App() {
 
       {/* Confirm Delete Subject */}
       <Modal
-        open={confirmDeleteSubjectId !== null}
-        onClose={() => setConfirmDeleteSubjectId(null)}
+        open={confirmDeleteSubject !== null}
+        onClose={() => setConfirmDeleteSubject(null)}
         title="Delete Subject"
         subtitle="This cannot be undone"
         icon={<Trash2 className="w-5 h-5" />}
@@ -569,23 +603,24 @@ export default function App() {
         <p className="text-sm font-medium text-muted-foreground mb-5">
           Delete{' '}
           <span className="text-foreground font-semibold">
-            &ldquo;{subjects.find((s) => s.id === confirmDeleteSubjectId)?.name}&rdquo;
+            &ldquo;{confirmDeleteSubject?.name}&rdquo;
           </span>{' '}
           and all of its Notes, Quizzes, Exams and Study Tasks?
         </p>
         <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-border">
           <ModalCloseButton>Cancel</ModalCloseButton>
-          <Button
-            type="button"
+          {/* The destructive action closes through the Modal's own path too.
+              Driving the parent setter from here unmounted the dialog with no
+              exit morph and never restored focus to the row that opened it. */}
+          <ModalCloseButton
             variant="destructive"
-            onClick={() => {
-              if (confirmDeleteSubjectId) deleteSubject(confirmDeleteSubjectId);
-              setConfirmDeleteSubjectId(null);
+            onBeforeClose={() => {
+              if (confirmDeleteSubject) deleteSubject(confirmDeleteSubject.id);
             }}
           >
             <Trash2 className="size-3.5" />
             Delete Subject
-          </Button>
+          </ModalCloseButton>
         </div>
       </Modal>
 

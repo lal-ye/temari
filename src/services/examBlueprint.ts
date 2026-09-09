@@ -56,7 +56,7 @@ export const COGNITIVE_MIXES: Record<CognitiveMixId, CognitiveMix> = {
   },
   balanced: {
     id: 'balanced',
-    label: 'Balanced mock',
+    label: 'Balanced exam',
     description: 'Even coverage from recall through analysis. The default.',
     weights: { remember: 3, understand: 3, apply: 4, analyze: 3, evaluate: 2, create: 1 },
   },
