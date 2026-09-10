@@ -1125,25 +1125,25 @@ Phases are executed in the order of §6. Status is updated as work ships.
 > Note on hashes: the working sandbox re-clones this repository between
 > sessions, and unpushed local commits do not survive that — the working-tree
 > files do. The phase work therefore collapsed into the single commit
-> `add9c40` (branch `arena/01a08b3b-temari`, pushed to origin, so it is
+> `7fc0e44` (branch `arena/01a08b3b-temari`, pushed to origin, so it is
 > stable). The per-phase commits recorded while each phase landed are gone;
-> their content is all in `add9c40`, and each phase's verification below was
+> their content is all in `7fc0e44`, and each phase's verification below was
 > run against the working tree at the time it landed.
 
 | Phase | §6 row | Status | Commit | Verified by |
 |---|---|---|---|---|
-| 0 | 0 | **Done** | `add9c40` | `asciiFieldMath.test.ts` (warm-majority palette), entry chunk unchanged |
-| 0b | 0b | **Done** | `add9c40` | visual (rest-state footer now dimmed; left panel has attribution) |
-| 1 | 1 | **Done** | `add9c40` | `landingDesignSystem.test.ts`: no raw hex, no inline style object, no div-button, derived providers/Bloom, `font-ethiopic` wordmark |
-| 2 | 2 | **Done** | `add9c40` | `docs/adr/0011-…md`; README/DEVELOPING/index.html/metadata de-neo-brutalised |
-| 3 | 3 | **Done** | `add9c40` | `surfaceContrast.test.ts` (12 tests): WCAG contrast, alpha bisection round-trip, amber ceiling → deep fallback, REST/PEAK bands |
-| 4 | 4 | **Done** | `add9c40` | `asciiFieldMath.test.ts` `gridFor` (4 tests): same glyph size phone↔laptop |
-| 5 | 5 | **Done** | `add9c40` | `landingDesignSystem.test.ts`: scans `AsciiSurface.tsx`, fails if either wrapper returns; solved alphas rest 1.60:1 / peak 3.50:1 / coarse 1.90:1 |
-| 6 | 6 | **Done** | `add9c40` | band composition: wordmark masthead → 240px bordered band → panels below; nothing overlaps the field; 22 files / 339 tests, `tsc` clean |
-| 7 | 7 | **Done** | `b3c28b9` | Font hygiene: Google link 8 families/29 instances → 5/19 (Abyssinica self-hosted duplicate, unreachable Noto Serif Ethiopic, dead Syne and all unused italics removed); contradictory Playfair `local()` `@font-face` removed (ten components render `.font-editorial`, so the download stays); dead `html { @apply font-sans }` and `.font-syne` removed. Body face unchanged — no visual drift. |
-| — | perf (user-reported ~5 s landing→app stall) | **Done** | `b3c28b9` | `Root.tsx` warms the app chunk at idle (`requestIdleCallback`, 4 s timeout) while the visitor reads the landing, so the CTA swaps from cache instead of starting a ~337 kB-gzip download at click time. Deliberate revision of ADR-0009's "never downloads until the CTA click" prose — the measured guardrail (entry chunk ~77 kB, zero study code) is unchanged and re-verified: `recharts`/`katex`/`studyStore`/`AiGenerator` grep counts 0/0/0/0. |
-| 8 | 8 | **Done** | `4a0cca4` | `bloomHeat.test.ts` (6 tests): ramp extremes + monotone, matrix alignment in BLOOM_LEVELS order, null cells, busiest-topic ranking; EmptyState breath covered by guard scan + tsc |
-| 9 | 9 | **Done** | `7d53f94` | `public/og.png` (1200x630, 93 kB) rendered by `scripts/generate-og.py` and viewed before wiring; guard test asserts og:image meta + asset existence |
+| 0 | 0 | **Done** | `7fc0e44` | `asciiFieldMath.test.ts` (warm-majority palette), entry chunk unchanged |
+| 0b | 0b | **Done** | `7fc0e44` | visual (rest-state footer now dimmed; left panel has attribution) |
+| 1 | 1 | **Done** | `7fc0e44` | `landingDesignSystem.test.ts`: no raw hex, no inline style object, no div-button, derived providers/Bloom, `font-ethiopic` wordmark |
+| 2 | 2 | **Done** | `7fc0e44` | `docs/adr/0011-…md`; README/DEVELOPING/index.html/metadata de-neo-brutalised |
+| 3 | 3 | **Done** | `7fc0e44` | `surfaceContrast.test.ts` (12 tests): WCAG contrast, alpha bisection round-trip, amber ceiling → deep fallback, REST/PEAK bands |
+| 4 | 4 | **Done** | `7fc0e44` | `asciiFieldMath.test.ts` `gridFor` (4 tests): same glyph size phone↔laptop |
+| 5 | 5 | **Done** | `7fc0e44` | `landingDesignSystem.test.ts`: scans `AsciiSurface.tsx`, fails if either wrapper returns; solved alphas rest 1.60:1 / peak 3.50:1 / coarse 1.90:1 |
+| 6 | 6 | **Done** | `7fc0e44` | band composition: wordmark masthead → 240px bordered band → panels below; nothing overlaps the field; 22 files / 339 tests, `tsc` clean |
+| 7 | 7 | **Done** | `bae1f20` | Font hygiene: Google link 8 families/29 instances → 5/19 (Abyssinica self-hosted duplicate, unreachable Noto Serif Ethiopic, dead Syne and all unused italics removed); contradictory Playfair `local()` `@font-face` removed (ten components render `.font-editorial`, so the download stays); dead `html { @apply font-sans }` and `.font-syne` removed. Body face unchanged — no visual drift. |
+| — | perf (user-reported ~5 s landing→app stall) | **Done** | `bae1f20` | `Root.tsx` warms the app chunk at idle (`requestIdleCallback`, 4 s timeout) while the visitor reads the landing, so the CTA swaps from cache instead of starting a ~337 kB-gzip download at click time. Deliberate revision of ADR-0009's "never downloads until the CTA click" prose — the measured guardrail (entry chunk ~77 kB, zero study code) is unchanged and re-verified: `recharts`/`katex`/`studyStore`/`AiGenerator` grep counts 0/0/0/0. |
+| 8 | 8 | **Done** | `cc7ab4b` | `bloomHeat.test.ts` (6 tests): ramp extremes + monotone, matrix alignment in BLOOM_LEVELS order, null cells, busiest-topic ranking; EmptyState breath covered by guard scan + tsc |
+| 9 | 9 | **Done** | `2c2edfb` | `public/og.png` (1200x630, 93 kB) rendered by `scripts/generate-og.py` and viewed before wiring; guard test asserts og:image meta + asset existence |
 
 Checks after each phase (run in-sandbox after a fresh `npm install`):
 `npm test` → 23 files / 346 passed · `npm run lint` (`tsc --noEmit`) → clean ·
