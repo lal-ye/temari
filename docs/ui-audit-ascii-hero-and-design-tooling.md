@@ -1140,7 +1140,8 @@ Phases are executed in the order of §6. Status is updated as work ships.
 | 4 | 4 | **Done** | `add9c40` | `asciiFieldMath.test.ts` `gridFor` (4 tests): same glyph size phone↔laptop |
 | 5 | 5 | **Done** | `add9c40` | `landingDesignSystem.test.ts`: scans `AsciiSurface.tsx`, fails if either wrapper returns; solved alphas rest 1.60:1 / peak 3.50:1 / coarse 1.90:1 |
 | 6 | 6 | **Done** | `add9c40` | band composition: wordmark masthead → 240px bordered band → panels below; nothing overlaps the field; 22 files / 339 tests, `tsc` clean |
-| 7 | 7 | Partial (`index.html` body landed with phase 1) | `add9c40` | — |
+| 7 | 7 | **Done** | this change | Font hygiene: Google link 8 families/29 instances → 5/19 (Abyssinica self-hosted duplicate, unreachable Noto Serif Ethiopic, dead Syne and all unused italics removed); contradictory Playfair `local()` `@font-face` removed (ten components render `.font-editorial`, so the download stays); dead `html { @apply font-sans }` and `.font-syne` removed. Body face unchanged — no visual drift. |
+| — | perf (user-reported ~5 s landing→app stall) | **Done** | this change | `Root.tsx` warms the app chunk at idle (`requestIdleCallback`, 4 s timeout) while the visitor reads the landing, so the CTA swaps from cache instead of starting a ~337 kB-gzip download at click time. Deliberate revision of ADR-0009's "never downloads until the CTA click" prose — the measured guardrail (entry chunk ~77 kB, zero study code) is unchanged and re-verified: `recharts`/`katex`/`studyStore`/`AiGenerator` grep counts 0/0/0/0. |
 
 Checks after each phase (run in-sandbox after a fresh `npm install`):
 `npm test` → 22 files / 339 passed · `npm run lint` (`tsc --noEmit`) → clean ·

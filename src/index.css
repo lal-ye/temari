@@ -27,19 +27,11 @@
   unicode-range: U+1200-137F, U+1380-139F, U+2D80-2DDF, U+AB00-AB2F;
 }
 
-/* Playfair Display carries the editorial headings only. It stays on `local()`
-   with a Georgia fallback: it is Latin-only, decorative, and not worth a
-   render-blocking download for the handful of headings that use it. */
-@font-face {
-  font-family: 'Playfair Display';
-  font-style: normal;
-  font-weight: 600 900;
-  font-display: swap;
-  src: local('Playfair Display Bold'),
-       local('PlayfairDisplay-Bold'),
-       local('Playfair Display'),
-       local('PlayfairDisplay-Regular');
-}
+/* Playfair Display carries the editorial headings (.font-editorial, used by
+   ten app components per ADR-0010 §2). It is served by the Google Fonts link
+   in index.html — the `local()`-only @font-face that used to live here
+   contradicted that download and was removed in the audit's font-hygiene
+   step (§4 step 6). */
 
 /* ==========================================================================
    Motion vocabulary (single source of truth — see docs/ui-plan-spatial-consistency.md)
@@ -148,10 +140,12 @@
     text-wrap: pretty;
   }
 
-  /* Anchor jumps inside long notes should not teleport. */
+  /* Anchor jumps inside long notes should not teleport. The old
+     `@apply font-sans` here was dead weight: the body rule below overrides
+     it for everything visible, and the surfaces that want Geist Variable
+     (the app shell) ask for `font-sans` explicitly. */
   html {
     scroll-behavior: smooth;
-    @apply font-sans;
   }
 
   @media (prefers-reduced-motion: reduce) {
@@ -178,9 +172,8 @@
   font-family: 'Playfair Display', Georgia, 'Times New Roman', serif;
 }
 
-.font-syne {
-  font-family: 'Syne', sans-serif;
-}
+/* (.font-syne was removed with the font: nothing references the class since
+   the phase-1 wordmark fix, and Syne is no longer downloaded.) */
 
 .font-space-mono {
   font-family: 'Space Mono', monospace;

@@ -12,7 +12,13 @@
     <!-- Preconnect to Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Abyssinica+SIL&family=Noto+Serif+Ethiopic:wght@400;600;700;900&family=Playfair+Display:ital,wght@0,600;0,700;0,800;0,900;1,600&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=Space+Mono:ital,wght@0,400;0,700;1,400;1,700&family=Syne:wght@700;800&display=swap" rel="stylesheet">
+    <!-- Font hygiene (audit §4 step 6): every family here is provably rendered.
+         Abyssinica SIL is self-hosted in src/index.css (unicode-ranged woff2),
+         Noto Serif Ethiopic was an unreachable fallback behind it, and Syne
+         died with the phase-1 wordmark fix — all three were removed from this
+         link. Italic instances of Playfair/Space Mono were dropped: nothing
+         renders them (grep 'italic' src/). -->
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
   </head>
   <body class="min-h-screen antialiased">
     <div id="root"></div>
