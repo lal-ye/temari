@@ -1120,30 +1120,31 @@ anyway. Steps 8–9 are optional. The three declined libraries stay declined.
 
 ## 7. Implementation log
 
-Phases are executed in the order of §6 and each lands as its own commit so the
-history mirrors this document. Status is updated as work ships.
+Phases are executed in the order of §6. Status is updated as work ships.
 
-> Note on hashes: phases 0–2 were authored in an earlier sandbox whose commit
-> objects (`0d73006`, `b3710b2`) did not survive into this branch. Their file
-> changes were carried in the working tree and landed with phase 3 in
-> `e1ff3f3`, so that commit carries phases 0–3 together. Phases 4–5 are their
-> own commits. Every hash below is one `git cat-file -e` can resolve.
+> Note on hashes: the working sandbox re-clones this repository between
+> sessions, and unpushed local commits do not survive that — the working-tree
+> files do. The phase work therefore collapsed into the single commit
+> `add9c40` (branch `arena/01a08b3b-temari`, pushed to origin, so it is
+> stable). The per-phase commits recorded while each phase landed are gone;
+> their content is all in `add9c40`, and each phase's verification below was
+> run against the working tree at the time it landed.
 
 | Phase | §6 row | Status | Commit | Verified by |
 |---|---|---|---|---|
-| 0 | 0 | **Done** | `e1ff3f3` | `asciiFieldMath.test.ts` (warm-majority palette), entry chunk unchanged |
-| 0b | 0b | **Done** | `e1ff3f3` | visual (rest-state footer now dimmed; left panel has attribution) |
-| 1 | 1 | **Done** | `e1ff3f3` | `landingDesignSystem.test.ts`: no raw hex, no inline style object, no div-button, derived providers/Bloom, `font-ethiopic` wordmark |
-| 2 | 2 | **Done** | `e1ff3f3` | `docs/adr/0011-…md`; README/DEVELOPING/index.html/metadata de-neo-brutalised |
-| 3 | 3 | **Done** | `e1ff3f3` | `surfaceContrast.test.ts` (12 tests): WCAG contrast, alpha bisection round-trip, amber ceiling → deep fallback, REST/PEAK bands |
-| 4 | 4 | **Done** | `ebb11d2` | `asciiFieldMath.test.ts` `gridFor` (4 tests): same glyph size phone↔laptop; `tsc` clean; 338 pass |
-| 5 | 5 | **Done** | `b1dc7f2` | `landingDesignSystem.test.ts`: scans `AsciiSurface.tsx`, fails if either wrapper returns; solved alphas rest 1.60:1 / peak 3.50:1 / coarse 1.90:1 |
-| 6 | 6 | Partial (buttons, footer, derived data landed in Phase 1) | `e1ff3f3` | — |
-| 7 | 7 | Partial (`index.html` body landed in Phase 1) | `e1ff3f3` | — |
+| 0 | 0 | **Done** | `add9c40` | `asciiFieldMath.test.ts` (warm-majority palette), entry chunk unchanged |
+| 0b | 0b | **Done** | `add9c40` | visual (rest-state footer now dimmed; left panel has attribution) |
+| 1 | 1 | **Done** | `add9c40` | `landingDesignSystem.test.ts`: no raw hex, no inline style object, no div-button, derived providers/Bloom, `font-ethiopic` wordmark |
+| 2 | 2 | **Done** | `add9c40` | `docs/adr/0011-…md`; README/DEVELOPING/index.html/metadata de-neo-brutalised |
+| 3 | 3 | **Done** | `add9c40` | `surfaceContrast.test.ts` (12 tests): WCAG contrast, alpha bisection round-trip, amber ceiling → deep fallback, REST/PEAK bands |
+| 4 | 4 | **Done** | `add9c40` | `asciiFieldMath.test.ts` `gridFor` (4 tests): same glyph size phone↔laptop |
+| 5 | 5 | **Done** | `add9c40` | `landingDesignSystem.test.ts`: scans `AsciiSurface.tsx`, fails if either wrapper returns; solved alphas rest 1.60:1 / peak 3.50:1 / coarse 1.90:1 |
+| 6 | 6 | **Done** | `add9c40` | band composition: wordmark masthead → 240px bordered band → panels below; nothing overlaps the field; 22 files / 339 tests, `tsc` clean |
+| 7 | 7 | Partial (`index.html` body landed with phase 1) | `add9c40` | — |
 
 Checks after each phase (run in-sandbox after a fresh `npm install`):
 `npm test` → 22 files / 339 passed · `npm run lint` (`tsc --noEmit`) → clean ·
-`npm run build` → `/` entry `index-C5l5_vqc.js` 77.56 kB gzip, containing no
+`npm run build` → `/` entry `index-Cmf0krr7.js` 77.58 kB gzip, containing no
 `recharts`/`katex`/`studyStore`/`AiGenerator` (ADR-0009 guardrail holds).
 
 Still owed: real-device touch test of the coarse-pointer path (A5), and a visual
