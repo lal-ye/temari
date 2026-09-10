@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
+  COGNITIVE_PALETTE,
   DEFAULT_CHAR_RAMP,
   TEMARI_PALETTE,
   alphaFor,
@@ -146,6 +147,18 @@ describe('asciiFieldMath', () => {
         }
       }
       expect(seen.size).toBe(TEMARI_PALETTE.length);
+    });
+
+    it('handles the Variation 10 cognitive editorial palette correctly', () => {
+      expect(COGNITIVE_PALETTE).toContain('#E33E33');
+      expect(COGNITIVE_PALETTE).toContain('#111113');
+      const seen = new Set<number>();
+      for (let x = 0; x < 80; x++) {
+        for (let y = 0; y < 40; y++) {
+          seen.add(paletteIndexAt(x, y, 0, COGNITIVE_PALETTE.length));
+        }
+      }
+      expect(seen.size).toBe(COGNITIVE_PALETTE.length);
     });
   });
 });

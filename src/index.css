@@ -178,6 +178,14 @@
   font-family: 'Playfair Display', Georgia, 'Times New Roman', serif;
 }
 
+.font-syne {
+  font-family: 'Syne', sans-serif;
+}
+
+.font-space-mono {
+  font-family: 'Space Mono', monospace;
+}
+
 .font-body {
   font-family: 'Inter', 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
 }

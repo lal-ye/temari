@@ -126,14 +126,30 @@ export function useAsciiField(
       // CSS (absolute, inset 0) owns the display size.
 
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      ctx.font = `${fontSize}px ${fontFamily}`;
-      ctx.textBaseline = 'top';
 
-      const measured = ctx.measureText('M').width || fontSize * 0.6;
+      // Adaptive density clamp: ensure smooth 60fps even on ultra-wide / 4k displays
+      let effectiveFontSize = fontSize;
+      let measured = (fontSize * 0.6);
+      ctx.font = `${effectiveFontSize}px ${fontFamily}`;
+      ctx.textBaseline = 'top';
+      measured = ctx.measureText('M').width || (effectiveFontSize * 0.6);
+
+      let calcCols = Math.max(1, Math.floor(rect.width / measured));
+      let calcRows = Math.max(1, Math.floor(rect.height / (effectiveFontSize * 1.15)));
+      const MAX_CELLS = 7000;
+      if (calcCols * calcRows > MAX_CELLS) {
+        const factor = Math.sqrt((calcCols * calcRows) / MAX_CELLS);
+        effectiveFontSize = Math.ceil(fontSize * factor);
+        ctx.font = `${effectiveFontSize}px ${fontFamily}`;
+        measured = ctx.measureText('M').width || (effectiveFontSize * 0.6);
+        calcCols = Math.max(1, Math.floor(rect.width / measured));
+        calcRows = Math.max(1, Math.floor(rect.height / (effectiveFontSize * 1.15)));
+      }
+
       cellW = measured;
-      cellH = fontSize * 1.15;
-      cols = Math.max(1, Math.floor(rect.width / cellW));
-      rows = Math.max(1, Math.floor(rect.height / cellH));
+      cellH = effectiveFontSize * 1.15;
+      cols = calcCols;
+      rows = calcRows;
 
       baseField = seedField({ cols, rows });
     };
@@ -156,11 +172,22 @@ export function useAsciiField(
 
       ctx.clearRect(0, 0, rect.width, rect.height);
 
+      // Early exit spatial bounds for cursor calculations
+      const cursorActiveSpanX = (spotlightRadius || 8) * 1.8 + 2;
+      const cursorActiveSpanY = (spotlightRadius || 8) + 2;
+
+      // Canvas state caching to avoid redundant string parses & context mutations
+      let currentAlpha = -1;
+      let currentFill = '';
+
       for (let y = 0; y < rows; y++) {
+        const isNearCursorY = mouseInside && Math.abs(y - cy) <= cursorActiveSpanY;
+
         for (let x = 0; x < cols; x++) {
           let value = baseField[y * cols + x] + waveAt(x, y, timeSeconds);
           let spotlight = 0;
-          if (mouseInside) {
+
+          if (isNearCursorY && Math.abs(x - cx) <= cursorActiveSpanX) {
             const terms = cursorTermsAt(x - cx, y - cy, cursorOptions);
             value += terms.ripple;
             spotlight = terms.spotlight;
@@ -169,16 +196,27 @@ export function useAsciiField(
           const ch = glyphFor(value, charRamp);
           if (ch === ' ') continue;
 
-          const alpha = useSpotlight && mouseInside
+          const alpha = useSpotlight && mouseInside && spotlight > 0.005
             ? alphaFor(spotlight, baseOpacity, spotlightOpacity)
             : baseOpacity;
           if (alpha <= 0.01) continue;
 
-          ctx.globalAlpha = alpha;
-          ctx.fillStyle = palette
+          // Quantize alpha to prevent micro updates to the 2D canvas context
+          const quantAlpha = Math.round(alpha * 40) / 40;
+          if (quantAlpha !== currentAlpha) {
+            ctx.globalAlpha = quantAlpha;
+            currentAlpha = quantAlpha;
+          }
+
+          const fill = palette
             ? palette[paletteIndexAt(x, y, timeSeconds, palette.length)]
             : INK;
-          ctx.fillText(ch, x * cellW, y * cellH);
+          if (fill !== currentFill) {
+            ctx.fillStyle = fill;
+            currentFill = fill;
+          }
+
+          ctx.fillText(ch, Math.round(x * cellW), Math.round(y * cellH));
         }
       }
       ctx.globalAlpha = 1;

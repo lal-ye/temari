@@ -22,6 +22,12 @@ export const DEFAULT_CHAR_RAMP =
  */
 export const TEMARI_PALETTE = ['#D97706', '#F59E0B', '#0F172A', '#10B981'] as const;
 
+/**
+ * Variation 10 palette tailored to the academic editorial page format:
+ * Primary accent #E33E33, deep carbon ink #111113, crimson #C22B22, and charcoal #36363B.
+ */
+export const COGNITIVE_PALETTE = ['#E33E33', '#111113', '#C22B22', '#36363B'] as const;
+
 /** The app's ink colour, used when no palette is set. */
 export const INK = '#0F172A';
 
