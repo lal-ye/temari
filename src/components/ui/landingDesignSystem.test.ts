@@ -79,6 +79,13 @@ describe('landing design system (ADR-0010 / ADR-0011)', () => {
     expect(landing).not.toContain("'Syne', sans-serif");
   });
 
+  it('ships the static OG card and advertises it (audit phase 9)', () => {
+    const html = read('../../../index.html');
+    expect(html).toContain('property="og:image"');
+    expect(html).toContain('name="twitter:card"');
+    expect(existsSync(join(here, '../../../public/og.png')), 'public/og.png is missing').toBe(true);
+  });
+
   it('keeps the retired ASCII wrappers retired (audit A9)', () => {
     // AsciiSurface is the one component; the pass-through wrapper and the
     // stale copy of the reference component are gone for good.
