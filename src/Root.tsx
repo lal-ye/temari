@@ -8,9 +8,15 @@ import { LandingPage } from './components/landing/LandingPage';
 export const APP_PATH = '/app';
 
 /**
- * Two screens, one boolean, no router (docs/adr/0009). The study shell is
- * lazy so a visitor who only reads the landing page never downloads the
- * store, the AI module, recharts or KaTeX; they arrive with the CTA click.
+ * Two screens, one boolean, no router (docs/adr/0009). The study shell is a
+ * separate chunk so the landing entry stays ~77 kB gzipped with none of the
+ * study code in it (ADR-0009's measured guardrail). Since the audit's perf
+ * fix, that chunk is additionally *warmed at idle* while the visitor reads
+ * the landing — a deliberate revision of ADR-0009's original "never
+ * downloads until the CTA click" prose: the split (what the guardrail
+ * measures) is unchanged, but a visitor who stays now spends the app chunk's
+ * bandwidth in exchange for an instant CTA. See §7 of
+ * docs/ui-audit-ascii-hero-and-design-tooling.md.
  */
 const App = lazy(() => import('./App'));
 
@@ -43,6 +49,28 @@ export default function Root() {
     const onPopState = () => setPathname(window.location.pathname);
     window.addEventListener('popstate', onPopState);
     return () => window.removeEventListener('popstate', onPopState);
+  }, []);
+
+  // Warm the app chunk while the visitor is still reading the landing page.
+  // Without this, "Launch Engine" waits on the full study-shell download
+  // (~336 kB gzipped) before anything swaps — measured as a ~5s stall on the
+  // preview. ADR-0009 still holds: the landing *entry* chunk contains none of
+  // the study code; this only fetches the separate chunk at idle priority,
+  // after the landing is interactive, so it never competes with first paint.
+  useEffect(() => {
+    if (isAppPath(window.location.pathname)) return;
+    const warm = () => {
+      import('./App').catch(() => {
+        // Offline or a failed prefetch is fine — the click-time lazy()
+        // retries, and the Suspense fallback covers it.
+      });
+    };
+    if (typeof window.requestIdleCallback === 'function') {
+      const id = window.requestIdleCallback(warm, { timeout: 4000 });
+      return () => window.cancelIdleCallback(id);
+    }
+    const id = window.setTimeout(warm, 1500);
+    return () => window.clearTimeout(id);
   }, []);
 
   const navigate = useCallback((path: string) => {

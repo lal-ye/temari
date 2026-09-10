@@ -23,10 +23,16 @@ export const DEFAULT_CHAR_RAMP =
 export const TEMARI_PALETTE = ['#D97706', '#F59E0B', '#0F172A', '#10B981'] as const;
 
 /**
- * Variation 10 palette tailored to the academic editorial page format:
- * Primary accent #E33E33, deep carbon ink #111113, crimson #C22B22, and charcoal #36363B.
+ * Variation 10 palette tailored to the academic editorial page format.
+ *
+ * Rebalanced (docs/ui-audit-... §0.3 / A11): the hover screenshot showed the
+ * spotlight working but glowing warm on only 1-in-4 cells, because the old mix
+ * was three near-black inks and one red. Three warm slots + one dark for depth
+ * makes the cursor reveal a mostly-warm glow and the resting drift read as hue
+ * shimmer, like the reference's aurora. Keep in sync with the landing tokens in
+ * `index.css` (--landing-accent / -deep / -warm / -charcoal).
  */
-export const COGNITIVE_PALETTE = ['#E33E33', '#111113', '#C22B22', '#36363B'] as const;
+export const COGNITIVE_PALETTE = ['#E33E33', '#C22B22', '#D97706', '#36363B'] as const;
 
 /** The app's ink colour, used when no palette is set. */
 export const INK = '#0F172A';
@@ -132,4 +138,52 @@ export function paletteIndexAt(
 
 function clamp01(n: number): number {
   return n < 0 ? 0 : n > 1 ? 1 : n;
+}
+
+/**
+ * Density policy (report §3 Layer 3 / A6b): glyph size is a *design constant*,
+ * not a function of the host's area.
+ *
+ * The first port clamped the *cell count* at 7000 by inflating the font, which
+ * made a phone render 12px glyphs and an ultrawide 24px. Here we do the
+ * inverse: the caller names the target cell height in CSS px, and we derive the
+ * font size (and, from the monospace advance, the width) that produces it.
+ * The count simply falls out. A safety valve still bounds the fill-rate cost
+ * for pathological surfaces by coarsening the target, but the default target
+ * keeps one glyph size on every real viewport.
+ */
+export interface GridSpec {
+  /** Derived font size in px (rounded up so the target height is a ceiling). */
+  fontSize: number;
+  cols: number;
+  rows: number;
+}
+
+/**
+ * @param width      host width in CSS px
+ * @param height     host height in CSS px
+ * @param targetCell target cell height in CSS px (design constant, default 14)
+ * @param advance    monospace advance as a fraction of the font size (0.6)
+ * @param maxCells   safety valve for pathological areas (default 12000 — above
+ *                   every real single-viewport hero, below 4k full-bleed)
+ */
+export function gridFor(
+  width: number,
+  height: number,
+  targetCell = 14,
+  advance = 0.6,
+  maxCells = 12000
+): GridSpec {
+  let cellH = targetCell;
+  let fontSize = Math.max(6, Math.ceil(cellH / 1.15));
+  let cols = Math.max(1, Math.floor(width / (fontSize * advance)));
+  let rows = Math.max(1, Math.floor(height / (fontSize * 1.15)));
+  if (cols * rows > maxCells) {
+    const factor = Math.sqrt((cols * rows) / maxCells);
+    cellH = targetCell * factor;
+    fontSize = Math.max(6, Math.ceil(cellH / 1.15));
+    cols = Math.max(1, Math.floor(width / (fontSize * advance)));
+    rows = Math.max(1, Math.floor(height / (fontSize * 1.15)));
+  }
+  return { fontSize, cols, rows };
 }

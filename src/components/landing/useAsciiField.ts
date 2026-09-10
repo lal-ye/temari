@@ -5,6 +5,7 @@ import {
   alphaFor,
   cursorTermsAt,
   glyphFor,
+  gridFor,
   paletteIndexAt,
   seedField,
   waveAt,
@@ -55,8 +56,13 @@ export interface UseAsciiFieldOptions {
   spotlightOpacity?: number;
   /** Spotlight radius, in cells. Default 8. */
   spotlightRadius?: number;
-  /** Minimum ms between frames. Default 60. */
-  frameMs?: number;
+  /** Target frames per second. Default 20 (matches the reference's 50ms). */
+  fps?: number;
+  /**
+   * Target cell height in CSS px — the density is a design constant, not a
+   * function of the host's area (report §3 Layer 3 / A6b). Default 14.
+   */
+  targetCellPx?: number;
 }
 
 export function useAsciiField(
@@ -76,8 +82,15 @@ export function useAsciiField(
     rippleRadius = 6,
     spotlightOpacity,
     spotlightRadius = 8,
-    frameMs = 60,
+    fps = 20,
+    targetCellPx,
   } = options;
+
+  // Frame budget from fps so the throttle reads as a design intent (report §3 Layer 3).
+  const frameMs = 1000 / fps;
+  // Density target: an explicit cell height wins; otherwise derive one from the
+  // legacy `fontSize` option so existing callers keep their glyph scale.
+  const cellTarget = targetCellPx ?? fontSize * 1.15;
 
   // Stable identity for the palette so the effect does not re-run on every
   // render when a caller passes an inline array.
@@ -115,10 +128,21 @@ export function useAsciiField(
     let inView = true;
     let disposed = false;
     const mouse = { x: -9999, y: -9999 };
+    // The host's box, captured on resize, so the frame loop never forces a
+    // layout read via getBoundingClientRect (report §3 Layer 3).
+    let hostRect = { left: 0, top: 0, right: 0, bottom: 0, width: 0, height: 0 };
 
     const resize = () => {
       const rect = host.getBoundingClientRect();
       if (rect.width === 0 || rect.height === 0) return;
+      hostRect = {
+        left: rect.left,
+        top: rect.top,
+        right: rect.right,
+        bottom: rect.bottom,
+        width: rect.width,
+        height: rect.height,
+      };
       const dpr = Math.min(window.devicePixelRatio || 1, 2);
 
       canvas.width = Math.max(1, Math.floor(rect.width * dpr));
@@ -127,35 +151,25 @@ export function useAsciiField(
 
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
-      // Adaptive density clamp: ensure smooth 60fps even on ultra-wide / 4k displays
-      let effectiveFontSize = fontSize;
-      let measured = (fontSize * 0.6);
-      ctx.font = `${effectiveFontSize}px ${fontFamily}`;
+      // Density is a design constant, not a function of area (A6b): gridFor
+      // derives the font from the target cell height, so a phone and a laptop
+      // render the same glyph size; only pathological areas hit the valve.
+      const spec = gridFor(rect.width, rect.height, cellTarget);
+      ctx.font = `${spec.fontSize}px ${fontFamily}`;
       ctx.textBaseline = 'top';
-      measured = ctx.measureText('M').width || (effectiveFontSize * 0.6);
-
-      let calcCols = Math.max(1, Math.floor(rect.width / measured));
-      let calcRows = Math.max(1, Math.floor(rect.height / (effectiveFontSize * 1.15)));
-      const MAX_CELLS = 7000;
-      if (calcCols * calcRows > MAX_CELLS) {
-        const factor = Math.sqrt((calcCols * calcRows) / MAX_CELLS);
-        effectiveFontSize = Math.ceil(fontSize * factor);
-        ctx.font = `${effectiveFontSize}px ${fontFamily}`;
-        measured = ctx.measureText('M').width || (effectiveFontSize * 0.6);
-        calcCols = Math.max(1, Math.floor(rect.width / measured));
-        calcRows = Math.max(1, Math.floor(rect.height / (effectiveFontSize * 1.15)));
-      }
+      const measured = ctx.measureText('M').width || spec.fontSize * 0.6;
 
       cellW = measured;
-      cellH = effectiveFontSize * 1.15;
-      cols = calcCols;
-      rows = calcRows;
+      cellH = spec.fontSize * 1.15;
+      cols = Math.max(1, Math.floor(rect.width / cellW));
+      rows = Math.max(1, Math.floor(rect.height / cellH));
 
       baseField = seedField({ cols, rows });
     };
 
     const draw = (timeSeconds: number) => {
-      const rect = canvas.getBoundingClientRect();
+      // Use the host box captured on resize; no per-frame layout read (report §3).
+      const rect = hostRect;
       const cx = (mouse.x - rect.left) / cellW;
       const cy = (mouse.y - rect.top) / cellH;
       // The cursor is tracked on the window so foreground content stacked
@@ -258,12 +272,12 @@ export function useAsciiField(
       else stop();
     };
 
-    const onMove = (e: MouseEvent) => {
+    const onMove = (e: PointerEvent) => {
       mouse.x = e.clientX;
       mouse.y = e.clientY;
-      // A cursor arriving while the loop is paused (e.g. the tab just became
-      // visible) should be picked up at the next scheduled frame; nothing to
-      // do here beyond recording it.
+      // The pointer is tracked on the window so foreground content stacked
+      // over the canvas does not swallow the spotlight. Only react when it
+      // is over, or just outside, the canvas.
     };
 
     const onVisibility = () => syncRunState();
@@ -319,7 +333,7 @@ export function useAsciiField(
       ro.disconnect();
       io?.disconnect();
       document.removeEventListener('visibilitychange', onVisibility);
-      if (reactive) window.removeEventListener('mousemove', onMove);
+      if (reactive) window.removeEventListener('pointermove', onMove);
     };
   }, [
     canvasRef,
@@ -335,6 +349,7 @@ export function useAsciiField(
     rippleRadius,
     spotlightOpacity,
     spotlightRadius,
-    frameMs,
+    fps,
+    cellTarget,
   ]);
 }

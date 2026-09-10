@@ -4,17 +4,33 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Temari (ተማሪ) | Cognitive Study Engine</title>
-    <meta name="description" content="Temari (ተማሪ) is an intelligent neo-brutalist AI study companion with an Ethiopic typography layer, interactive notes, editorial vector diagrams, flashcard active-recall quizzes, diagnostic mock exams, and analytics." />
+    <meta name="description" content="Temari (ተማሪ) is an intelligent academic-editorial AI study companion with an Ethiopic typography layer, interactive notes, editorial vector diagrams, flashcard active-recall quizzes, diagnostic exams, and analytics." />
     <meta property="og:title" content="Temari (ተማሪ) | Cognitive Study Engine" />
-    <meta property="og:description" content="Temari (ተማሪ) is an intelligent neo-brutalist AI study companion with an Ethiopic typography layer, interactive notes, editorial vector diagrams, flashcard active-recall quizzes, diagnostic mock exams, and analytics." />
+    <meta property="og:description" content="Temari (ተማሪ) is an intelligent academic-editorial AI study companion with an Ethiopic typography layer, interactive notes, editorial vector diagrams, flashcard active-recall quizzes, diagnostic exams, and analytics." />
     <meta property="og:type" content="website" />
+    <!-- Static OG card (audit phase 9): public/og.png, rendered by
+         scripts/generate-og.py — static first, no build-time browser. The
+         absolute URL points at the public repo; when the product gets a
+         deployed home, repoint this there. -->
+    <meta property="og:image" content="https://raw.githubusercontent.com/lal-ye/temari/HEAD/public/og.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="Temari — the ተማሪ wordmark in red on paper above a hairline-bordered ASCII field band, captioned Cognitive Study Engine." />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:image" content="https://raw.githubusercontent.com/lal-ye/temari/HEAD/public/og.png" />
     <meta name="theme-color" content="#F8F7F4" />
     <!-- Preconnect to Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Abyssinica+SIL&family=Noto+Serif+Ethiopic:wght@400;600;700;900&family=Playfair+Display:ital,wght@0,600;0,700;0,800;0,900;1,600&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=Space+Mono:ital,wght@0,400;0,700;1,400;1,700&family=Syne:wght@700;800&display=swap" rel="stylesheet">
+    <!-- Font hygiene (audit §4 step 6): every family here is provably rendered.
+         Abyssinica SIL is self-hosted in src/index.css (unicode-ranged woff2),
+         Noto Serif Ethiopic was an unreachable fallback behind it, and Syne
+         died with the phase-1 wordmark fix — all three were removed from this
+         link. Italic instances of Playfair/Space Mono were dropped: nothing
+         renders them (grep 'italic' src/). -->
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
   </head>
-  <body class="bg-slate-50 text-slate-900 antialiased selection:bg-teal-500 selection:text-white min-h-screen">
+  <body class="min-h-screen antialiased">
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

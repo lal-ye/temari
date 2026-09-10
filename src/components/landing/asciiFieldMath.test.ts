@@ -6,6 +6,7 @@ import {
   alphaFor,
   cursorTermsAt,
   glyphFor,
+  gridFor,
   paletteIndexAt,
   seedField,
   waveAt,
@@ -151,7 +152,11 @@ describe('asciiFieldMath', () => {
 
     it('handles the Variation 10 cognitive editorial palette correctly', () => {
       expect(COGNITIVE_PALETTE).toContain('#E33E33');
-      expect(COGNITIVE_PALETTE).toContain('#111113');
+      // A11: the palette must be warm-majority (>= 3 of 4 slots) so the
+      // spotlight reveals a glow instead of a dark blob on paper.
+      const warm = ['#E33E33', '#C22B22', '#D97706'];
+      const warmCount = COGNITIVE_PALETTE.filter((c) => (warm as string[]).includes(c)).length;
+      expect(warmCount).toBeGreaterThanOrEqual(3);
       const seen = new Set<number>();
       for (let x = 0; x < 80; x++) {
         for (let y = 0; y < 40; y++) {
@@ -160,5 +165,34 @@ describe('asciiFieldMath', () => {
       }
       expect(seen.size).toBe(COGNITIVE_PALETTE.length);
     });
+  });
+});
+
+describe('gridFor (density policy, A6b)', () => {
+  it('keeps one glyph size across phone and laptop viewports', () => {
+    const phone = gridFor(390, 844);
+    const laptop = gridFor(1440, 900);
+    expect(phone.fontSize).toBe(laptop.fontSize);
+  });
+
+  it('derives a font that respects the target cell height as a ceiling', () => {
+    const g = gridFor(800, 600, 14);
+    expect(g.fontSize * 1.15).toBeLessThanOrEqual(14 + 1.15);
+  });
+
+  it('coarsens only pathological areas (the valve), not real heroes', () => {
+    const real = gridFor(1440, 900);
+    const huge = gridFor(3840, 2160);
+    expect(huge.fontSize).toBeGreaterThan(real.fontSize);
+    expect(huge.cols * huge.rows).toBeLessThanOrEqual(30000);
+  });
+
+  it('never shrinks the font when the area grows within the valve', () => {
+    let last = 0;
+    for (const [w, h] of [[390, 844], [820, 1180], [1280, 800], [1440, 900], [1600, 900]]) {
+      const g = gridFor(w, h);
+      expect(g.fontSize).toBeGreaterThanOrEqual(last);
+      last = g.fontSize;
+    }
   });
 });
