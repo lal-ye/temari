@@ -44,3 +44,4 @@ pnpm-lock.yaml
 
 # --- Locally installed agent/skill tooling ---
 .agents/
+.env
