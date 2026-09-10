@@ -34,6 +34,23 @@ export interface AsciiSurfaceProps {
   /** Target cell height in CSS px — a design constant, not area-derived. */
   targetCellPx?: number;
   className?: string;
+  /**
+   * `band` (default) owns a fixed-height region in normal flow — what the
+   * landing uses. `panel` fills its parent (absolute inset-0) so a caller can
+   * let the field breathe *behind* content; its first caller is the app's
+   * EmptyState (audit phase 8), which passes figure tokens, not the landing's
+   * display language (ADR-0011 stays marketing-only).
+   */
+  composition?: 'band' | 'panel';
+  /**
+   * Explicit ink-model colours. When omitted, the --landing-* tokens are read
+   * at mount (landing usage). In-app callers pass the figure skin
+   * (figureTokens.ts) so the component itself never carries raw hex.
+   */
+  surface?: string;
+  accent?: string;
+  deep?: string;
+  restInk?: string;
 }
 
 /** Solved from live tokens when mounted; constants before/without a DOM. */
@@ -42,28 +59,47 @@ interface SurfaceInk {
   preset: AsciiContrastPreset;
 }
 
-function fallbackInk(): SurfaceInk {
-  const page = LANDING_PAGE;
-  return { page, preset: contrastFor(page, COGNITIVE_PALETTE[0], COGNITIVE_PALETTE[1]) };
-}
-
-export function AsciiSurface({ fps, targetCellPx, className = '' }: AsciiSurfaceProps) {
+export function AsciiSurface({
+  fps,
+  targetCellPx,
+  className = '',
+  composition = 'band',
+  surface,
+  accent,
+  deep,
+  restInk,
+}: AsciiSurfaceProps) {
   const hostRef = useRef<HTMLDivElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
-  const [ink, setInk] = useState<SurfaceInk>(fallbackInk);
+  const hasExplicit = [surface, accent, deep, restInk].some((v) => v !== undefined);
 
-  // Read the landing tokens once the stylesheet is live. index.css stays the
-  // single source of truth; the fallback covers SSR/pre-mount.
+  // Explicit colours win (in-app callers passing the figure skin); otherwise
+  // the --landing-* tokens are the source of truth, read once the stylesheet
+  // is live. The constants cover SSR/pre-mount either way.
+  const resolve = (): SurfaceInk => {
+    const page = surface ?? LANDING_PAGE;
+    const a = accent ?? COGNITIVE_PALETTE[0];
+    const d = deep ?? COGNITIVE_PALETTE[1];
+    return { page, preset: contrastFor(page, a, d, restInk) };
+  };
+
+  const [ink, setInk] = useState<SurfaceInk>(resolve);
+
   useEffect(() => {
+    if (hasExplicit) {
+      setInk(resolve());
+      return;
+    }
     if (typeof document === 'undefined') return;
     const read = (name: string, fallback: string) =>
       getComputedStyle(document.documentElement).getPropertyValue(name).trim() || fallback;
     const page = read('--landing-page', LANDING_PAGE);
-    const accent = read('--landing-accent', COGNITIVE_PALETTE[0]);
-    const deep = read('--landing-accent-deep', COGNITIVE_PALETTE[1]);
-    setInk({ page, preset: contrastFor(page, accent, deep) });
-  }, []);
+    const tokenAccent = read('--landing-accent', COGNITIVE_PALETTE[0]);
+    const tokenDeep = read('--landing-accent-deep', COGNITIVE_PALETTE[1]);
+    setInk({ page, preset: contrastFor(page, tokenAccent, tokenDeep, restInk) });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hasExplicit, surface, accent, deep, restInk]);
 
   // Coarse pointers have no cursor to earn the peak, so the whole field sits
   // at the top of the REST band — solved for the warmest ink, not guessed.
@@ -84,8 +120,13 @@ export function AsciiSurface({ fps, targetCellPx, className = '' }: AsciiSurface
     targetCellPx,
   });
 
+  const shell =
+    composition === 'panel'
+      ? `absolute inset-0 overflow-hidden ${className}`
+      : `relative h-[240px] overflow-hidden ${className}`;
+
   return (
-    <div ref={hostRef} className={`relative h-[240px] overflow-hidden ${className}`} aria-hidden="true">
+    <div ref={hostRef} className={shell} aria-hidden="true">
       <canvas ref={canvasRef} className="absolute inset-0 h-full w-full" />
     </div>
   );

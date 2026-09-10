@@ -69,3 +69,16 @@ export function edgeDash(kind: string): string | undefined {
       return undefined;
   }
 }
+
+/** Per-cognitive-level tints for the Bloom mastery heatmap (audit phase 8).
+ *  Reads as heat, remember → create: cool stone through the highlighter and
+ *  into deep ink. Kept here with the other figure colours so components
+ *  never carry raw hex. */
+export const BLOOM_TINTS = {
+  remember: '#A8A29E',
+  understand: '#CA8A04',
+  apply: '#B45309',
+  analyze: '#92400E',
+  evaluate: '#7C2D12',
+  create: '#0F172A',
+} as const;

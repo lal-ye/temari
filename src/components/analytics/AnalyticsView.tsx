@@ -9,6 +9,7 @@ import {
   escalatedLevel,
 } from '../../utils/analytics';
 import { BloomBadge } from '../ui/BloomBadge';
+import { BloomHeatmap } from './BloomHeatmap';
 import { confirm } from '../ui/confirm';
 import { ExamResultsView } from '../exams/ExamResultsView';
 import {
@@ -489,6 +490,10 @@ export const AnalyticsView: React.FC = () => {
             </p>
           )}
         </div>
+
+        {/* The topic × level axis as an ASCII density figure (audit phase 8).
+            Renders nothing until levelled attempts exist. */}
+        <BloomHeatmap stats={analytics.topicLevelStats} />
 
         {/* Spaced resurfacing queue */}
         <div className="bg-card border border-border/80 rounded-2xl p-6 shadow-xs space-y-4">
