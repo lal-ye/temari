@@ -186,6 +186,36 @@
   font-family: 'Space Mono', monospace;
 }
 
+/* ==========================================================================
+   Landing / display-variant tokens (ADR-0011 — marketing-only language).
+
+   Raw colour values for the landing page live ONLY in this block. The guard
+   test `src/components/ui/landingDesignSystem.test.ts` fails if a six-digit
+   hex appears in `src/components/landing/*.tsx`, so any new landing colour
+   must be added here first and referenced as `var(--landing-*)`. Tinted
+   variants are precomputed as rgb(... / a) rather than relying on Tailwind
+   opacity modifiers over var() colours, keeping the cascade predictable.
+   ========================================================================== */
+:root {
+  --landing-page: #F8F7F4;
+  --landing-ink: #111113;
+  --landing-accent: #E33E33;
+  --landing-accent-deep: #C22B22;
+  --landing-accent-warm: #D97706;
+  --landing-charcoal: #36363B;
+
+  /* 90%-paper card fill (the old bg-[#F8F7F4]/90). */
+  --landing-panel: rgb(248 247 244 / 0.9);
+  /* Hairline rules/dividers at 20% ink. */
+  --landing-rule: rgb(17 17 19 / 0.2);
+  /* Secondary text at 80% ink. */
+  --landing-muted: rgb(17 17 19 / 0.8);
+  /* Resting footer/meta text at 55% ink (visible but quiet). */
+  --landing-dim: rgb(17 17 19 / 0.55);
+  /* Meta text on the inverted (ink) hover surface. */
+  --landing-onink: rgb(248 247 244 / 0.7);
+}
+
 .font-body {
   font-family: 'Inter', 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
 }

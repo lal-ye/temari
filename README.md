@@ -21,6 +21,7 @@ reachable.
   - [ADR-0008](./docs/adr/0008-cognitive-level-aware-exam-generation.md) — Bloom cognitive-level-aware exam blueprints
   - [ADR-0009](./docs/adr/0009-landing-page-route-split.md) — landing page at `/`, study shell at `/app`, no router
   - [ADR-0010](./docs/adr/0010-editorial-design-system.md) — Modern Academic Editorial design system (surface ramp, type, accent; neo-brutalism retired)
+  - [ADR-0011](./docs/adr/0011-landing-display-variant.md) — landing page as a documented display variant (token spine, guarded)
 - Design plans:
   - [docs/ui-plan-truthful-interaction.md](./docs/ui-plan-truthful-interaction.md) — truthful feedback, pointer ownership, modal focus, and reading continuity (phases 1–3 implemented on the working branch; device verification owed).
   - [docs/ui-plan-editorial-shell-export.md](./docs/ui-plan-editorial-shell-export.md) — the editorial design-system canon, landing-page realignment, and note export/PDF.
@@ -57,7 +58,7 @@ Ollama) · localStorage persistence · Vitest.
 
 - `/` — the landing page (`src/components/landing/`). Static copy over a
   cursor-reactive ASCII field; imports no study code and touches no storage.
-  (Being re-skinned to the editorial system — see the design plan.)
+  (A documented display variant of the editorial system — ADR-0011, guarded by `landingDesignSystem.test.ts`.)
 - `/app` — the study shell (`src/App.tsx`), loaded lazily on the CTA click.
 
 ## Commands
