@@ -1140,12 +1140,14 @@ Phases are executed in the order of §6. Status is updated as work ships.
 | 4 | 4 | **Done** | `add9c40` | `asciiFieldMath.test.ts` `gridFor` (4 tests): same glyph size phone↔laptop |
 | 5 | 5 | **Done** | `add9c40` | `landingDesignSystem.test.ts`: scans `AsciiSurface.tsx`, fails if either wrapper returns; solved alphas rest 1.60:1 / peak 3.50:1 / coarse 1.90:1 |
 | 6 | 6 | **Done** | `add9c40` | band composition: wordmark masthead → 240px bordered band → panels below; nothing overlaps the field; 22 files / 339 tests, `tsc` clean |
-| 7 | 7 | **Done** | this change | Font hygiene: Google link 8 families/29 instances → 5/19 (Abyssinica self-hosted duplicate, unreachable Noto Serif Ethiopic, dead Syne and all unused italics removed); contradictory Playfair `local()` `@font-face` removed (ten components render `.font-editorial`, so the download stays); dead `html { @apply font-sans }` and `.font-syne` removed. Body face unchanged — no visual drift. |
-| — | perf (user-reported ~5 s landing→app stall) | **Done** | this change | `Root.tsx` warms the app chunk at idle (`requestIdleCallback`, 4 s timeout) while the visitor reads the landing, so the CTA swaps from cache instead of starting a ~337 kB-gzip download at click time. Deliberate revision of ADR-0009's "never downloads until the CTA click" prose — the measured guardrail (entry chunk ~77 kB, zero study code) is unchanged and re-verified: `recharts`/`katex`/`studyStore`/`AiGenerator` grep counts 0/0/0/0. |
+| 7 | 7 | **Done** | `b3c28b9` | Font hygiene: Google link 8 families/29 instances → 5/19 (Abyssinica self-hosted duplicate, unreachable Noto Serif Ethiopic, dead Syne and all unused italics removed); contradictory Playfair `local()` `@font-face` removed (ten components render `.font-editorial`, so the download stays); dead `html { @apply font-sans }` and `.font-syne` removed. Body face unchanged — no visual drift. |
+| — | perf (user-reported ~5 s landing→app stall) | **Done** | `b3c28b9` | `Root.tsx` warms the app chunk at idle (`requestIdleCallback`, 4 s timeout) while the visitor reads the landing, so the CTA swaps from cache instead of starting a ~337 kB-gzip download at click time. Deliberate revision of ADR-0009's "never downloads until the CTA click" prose — the measured guardrail (entry chunk ~77 kB, zero study code) is unchanged and re-verified: `recharts`/`katex`/`studyStore`/`AiGenerator` grep counts 0/0/0/0. |
+| 8 | 8 | **Done** | `4a0cca4` | `bloomHeat.test.ts` (6 tests): ramp extremes + monotone, matrix alignment in BLOOM_LEVELS order, null cells, busiest-topic ranking; EmptyState breath covered by guard scan + tsc |
+| 9 | 9 | **Done** | `7d53f94` | `public/og.png` (1200x630, 93 kB) rendered by `scripts/generate-og.py` and viewed before wiring; guard test asserts og:image meta + asset existence |
 
 Checks after each phase (run in-sandbox after a fresh `npm install`):
-`npm test` → 22 files / 339 passed · `npm run lint` (`tsc --noEmit`) → clean ·
-`npm run build` → `/` entry `index-Cmf0krr7.js` 77.58 kB gzip, containing no
+`npm test` → 23 files / 346 passed · `npm run lint` (`tsc --noEmit`) → clean ·
+`npm run build` → `/` entry `index-B06KbjPo.js` 77.80 kB gzip, containing no
 `recharts`/`katex`/`studyStore`/`AiGenerator` (ADR-0009 guardrail holds).
 
 Still owed: real-device touch test of the coarse-pointer path (A5), and a visual
