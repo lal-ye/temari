@@ -6,24 +6,27 @@ The rules that keep this codebase navigable. The domain language lives in
 
 ## Module map
 
-| Path | Role | Notes |
+This is the map. Each row's rules and rationale live in the ADR it names — do
+not restate them here.
+
+| Path | Role | Where the rules live |
 |---|---|---|
-| `src/services/studyStore.ts` | **Study-Store module** — all study data: persistence, reactive state, subject scoping, cascade deletes, cross-tab sync | Deep module (ADR-0001). Persistence behind an internal `StorageAdapter` seam (localStorage + in-memory adapters). Do not split it back up. |
-| `src/hooks/useStudyStore.ts` | React glue over the store (slice hooks) | Thin by design; stable collection references. |
-| `src/services/ai/` | **AI-Generation module** — notes/quiz/exam generation, knowledge-unit extraction, exam grading, term explanations | Deep module (ADR-0002). Port = `AiGenerator`; adapters = HTTP + offline; fallback policy in one place; results always attributable via `GenerationResult<T>`. |
-| `src/services/examBlueprint.ts` | **Exam-Blueprint module** — pure planning and repair of exam questions: Bloom quota, distribution enforcement, ordering, dedupe, option shuffling | Deep module (ADR-0008). Feature screens call `buildExamBlueprint`, not the parts. No Provider calls. |
-| `src/services/aiConnection.ts` | Server-only AI ops: connection test, live model discovery, PDF extraction | No offline adapter on purpose (one adapter = hypothetical seam, ADR-0002). |
-| `shared/aiCatalog.ts` | Single source of truth for provider identity + transport facts | Shared by client AND server (ADR-0003). |
-| `src/components/tools/modelPresentation.ts` | Client-only presentation of the provider catalog | Badge colours, copy, curated model lists. Never restate catalog facts. |
-| `src/types.ts` | Domain model + `UserSettings` | `Subject`, `StoredNote`, `StoredQuiz` (a Quiz = flashcard deck), `StoredAttempt`, `StudyTask`. |
-| `src/utils/analytics.ts` | Assessment analytics | Pure functions. Topic accuracy, per-Bloom-level mastery, the spaced-review queue (`computeReviewQueue`) and escalation (`escalatedLevel`). |
-| `src/components/ui/*` | Shared UI primitives | `Modal` (+ `useModalOrigin` for morph origins), `GenerationProgress`, `EmptyState`, `Skeleton`, `CommandPalette`, `SourceMaterialSelector`, `BloomBadge` (one cognitive-level pill, shared by the exam taking, results and analytics screens so a level keeps one colour). Reach for these before hand-rolling a panel. |
-| `src/Root.tsx` | Entry: `/app` mounts the study shell, everything else the landing page | `pushState` + `popstate`, no router (ADR-0009). `App` is lazy so `/` never downloads study code. |
-| `src/components/landing/*` | Public landing page + the `AsciiSurface` canvas field (contrast model in `surfaceContrast.ts`) | Must not import the store, the AI module or `App.tsx`; may import the dependency-free catalog and type constants. Colours come only from the `--landing-*` tokens (`src/index.css`), enforced by `landingDesignSystem.test.ts`; every number comes from code (`BLOOM_LEVELS`, `AI_PROVIDERS`). Maths in `asciiFieldMath.ts` is pure and tested. |
-| `src/components/nav/*` | App chrome navigation | `HubTabs` / `HubBottomBar` (desktop header tabs and the mobile bottom bar, sharing the sliding indicator), `SubjectSwitcher`, `StreakPill`. All live in the header; there is no sidebar (ADR-0006). |
-| `src/components/*` | Feature screens | Consume the store + `ai` + `aiConnection`. No fetch calls, no credential logic, no fallback logic in components. |
-| `server.ts` | Express API (`/api/ai/*`) + static serving | Thin transport over `server/aiProvider.ts`; routes own prompts. |
-| `server/aiProvider.ts` | Provider-agnostic execution dispatcher + JSON parsing | Transport mechanism per provider; facts from the shared catalog. |
+| `src/services/studyStore.ts` | **Study-Store module** — all study data: persistence, reactive state, subject scoping, cascade deletes, cross-tab sync | [ADR-0001](./docs/adr/0001-study-store-deep-module.md) |
+| `src/hooks/useStudyStore.ts` | Slice hooks over the store | Thin glue only; stable collection references. |
+| `src/services/ai/` | **AI-Generation module** — notes, quizzes, exams, grading, term explanations | [ADR-0002](./docs/adr/0002-ai-generation-port.md) |
+| `src/services/examBlueprint.ts` | **Exam-Blueprint module** — pure planning and repair of exam questions: Bloom quota, distribution, ordering, dedupe, shuffling | [ADR-0008](./docs/adr/0008-cognitive-level-aware-exam-generation.md) |
+| `src/services/aiConnection.ts` | Server-only AI ops: connection test, live model discovery, PDF extraction | [ADR-0002](./docs/adr/0002-ai-generation-port.md) |
+| `shared/aiCatalog.ts` | Provider identity + transport facts, shared by client and server | [ADR-0003](./docs/adr/0003-shared-ai-provider-catalog.md) |
+| `src/components/tools/modelPresentation.ts` | Client-only presentation of the provider catalog | [ADR-0003](./docs/adr/0003-shared-ai-provider-catalog.md) |
+| `src/types.ts` | Domain model + `UserSettings` | Nouns: [CONTEXT.md](./CONTEXT.md) |
+| `src/utils/analytics.ts` | Assessment analytics: topic accuracy, Bloom mastery, review queue, streak | Pure functions. |
+| `src/components/ui/*` | Shared primitives: `Modal` (+ `useModalOrigin`), `GenerationProgress`, `EmptyState`, `Skeleton`, `CommandPalette`, `SourceMaterialSelector`, `BloomBadge`, toast/confirm/`Kbd` | [ADR-0010](./docs/adr/0010-editorial-design-system.md) |
+| `src/Root.tsx` | Entry: `/app` mounts the study shell, everything else the landing page | [ADR-0009](./docs/adr/0009-landing-page-route-split.md) |
+| `src/components/landing/*` | Public landing page + the `AsciiSurface` canvas field (`asciiFieldMath.ts`, `surfaceContrast.ts`) | [ADR-0011](./docs/adr/0011-landing-display-variant.md), [ADR-0009](./docs/adr/0009-landing-page-route-split.md) |
+| `src/components/nav/*` | App chrome: `HubTabs` / `HubBottomBar` (shared sliding indicator), `SubjectSwitcher`, `StreakPill` | [ADR-0006](./docs/adr/0006-sidebar-removal.md) |
+| `src/components/*` | Feature screens | [ADR-0001](./docs/adr/0001-study-store-deep-module.md) / [ADR-0002](./docs/adr/0002-ai-generation-port.md): no fetch, credential or fallback logic in components. |
+| `server.ts` | Express API (`/api/ai/*`) + static serving | [ADR-0003](./docs/adr/0003-shared-ai-provider-catalog.md); routes own prompts. |
+| `server/aiProvider.ts` | Provider-agnostic execution dispatcher + JSON parsing | [ADR-0003](./docs/adr/0003-shared-ai-provider-catalog.md) |
 
 ## Ground rules
 
@@ -46,26 +49,21 @@ The rules that keep this codebase navigable. The domain language lives in
 
 ## Motion budget
 
-Animation is spent, not sprinkled. The tier a interaction falls into decides
-whether it may animate at all — the rule is frequency, not taste. Durations and
-easings live as CSS custom properties in `src/index.css`; components reference
-`var(--dur-*)` and never literal milliseconds.
+Animation is spent, not sprinkled: the tier an interaction falls into decides
+whether it may animate at all — the rule is frequency, not taste. The tiers and
+the reasoning behind them are
+[ADR-0005](./docs/adr/0005-motion-budget-and-spatial-consistency.md). Durations
+and easings exist only as CSS custom properties in `src/index.css`; components
+reference `var(--dur-*)` and never literal milliseconds.
 
-| Frequency | Examples in Temari | Animation |
-|---|---|---|
-| 100+/day, **any keyboard-initiated action** | Tab keys 1–5, Escape, future shortcuts | **None, ever.** |
-| Tens/day | Hub tab hover, header control colour | Instant state change; press depress only |
-| Occasional | Modals, drawers, tab clicks, toasts | Standard — `--dur-panel` / `--dur-layout` |
-| Rare / first-run | Ghost-hand swipe hint, celebration, landing-page hero field | May exceed the budget; this is the novelty spend. The hero field still stops when hidden, off-screen or under reduced motion. |
-
-Rules that follow from it:
+The rules that follow, enforced in code:
 
 1. **Keyboard paths skip transitions.** `runViewTransition(update, { origin })`
    takes `'pointer' | 'keyboard'`; the keyboard origin applies the update
    synchronously. Any new shortcut must pass its origin through.
 2. **Do not style bare element selectors with transitions.** Transitions attach
-   to opt-in classes (`.btn-kinetic`, `.btn-neo`), never `button`, so the
-   highest-frequency element in the app stays free by default.
+   to opt-in classes (`.btn-kinetic`), never `button`, so the highest-frequency
+   element in the app stays free by default.
 3. **Hover highlights are instant.** A fading highlight trails the cursor and
    reads as lag.
 4. **Every new animation gets a `prefers-reduced-motion: reduce` override in the
@@ -74,9 +72,6 @@ Rules that follow from it:
 5. **No animation library.** ADR-0004 chose the platform. FLIP + WAAPI + CSS
    variables cover what we need; if something genuinely can't be built without a
    library, write an ADR first.
-
-The full rationale and the remaining workstreams are in
-[docs/ui-plan-spatial-consistency.md](./docs/ui-plan-spatial-consistency.md).
 
 ## How to add a feature
 

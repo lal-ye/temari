@@ -2,7 +2,7 @@
 
 - Status: Accepted
 - Date: 2026-09-07
-- Plan: [docs/ui-plan-landing-page.md](../ui-plan-landing-page.md)
+- Plan (historical): [docs/archive/ui-plan-landing-page.md](../archive/ui-plan-landing-page.md)
 
 ## Context
 

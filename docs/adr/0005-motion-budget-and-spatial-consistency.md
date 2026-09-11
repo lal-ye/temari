@@ -3,6 +3,7 @@
 - Status: Accepted
 - Date: 2026-09-05
 - Extends: [ADR-0004](./0004-native-css-view-transitions.md)
+- Background (historical): [docs/archive/ui-plan-spatial-consistency.md](../archive/ui-plan-spatial-consistency.md)
 
 ## Context
 
@@ -37,8 +38,8 @@ interaction may animate at all:
 | Occasional (modals, drawers, tab clicks) | Standard |
 | Rare / first-run | May exceed the budget — this is the novelty spend |
 
-Consequences: transitions attach to opt-in classes (`.btn-kinetic`, `.btn-neo`),
-never bare element selectors; hover highlights change instantly, because a
+Consequences: transitions attach to opt-in classes (`.btn-kinetic`), never bare
+element selectors; hover highlights change instantly, because a
 fading highlight trails the cursor; and `runViewTransition` takes an
 `origin: 'pointer' | 'keyboard'`, applying the update synchronously for
 keyboard.

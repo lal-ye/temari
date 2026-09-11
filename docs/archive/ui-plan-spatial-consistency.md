@@ -1,11 +1,21 @@
 # UI Plan — Spatial Consistency, Fluid Morphing, and Motion Budget
 
+> **Archived 2026-09-11 — complete.** All workstreams shipped. The durable
+> record is [ADR-0005](../adr/0005-motion-budget-and-spatial-consistency.md);
+> the developer-facing motion rules are in
+> [`DEVELOPING.md` § Motion budget](../../DEVELOPING.md#motion-budget). Two
+> parts are historical: WS-3's Zen Mode was afterwards retired with the sidebar
+> ([ADR-0006](../adr/0006-sidebar-removal.md)), and the §7 follow-ups
+> (Analytics/Planner `EmptyState`, `ExamResultsView` offline attribution,
+> onboarding) were still open when this was archived — `ExamResultsView`
+> attribution has since shipped.
+
 Status: all workstreams shipped · Date: 2026-09-05 · Branch: `arena/01a07167-temari`
 
 **Progress:** WS-1 through WS-7 are implemented. The decisions they encode are
-recorded in [ADR-0005](./adr/0005-motion-budget-and-spatial-consistency.md), and
+recorded in [ADR-0005](../adr/0005-motion-budget-and-spatial-consistency.md), and
 the motion tiers that govern future work are in
-[DEVELOPING.md](../DEVELOPING.md#motion-budget).
+[DEVELOPING.md](../../DEVELOPING.md#motion-budget).
 
 This plan turns the learn-ui "Invisible details" curriculum (spatial consistency,
 fluid morphing, responsive gestures, kinetic physics, frequency & novelty) into
@@ -181,7 +191,7 @@ In `FlashcardView`:
    > CSS transition, and the interruption state is reset in the same handler
    > that sets it, so the card hard-cuts on re-grab. Multi-pointer ownership
    > was never implemented. Both were re-specified in
-   > [`ui-plan-truthful-interaction.md` §2](./ui-plan-truthful-interaction.md)
+   > [`ui-plan-truthful-interaction.md` §2](../ui-plan-truthful-interaction.md)
    > and are now implemented as a pure reducer
    > (`src/components/quizzes/flashcardGesture.ts`, unit-tested). The settle
    > remains a CSS transition (`.flashcard-motion`, tokenised); interruption

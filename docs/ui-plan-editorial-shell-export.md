@@ -1,10 +1,15 @@
 # UI Plan — Editorial system canon, landing realignment, and note export
 
+> Live plan (see [docs/README.md](./README.md)): WS-5 and WS-7 are gated
+> go/no-go spikes. Archive this document, linking the ADR or code that settles
+> them, once that decision is made.
+
 Status: **WS-1/2/3/4/6 shipped** · WS-5 (Paged.js) and WS-7 (pdfcn reports)
 remain gated spikes (go/no-go needed — see those sections) · Date: 2026-09-07
 · Branch: `arena/01a07d66-temari`
-Supersedes: `docs/ui-plan-shell-export-and-polish.md` (written under the wrong
-assumption that neo-brutalism was the brand — it is retired; see below).
+Supersedes: an earlier shell/export plan (not committed to this repository),
+written under the wrong assumption that neo-brutalism was the brand — it is
+retired; see below.
 
 **Shipped:** the editorial system is canonised in
 [ADR-0010](./adr/0010-editorial-design-system.md) with surface tokens + a
@@ -249,7 +254,7 @@ The vocabulary exists in PR #16 but is nowhere in the repo, so it drifts.
   retire `shadow-neo-teal/amber` and `border-2 border-[#0F172A]`).
 - Convert panels, buttons, cards, and the skip-link to editorial primitives
   (`Card/Button/Badge`, `surface-panel`, `font-editorial`, eyebrow pattern).
-- Respect the landing guardrails (`docs/ui-plan-landing-page.md`): imports no
+- Respect the landing guardrails (`docs/archive/ui-plan-landing-page.md`): imports no
   study code, touches no storage, copy uses CONTEXT.md nouns, numbers from
   code.
 - Optional restrained headline reveal (CSS/WAAPI; reduced-motion; kugiri only

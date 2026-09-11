@@ -16,7 +16,7 @@ export const APP_PATH = '/app';
  * downloads until the CTA click" prose: the split (what the guardrail
  * measures) is unchanged, but a visitor who stays now spends the app chunk's
  * bandwidth in exchange for an instant CTA. See §7 of
- * docs/ui-audit-ascii-hero-and-design-tooling.md.
+ * docs/archive/ui-audit-ascii-hero-and-design-tooling.md.
  */
 const App = lazy(() => import('./App'));
 

@@ -4,7 +4,7 @@
 - Date: 2026-09-10
 - Supersedes (for the landing surface): the implicit assumption in ADR-0010 that
   every surface, including `/`, uses Modern Academic Editorial verbatim
-- Plan / audit: [docs/ui-audit-ascii-hero-and-design-tooling.md](../ui-audit-ascii-hero-and-design-tooling.md) (§5 Q1, option b)
+- Background (historical): [docs/archive/ui-audit-ascii-hero-and-design-tooling.md](../archive/ui-audit-ascii-hero-and-design-tooling.md) (§5 Q1, option b)
 
 ## Context
 

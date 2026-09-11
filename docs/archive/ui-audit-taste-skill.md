@@ -1,7 +1,15 @@
 # UI audit against the taste-skill
 
+> **Archived 2026-09-11 — complete.** Point-in-time audit (2026-09-08): every
+> numbered finding below is fixed in code and guarded by the tests each section
+> names, so this is history, not a current specification. Of the "Remaining
+> backlog" at the end, these were still open when this was archived:
+> sentence-casing the Title Case `title=` attributes, `EmptyState` in Analytics
+> and Planner, gating the `.pulse-ring-indicator` first-run hint, and
+> onboarding. `ExamResultsView` offline attribution has since shipped.
+
 Audit of Temari's interface against [`Leonxlnx/taste-skill`](https://github.com/Leonxlnx/taste-skill),
-run after the spatial-consistency work in `docs/ui-plan-spatial-consistency.md`.
+run after the spatial-consistency work in `docs/archive/ui-plan-spatial-consistency.md`.
 
 ## Which skill governs
 

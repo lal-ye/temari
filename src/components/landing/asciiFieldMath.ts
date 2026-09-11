@@ -25,11 +25,12 @@ export const TEMARI_PALETTE = ['#D97706', '#F59E0B', '#0F172A', '#10B981'] as co
 /**
  * Variation 10 palette tailored to the academic editorial page format.
  *
- * Rebalanced (docs/ui-audit-... §0.3 / A11): the hover screenshot showed the
- * spotlight working but glowing warm on only 1-in-4 cells, because the old mix
- * was three near-black inks and one red. Three warm slots + one dark for depth
- * makes the cursor reveal a mostly-warm glow and the resting drift read as hue
- * shimmer, like the reference's aurora. Keep in sync with the landing tokens in
+ * Rebalanced (docs/archive/ui-audit-ascii-hero-and-design-tooling.md §0.3,
+ * A11): the hover screenshot showed the spotlight working but glowing warm on
+ * only 1-in-4 cells, because the old mix was three near-black inks and one
+ * red. Three warm slots + one dark for depth makes the cursor reveal a
+ * mostly-warm glow and the resting drift read as hue shimmer, like the
+ * reference's aurora. Keep in sync with the landing tokens in
  * `index.css` (--landing-accent / -deep / -warm / -charcoal).
  */
 export const COGNITIVE_PALETTE = ['#E33E33', '#C22B22', '#D97706', '#36363B'] as const;
