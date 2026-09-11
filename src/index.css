@@ -34,7 +34,7 @@
    step (§4 step 6). */
 
 /* ==========================================================================
-   Motion vocabulary (single source of truth — see docs/ui-plan-spatial-consistency.md)
+   Motion vocabulary (single source of truth — see docs/adr/0005-motion-budget-and-spatial-consistency.md)
 
    Durations are tiered by interaction frequency, after Emil Kowalski's tiers:
      100+/day, and every keyboard-initiated action → no animation, ever.

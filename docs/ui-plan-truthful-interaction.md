@@ -134,7 +134,8 @@ Observed in `FlashcardView.tsx`:
     **flips the card** (`:277-278`) instead of catching it.
 - The spatial plan's WS-5.3 ("track settle as a WAAPI animation and
   `.cancel()` it on pointerdown") is marked shipped in
-  `ui-plan-spatial-consistency.md` but was implemented as a CSS transition
+  `docs/archive/ui-plan-spatial-consistency.md` but was implemented as a CSS
+  transition
   plus a computed-transform read; given the above it does not work as
   specified. Update that plan's DoD line.
 
@@ -710,7 +711,7 @@ Not changed, noted for later:
 
 - Rauno Freiberg, *Invisible Details of Interaction Design* — https://rauno.me/craft/interaction-design
 - The critical assessment this plan implements (forwarded review of the interaction-design report)
-- `docs/ui-plan-spatial-consistency.md` — WS-5 (gestures) is superseded in part by §2 here
-- `docs/ui-audit-taste-skill.md` — the "fabricated data" precedent (§1) and the open pulse-ring backlog item (§3)
+- `docs/archive/ui-plan-spatial-consistency.md` — WS-5 (gestures) is superseded in part by §2 here
+- `docs/archive/ui-audit-taste-skill.md` — the "fabricated data" precedent (§1) and the open pulse-ring backlog item (§3)
 - ADR-0001 (store boundaries, §5), ADR-0004/0005 (motion, §6), ADR-0006 (no sidebar, §5)
 - `src/services/ai/aiGenerator.test.ts` — the attribution evidence the report correctly credits (§4)

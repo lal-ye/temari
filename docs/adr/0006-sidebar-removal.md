@@ -7,9 +7,10 @@
 ## Context
 
 A Cmd/Ctrl+K command palette was added during the taste-skill audit
-(`docs/ui-audit-taste-skill.md`) as a keyboard fast path alongside the sidebar.
-With that in place the sidebar was asked to justify roughly 19rem of permanent
-horizontal space — about a fifth of a 1280px viewport — on every screen.
+(`docs/archive/ui-audit-taste-skill.md`) as a keyboard fast path alongside the
+sidebar. With that in place the sidebar was asked to justify roughly 19rem of
+permanent horizontal space — about a fifth of a 1280px viewport — on every
+screen.
 
 The sidebar held four things:
 

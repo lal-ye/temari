@@ -22,11 +22,10 @@ reachable.
   - [ADR-0009](./docs/adr/0009-landing-page-route-split.md) — landing page at `/`, study shell at `/app`, no router
   - [ADR-0010](./docs/adr/0010-editorial-design-system.md) — Modern Academic Editorial design system (surface ramp, type, accent; neo-brutalism retired)
   - [ADR-0011](./docs/adr/0011-landing-display-variant.md) — landing page as a documented display variant (token spine, guarded)
-- Design plans:
-  - [docs/ui-plan-truthful-interaction.md](./docs/ui-plan-truthful-interaction.md) — truthful feedback, pointer ownership, modal focus, and reading continuity (phases 1–3 implemented on the working branch; device verification owed).
-  - [docs/ui-plan-editorial-shell-export.md](./docs/ui-plan-editorial-shell-export.md) — the editorial design-system canon, landing-page realignment, and note export/PDF.
-  - [docs/ui-plan-spatial-consistency.md](./docs/ui-plan-spatial-consistency.md) — the motion/spatial system (shipped).
-  - [docs/ui-plan-landing-page.md](./docs/ui-plan-landing-page.md) — the landing-page plan and its guardrails.
+- [docs/README.md](./docs/README.md) — the documentation index: what is current
+  (the ADRs and this page), what is in flight, and what is archived. Plans and
+  audits live only while their work is open; completed ones are archived with a
+  dated banner, never left in the docs tree as if current.
 
 ## Design language
 
@@ -45,8 +44,10 @@ ported to all five hubs in PR #16; the neo-brutalist prototype is retired):
 - **Diagrams are editorial SVG** — hairline strokes, no shadows, no Mermaid
   runtime (`src/components/diagrams/`).
 
-The full vocabulary, its rules, and the remaining realignment work are in the
-design plan above.
+The full vocabulary and its enforcement rules are
+[ADR-0010](./docs/adr/0010-editorial-design-system.md); the landing page is a
+guarded display variant of it ([ADR-0011](./docs/adr/0011-landing-display-variant.md)).
+Open work is listed in [docs/](./docs/README.md).
 
 ## Stack
 

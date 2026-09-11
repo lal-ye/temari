@@ -9,7 +9,8 @@
  * repo's "layer 1: pure logic" preference. Wiring to the live page (reading
  * `--landing-*` tokens off the mounted surface, feeding the hook) is Phase 4.
  *
- * Key behaviour the numbers encode (docs/ui-audit-… §3, A11/E3):
+ * Key behaviour the numbers encode
+ * (docs/archive/ui-audit-ascii-hero-and-design-tooling.md §3, A11/E3):
  *   - On a light surface every ink is DARKER than the surface; a hue can never
  *     become "lighter". Each ink therefore has a hard ceiling
  *     (`compositeContrast(ink, 1, surface)`), and some targets are simply

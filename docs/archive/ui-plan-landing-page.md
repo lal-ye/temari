@@ -1,5 +1,13 @@
 # UI Plan — Landing Page
 
+> **Archived 2026-09-11 — superseded.** WS-1…WS-6 shipped, but later work
+> contradicted parts of this plan: commit `8b37173` redesigned the page, the
+> [ASCII-hero audit](./ui-audit-ascii-hero-and-design-tooling.md) found several
+> commitments below broken, and the current contract is
+> [ADR-0009](../adr/0009-landing-page-route-split.md) plus
+> [ADR-0011](../adr/0011-landing-display-variant.md). Kept as history, not as a
+> specification.
+
 Status: WS-1 through WS-6 shipped · Date: 2026-09-07 · Branch: `arena/01a07d18-temari`
 
 This plan adds a public landing page to Temari. Today the app boots straight
@@ -60,7 +68,7 @@ Read from the source (`src/hooks/useAsciiField.ts`, MIT):
 | Brand | Ethiopic wordmark (`ተ` tile + "Temari" in Playfair), warm paper `#FAF8F5`, ink `#0F172A`, hard 1px borders, offset `shadow-neo-*`. | The page uses the same tokens and classes. No new palette. |
 | Fonts | Abyssinica SIL self-hosted for Ethiopic; JetBrains Mono from Google Fonts for code. | The canvas field must measure cells *after* JetBrains Mono loads (`document.fonts.ready`), or the grid is computed for the fallback font and reflows. |
 | Motion budget | Tiered by frequency (DEVELOPING.md). Rare / first-run may exceed the budget. | A landing hero is seen once per visitor: it sits squarely in the novelty tier and may animate continuously, provided it stops under reduced motion and when not visible. |
-| Copy rules | `docs/ui-audit-taste-skill.md`: no fabricated numbers, no decorative status dots, no em-dashes in rendered strings, one middle dot per line. | The page shows no invented stats ("10k learners"), no fake testimonials, no logo wall. Every claim maps to a shipped feature. |
+| Copy rules | `docs/archive/ui-audit-taste-skill.md`: no fabricated numbers, no decorative status dots, no em-dashes in rendered strings, one middle dot per line. | The page shows no invented stats ("10k learners"), no fake testimonials, no logo wall. Every claim maps to a shipped feature. |
 | Glossary | CONTEXT.md fixes the vocabulary: Subject, Material, Note, Quiz, Drill, Exam, Attempt, Cognitive Level, Provider, BYOK, Offline generation. | Landing copy uses these words. It says "Exam", not "test"; "Material", not "document". |
 
 ## 4. Workstreams

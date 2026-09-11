@@ -1,8 +1,15 @@
 # Design Review — the ASCII hero, and the three proposed libraries
 
-- Status: **Proposal, for discussion**
+> **Archived 2026-09-11 — work complete.** Kept for background and rationale
+> only; this is not a current specification. The durable decision it produced is
+> [ADR-0011](../adr/0011-landing-display-variant.md); the current landing
+> contract is in the code under `src/components/landing/` and the ADR. The
+> implementation log (§7) records every phase as Done. The one item still owed
+> is the real-device touch test of the coarse-pointer path (finding A5).
+
+- Status: **Archived (completed)**
 - Date: 2026-09-10
-- Scope: `src/components/landing/*`, `src/index.css`, `index.html`, `docs/adr/0004|0005|0006|0009|0010`, `docs/ui-plan-landing-page.md`
+- Scope: `src/components/landing/*`, `src/index.css`, `index.html`, `docs/adr/0004|0005|0006|0009|0010`, `docs/archive/ui-plan-landing-page.md`
 - Commit audited: `8b37173` ("refactor(landing): redesign landing page to cognitive study engine")
 - Author: Arena agent session `arena/01a08b3b-temari`
 
@@ -73,7 +80,7 @@ is auditable, and the body text below has been corrected in place.
 |---|---|---|---|
 | X1 | *"`App.tsx` creates nav items with only `id`, `label`, and `icon`; no `shortLabel` values are supplied"* — offered as **Miss 1**, a mobile bottom-bar bug | **False.** `App.tsx:195-201` supplies `shortLabel` for **all five** items: `'Notes'`, `'Quizzes'`, `'Exams'`, `'Progress'`, `'Planner'`. `HubTabs.tsx:134` (`item.shortLabel ?? item.label`) therefore never falls through. There is no bug to fix. Separately, the review's suggested replacement sets `label: 'Mock Exams'` — `glossary.test.ts:49` asserts `App.tsx` contains no case-insensitive `"mock"`, so applying that patch would **break a currently-passing test**. | `grep -n shortLabel src/App.tsx src/components/nav/HubTabs.tsx` |
 | X2 | *"`StoredNote.updatedAt` is optional in `types.ts`, while `useReadingPlace` expects `contentRevision: string`"* — offered as **Miss 5**, a reading-continuity bug | **False.** `types.ts:23` declares `updatedAt: string` — **required** — on `StoredNote`. The optional `updatedAt?: string` at `types.ts:12` belongs to the **`Subject`** interface, which is a different type. `NoteViewer.tsx:564` passing `note.updatedAt` is type-correct and `tsc --noEmit` is clean. | `sed -n '1,30p' src/types.ts` |
-| X3 | The report should be judged against *"the actual `improve-ui` skill"* | **No such skill is in this repository.** `skills-lock.json` locks **60** skills; `improve-ui` is not one of them, and neither are `taste-skill` or `redesign-skill` (those two are external, referenced only in `docs/ui-audit-taste-skill.md`). The scope critique is still worth answering on its merits — see §0.2 — but it is not a contract this repo carries. | `python3 -c "import json;print('improve-ui' in json.load(open('skills-lock.json'))['skills'])"` → `False` |
+| X3 | The report should be judged against *"the actual `improve-ui` skill"* | **No such skill is in this repository.** `skills-lock.json` locks **60** skills; `improve-ui` is not one of them, and neither are `taste-skill` or `redesign-skill` (those two are external, referenced only in `docs/archive/ui-audit-taste-skill.md`). The scope critique is still worth answering on its merits — see §0.2 — but it is not a contract this repo carries. | `python3 -c "import json;print('improve-ui' in json.load(open('skills-lock.json'))['skills'])"` → `False` |
 
 ### Partly accepted
 
@@ -184,7 +191,7 @@ design decision once, and then unmade it:
 | — | `docs/adr/0006` | Header-only chrome. **No sidebar.** |
 | 2026-09-07 | `docs/adr/0009` | Landing page at `/`, shell at `/app`, no router. **Port the hero hook, do not install `performative-ui`.** `/` chunk ~70 kB gzipped, containing none of the study code. |
 | 2026-09-07 | `docs/adr/0010` | **Modern Academic Editorial** becomes the single visual language: warm paper `#FAF8F5`, ink `#0F172A`, one accent (Academic Amber `amber-600` / `amber-500/10`), hairline borders, `shadow-xs`, Playfair headings / Inter body / JetBrains Mono figures, **Ethiopic first-class**. Neo-brutalism retired. |
-| 2026-09-07 | `docs/ui-plan-landing-page.md` | Six workstreams, WS-1…WS-6, all marked ✅ shipped. |
+| 2026-09-07 | `docs/archive/ui-plan-landing-page.md` | Six workstreams, WS-1…WS-6, all marked ✅ shipped. |
 | 2026-09-10 | `8b37173` | The landing page is rewritten as "Variation 10 — Cognitive Study Engine": `#F8F7F4` / `#111113` / `#E33E33`, Syne 800 + Space Mono, hard `border-2`, uppercase terminal labels. |
 
 **The headline structural finding, before anything about pixels:**
@@ -202,7 +209,7 @@ Written commitments broken by `8b37173`, each verifiable:
 |---|---|---|---|---|
 | 1 | "Academic Amber is the single accent" | `docs/adr/0010` §3 | Accent is `#E33E33` red, 13 occurrences | `grep -c '#E33E33' src/components/landing/LandingPage.tsx` |
 | 2 | "Ethiopic is first-class… **not a fallback**" | `docs/adr/0010` §2; the `@font-face` comment at `src/index.css:9-19` explains *why* it is self-hosted | The wordmark ተማሪ is set in `'Syne', sans-serif` — Syne has no Ethiopic, so it falls back to the OS | `LandingPage.tsx:104-111` |
-| 3 | "every number comes from code (`BLOOM_LEVELS`, `AI_PROVIDERS`)" | `DEVELOPING.md` module map, landing row; `docs/ui-plan-landing-page.md` §6.3 | `BLOOM_CARDS` hardcoded (`LandingPage.tsx:31-64`); `PROVIDERS: [GEMINI, OPENAI, CLAUDE, GROQ]` hardcoded (`LandingPage.tsx:218`) | Catalog has **7** providers incl. DeepSeek, OpenRouter, Custom/Ollama — `grep -n "id:" shared/aiCatalog.ts` |
+| 3 | "every number comes from code (`BLOOM_LEVELS`, `AI_PROVIDERS`)" | `DEVELOPING.md` module map, landing row; `docs/archive/ui-plan-landing-page.md` §6.3 | `BLOOM_CARDS` hardcoded (`LandingPage.tsx:31-64`); `PROVIDERS: [GEMINI, OPENAI, CLAUDE, GROQ]` hardcoded (`LandingPage.tsx:218`) | Catalog has **7** providers incl. DeepSeek, OpenRouter, Custom/Ollama — `grep -n "id:" shared/aiCatalog.ts` |
 | 4 | "Attribution is in both file headers **and on the page footer**" | `docs/adr/0009` §2 | There is no footer. `grep -n '<footer' src/components/landing/*.tsx` → nothing | |
 
 Also stale, and now actively misleading to a new contributor:
@@ -214,7 +221,7 @@ Also stale, and now actively misleading to a new contributor:
   and calls the page a re-skin of the editorial system.
 - `index.html:7-8` and `metadata.json` both still describe the product as
   "neo-brutalist", which ADR-0010 retired.
-- `docs/ui-plan-landing-page.md` marks WS-1…WS-6 ✅ shipped, but WS-3's section
+- `docs/archive/ui-plan-landing-page.md` marks WS-1…WS-6 ✅ shipped, but WS-3's section
   table (Nav / Hero / The loop / Cognitive levels / BYOK / Footer) no longer
   describes the page, and WS-2 item 4 ("on `(pointer: coarse)` the resting
   opacity is raised") is **no longer true** — see finding **A5**.
@@ -385,7 +392,7 @@ grep -rn "coarsePointerOpacity" src/
 
 `AsciiHero.tsx:26-42` does not pass it; `LandingPage.tsx:72-79` does not pass it.
 So on a phone: α rests at 0.18 (invisible per A1), and the only mechanism that
-ever raises α is `mousemove` — which a phone never fires. `docs/ui-plan-landing-page.md`
+ever raises α is `mousemove` — which a phone never fires. `docs/archive/ui-plan-landing-page.md`
 WS-2 item 4 states "on `(pointer: coarse)` the resting opacity is raised". **It
 isn't.** The feature is implemented and unwired.
 
@@ -475,7 +482,7 @@ handler, no visible focus state. Consequences:
 - `title` is not exposed reliably and never appears on touch — so the
   `shortSnippet → fullPrompt` swap at `:201` (`isHovered ? … : …`) is
   **hover-only content**: invisible on phones and to keyboard users.
-- `docs/ui-plan-landing-page.md` WS-4 promised "Focus order: nav links, primary
+- `docs/archive/ui-plan-landing-page.md` WS-4 promised "Focus order: nav links, primary
   CTA, secondary CTA, then sections." There is no nav, and the cards are not in
   the order.
 
@@ -500,7 +507,7 @@ first-class. Here they do not exist.
   supposed to be a uniform monospace grid. It was added as an "optimisation";
   it is a fidelity regression.
 - `frameMs` default is **60** (`useAsciiField.ts:79`) = **16.7 fps**. The
-  reference default is **50** = **20 fps** (`docs/ui-plan-landing-page.md` §1
+  reference default is **50** = **20 fps** (`docs/archive/ui-plan-landing-page.md` §1
   records the choice: "throttled to 60ms"). So our port is *slower* than the
   thing it was criticised for never stopping. At 16.7 fps a 4.5 s wave is ~75
   frames — but with A1's contrast you perceive stutter, not breathing.
@@ -664,7 +671,7 @@ export function contrastFor(surface: 'paper' | 'ink', accent: string): AsciiCont
 ```
 
 **[E6] The bands below are proposals, not values taken from our design system.**
-Nothing in `docs/adr/0010` or `docs/ui-plan-landing-page.md` states a contrast
+Nothing in `docs/adr/0010` or `docs/archive/ui-plan-landing-page.md` states a contrast
 target for the field. They are implementation decisions to be ratified, and the
 right way to pin them is a test on the *outcome*, not a constant in the
 renderer:
@@ -774,7 +781,7 @@ component's docblock) and `panel` (the reference's bordered card).
 |---|---|
 | **Code** | New: `fieldPrograms.ts`, `surfaceContrast.ts`, `AsciiSurface.tsx`. Deleted: `AsciiField.tsx`, `AsciiHero.tsx`. Edited: `useAsciiField.ts` (4 targeted fixes), `asciiFieldMath.ts` (keep the pure functions, add the derived-contrast ones), `LandingPage.tsx` (composition). |
 | **Tests** (per `DEVELOPING.md` "Testing", layer 1 first) | Extend `asciiFieldMath.test.ts`: `contrastFor('paper', amber).restAlpha` lands in [0.20, 0.30]; `peakAlpha` composite ≥ 3:1; `densityFor(w,h,targetCellPx)` returns the *same* glyph size for 390×844 and 1440×900. New source guard `landingDesignSystem.test.ts`: every interactive element in `LandingPage.tsx` is a `<button>` or `<a>`; no `style={{…}}` on a node that also has a `hover:` class (catches A7 mechanically); no raw hex outside the token file. |
-| **Docs** | `DEVELOPING.md:22` → `AsciiSurface`. `docs/ui-plan-landing-page.md` → mark WS-2 item 4 as *regressed in `8b37173`, restored in this change*. New **ADR-0011** if the accent/type direction changes (see §5). |
+| **Docs** | `DEVELOPING.md:22` → `AsciiSurface`. `docs/archive/ui-plan-landing-page.md` → mark WS-2 item 4 as *regressed in `8b37173`, restored in this change*. New **ADR-0011** if the accent/type direction changes (see §5). |
 | **Motion budget** | Unchanged. The field stays the page's only continuous animation and still stops when hidden/off-screen/reduced-motion. The autonomous drift on coarse pointers must be listed in `DEVELOPING.md`'s rare/first-run row so it is not mistaken for a leak. |
 | **Bundle** | Neutral. Zero new dependencies; `AsciiField.tsx` deletion is a small win. The `/` chunk is currently **76.03 kB gzipped** (`dist/assets/index-DYkw6yXJ.js`), consistent with ADR-0009's ~70 kB. Verified it contains no `recharts`, `katex`, `studyStore` or `AiGenerator` (grep count 0 for each). |
 | **Risk** | Low and reversible. `stripeRadial` as the default program means the arithmetic is preserved; the visible change is contrast and composition, both of which are what we are trying to change. |
@@ -846,7 +853,7 @@ gzipped and contains none of the study code", this is a different order of thing
 
 1. `docs/adr/0004` rule 5 — *"No animation library… if something genuinely can't
    be built without a library, write an ADR first."*
-2. `docs/ui-plan-landing-page.md` §6.2 — *"No new dependency."*
+2. `docs/archive/ui-plan-landing-page.md` §6.2 — *"No new dependency."*
 3. `docs/adr/0010` §4 — *"no Mermaid runtime"*; the whole diagram system exists
    because we chose native SVG over a rendering runtime.
 4. `docs/adr/0005` — a continuously animating WebGL surface behind a *study
@@ -858,7 +865,7 @@ shader gradient does not make the ASCII port better — it deletes the thing
 ADR-0009 chose to port, and replaces a 1.3 kB hand-owned canvas with a WebGL
 stack, for a *quieter* effect than the one we already have.
 
-**The OG-image idea, corrected. [E7]** `docs/ui-plan-landing-page.md` §7 lists
+**The OG-image idea, corrected. [E7]** `docs/archive/ui-plan-landing-page.md` §7 lists
 the top follow-up as an Open Graph image, and **[V]** there is currently none —
 `grep -c 'og:image' index.html` returns `0`, and `public/` holds only
 `_redirects` and `fonts/`. This document originally proposed rendering one with
@@ -1022,7 +1029,7 @@ Three concrete, small, on-language ideas — all reusing what Step 3 builds:
 | `src/components/landing/LandingPage.tsx` | A `mode="band"` divider between sections, so the field is a recurring motif rather than a one-off hero. | Layer 4 |
 
 **Step 5 — OG image via shadergradient at build time (§4.2).** Closes the
-top follow-up in `docs/ui-plan-landing-page.md` §7.
+top follow-up in `docs/archive/ui-plan-landing-page.md` §7.
 
 **Step 6 — Font hygiene, which is now a real cost.** **[V]** `index.html:15`
 requests **8 families / 29 declared instances** in one render-blocking
@@ -1239,7 +1246,7 @@ so every number in this document is re-runnable rather than quoted.
 
 - `CONTEXT.md` · `DEVELOPING.md` · `README.md`
 - `docs/adr/0004` (no animation library) · `0005` (motion budget) · `0006` (sidebar removal) · `0009` (route split, port-not-install) · `0010` (editorial design system)
-- `docs/ui-plan-landing-page.md` · `docs/ui-plan-editorial-shell-export.md` · `docs/ui-plan-spatial-consistency.md` · `docs/ui-audit-taste-skill.md`
+- `docs/archive/ui-plan-landing-page.md` · `docs/ui-plan-editorial-shell-export.md` · `docs/archive/ui-plan-spatial-consistency.md` · `docs/archive/ui-audit-taste-skill.md`
 
 **Reference implementation** (read from source, not from the rendered site)
 
