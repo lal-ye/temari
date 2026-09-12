@@ -88,3 +88,8 @@ historical.
 5. **Keep the [repository README](../README.md) small.** It is the front door —
    what Temari is, how to run it — and links here for everything else. Add new
    material to this index, not there.
+
+## Deployment guides
+
+- [Render: one service, branch-first deployment](./RENDER.md) — recommended.
+- [Netlify Functions](./NETLIFY.md) — optional alternative.
