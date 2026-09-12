@@ -53,12 +53,18 @@ export interface AiConnectionDeps {
 
 export function createAiConnection(deps: AiConnectionDeps) {
   const resolve = (over?: Partial<TestConnectionOptions & FetchLiveModelsOptions>) => {
-    const creds = resolveCredentials(deps.getSettings());
+    const settings = deps.getSettings();
+    const provider = over?.provider || settings?.selectedProvider;
+    const creds = resolveCredentials({
+      ...settings,
+      selectedProvider: provider as import('../../shared/aiCatalog').AIProviderId,
+      selectedModel: provider && provider !== settings?.selectedProvider ? undefined : settings?.selectedModel,
+    });
     return {
-      provider: over?.provider || creds.provider,
+      provider: creds.provider,
       model: over?.model || creds.model,
       apiKey: over?.apiKey ?? creds.apiKey,
-      baseUrl: over?.baseUrl ?? creds.baseUrl,
+      baseUrl: creds.provider === 'custom' ? over?.baseUrl ?? creds.baseUrl : undefined,
     };
   };
 

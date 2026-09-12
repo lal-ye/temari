@@ -13,7 +13,7 @@ export function resolveCredentials(settings?: Partial<UserSettings> | null): AiC
   return {
     provider,
     model: resolveActiveModel(settings, provider),
-    apiKey: settings?.providerKeys?.[provider] || settings?.apiKey || undefined,
-    baseUrl: settings?.customBaseUrl || undefined,
+    apiKey: settings?.providerKeys?.[provider] || (provider === 'gemini' ? settings?.apiKey : undefined) || undefined,
+    baseUrl: provider === 'custom' ? settings?.customBaseUrl || undefined : undefined,
   };
 }

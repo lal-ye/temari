@@ -251,9 +251,7 @@ export const ApiKeySettingsModal: React.FC<ApiKeySettingsModalProps> = ({
                 </span>
               </div>
               <span className="text-[10px] font-medium text-muted-foreground bg-muted px-2 py-0.5 rounded border border-border">
-                {selectedProvider === 'gemini'
-                  ? 'Server key available'
-                  : selectedProvider === 'custom'
+                {selectedProvider === 'custom'
                   ? 'Runs locally'
                   : 'Your own key'}
               </span>
@@ -329,9 +327,7 @@ API key (optional for local)
               /* Cloud Providers (Gemini, OpenAI, Claude, Groq, DeepSeek, OpenRouter) */
               <div className="space-y-2 pt-1">
                 <p className="text-[11px] text-muted-foreground leading-relaxed font-medium">
-                  {selectedProvider === 'gemini'
-                    ? 'This deployment ships a shared Gemini key, so you can start without one. Add your own to avoid the shared rate limit.'
-                    : `Stored in this browser only, and sent to ${activeProviderConfig.name} through Temari's server when you generate.`}
+                  {`Stored in this browser and sent to ${activeProviderConfig.name} through Temari's server for connection tests, model discovery and generation. Hosted Temari requires your own key.`}
                 </p>
 
                 <div className="relative">
@@ -365,7 +361,8 @@ API key (optional for local)
                   </div>
                 </div>
 
-                {/* Shape check, done locally. Catches the two mistakes that
+                {/* Advisory shape hint only; Gemini credentials are validated by the provider.
+                    Shape check, done locally. Catches the two mistakes that
                     actually happen - pasting the wrong provider's key, and a
                     truncated copy - before spending a round trip on them. */}
                 {currentKeyForProvider && (() => {
@@ -374,7 +371,6 @@ API key (optional for local)
                     anthropic: { prefix: 'sk-ant-', label: 'sk-ant-...' },
                     groq: { prefix: 'gsk_', label: 'gsk_...' },
                     openrouter: { prefix: 'sk-or-', label: 'sk-or-...' },
-                    gemini: { prefix: 'AIza', label: 'AIza...' },
                   };
                   const rule = expected[selectedProvider];
                   if (!rule || currentKeyForProvider.startsWith(rule.prefix)) return null;
