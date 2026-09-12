@@ -25,7 +25,7 @@ not restate them here.
 | `src/components/landing/*` | Public landing page + the `AsciiSurface` canvas field (`asciiFieldMath.ts`, `surfaceContrast.ts`) | [ADR-0011](./docs/adr/0011-landing-display-variant.md), [ADR-0009](./docs/adr/0009-landing-page-route-split.md) |
 | `src/components/nav/*` | App chrome: `HubTabs` / `HubBottomBar` (shared sliding indicator), `SubjectSwitcher`, `StreakPill` | [ADR-0006](./docs/adr/0006-sidebar-removal.md) |
 | `src/components/*` | Feature screens | [ADR-0001](./docs/adr/0001-study-store-deep-module.md) / [ADR-0002](./docs/adr/0002-ai-generation-port.md): no fetch, credential or fallback logic in components. |
-| `server.ts` | Express API (`/api/ai/*`) + static serving | [ADR-0003](./docs/adr/0003-shared-ai-provider-catalog.md); routes own prompts. |
+| `server/app.ts`, `server.ts` | Shared Express API (`/api/ai/*`) + standalone startup/static serving | [ADR-0003](./docs/adr/0003-shared-ai-provider-catalog.md); routes own prompts. |
 | `server/aiProvider.ts` | Provider-agnostic execution dispatcher + JSON parsing | [ADR-0003](./docs/adr/0003-shared-ai-provider-catalog.md) |
 
 ## Ground rules
