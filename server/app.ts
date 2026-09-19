@@ -115,6 +115,12 @@ export function createApiApp({ hosted = false } = {}) {
 
   Specifications:
   1. Header Hierarchy: Use # for main title, ## for key modules, ### for concepts.
+  Markdown validity rules:
+  - Use exactly one heading prefix per line (write "## Components", never "## ## Components").
+  - Use literal > quote markers, never HTML-encode them as &gt;. Put alert text directly on the next quoted line, without an unquoted blank line between the marker and body.
+  - Keep table headers, separator rows, and data rows consecutive: no blank lines inside a Markdown table.
+  - Balance emphasis delimiters. Bold text opens and closes with two asterisks; do not open with one and close with two.
+  - Write plain labels in diagram JSON; do not HTML-encode ampersands as &amp;.
   2. Comparison Matrix: Include Markdown tables (|...|) comparing contrasting concepts where appropriate.
   3. Callouts: Include blockquotes with tags: > [!NOTE], > [!IMPORTANT], > [!TIP].
   4. Figures: When a diagram teaches more than a paragraph would, emit ONE fenced block of JSON. Temari draws the picture; you supply only the structure.

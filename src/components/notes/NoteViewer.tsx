@@ -5,6 +5,7 @@ import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 import rehypeRaw from 'rehype-raw';
 import { rehypeNoteCallouts } from './rehypeNoteCallouts';
+import { rehypeNoteRepairs } from './rehypeNoteRepairs';
 import 'katex/dist/katex.min.css';
 
 import { StoredNote } from '../../types';
@@ -781,7 +782,7 @@ export const NoteViewer: React.FC<NoteViewerProps> = ({
       >
         <ReactMarkdown
           remarkPlugins={[remarkGfm, remarkMath]}
-          rehypePlugins={[rehypeRaw, rehypeNoteCallouts, rehypeKatex, rehypeNoteAnchors]}
+          rehypePlugins={[rehypeRaw, rehypeNoteRepairs, rehypeNoteCallouts, rehypeKatex, rehypeNoteAnchors]}
           components={markdownComponents}
         >
           {processedContent}

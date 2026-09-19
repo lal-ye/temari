@@ -195,3 +195,35 @@ describe('NoteViewer callout parsing regressions', () => {
     expect(html).not.toContain('##');
   });
 });
+
+
+describe('display-only repairs for generated note formatting', () => {
+  const renderNote = (content: string) => renderToString(<NoteViewer note={{ ...baseNote, content }} />);
+  it('removes a duplicated heading prefix, preserving the actual heading level', () => {
+    const html = renderNote('## ## Components of **Assembly Language** &amp; Architecture');
+    expect(html).toContain('<h2 id="sec-1"');
+    expect(html).not.toContain('##');
+    expect(html).toContain('Assembly Language</strong>');
+  });
+  it('repairs entity-escaped callouts with blank lines between quoted paragraphs', () => {
+    const html = renderNote('&gt; [!NOTE]\n\n&gt; Comments begin with a semicolon `;`.\n\n&gt; [!TIP]\n\n&gt; Keep **instructions** distinct.');
+    expect(html).toContain('data-callout="note"');
+    expect(html).toContain('data-callout="tip"');
+    expect(html).not.toContain('[!');
+    expect(html).toContain('instructions</strong>');
+    expect(html).toContain(';');
+  });
+  it('does not alter code examples, escaped heading text or unknown quote tags', () => {
+    const html = renderNote('## \\#\\# Literal hashes\n\n```text\n## ## Example\n&gt; [!NOTE]\n```\n\n&gt; [!UNKNOWN] Literal.');
+    expect(html).toContain('## Literal hashes');
+    expect(html).toContain('## ## Example');
+    expect(html).not.toContain('data-callout=');
+    expect(html).toContain('[!UNKNOWN]');
+  });
+  it('does not modify saved source while rendering', () => {
+    const note = { ...baseNote, content: '## ## Heading\n\n&gt; [!NOTE] Text.' };
+    const original = note.content;
+    renderToString(<NoteViewer note={note} />);
+    expect(note.content).toBe(original);
+  });
+});
