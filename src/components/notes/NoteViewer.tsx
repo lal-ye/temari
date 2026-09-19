@@ -4,6 +4,7 @@ import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 import rehypeRaw from 'rehype-raw';
+import { rehypeNoteCallouts } from './rehypeNoteCallouts';
 import 'katex/dist/katex.min.css';
 
 import { StoredNote } from '../../types';
@@ -116,91 +117,78 @@ function recogniseTermAtPoint(x: number, y: number, within: HTMLElement | null):
 /**
  * Callout alert component for GitHub-style markdown alerts
  */
-function CalloutBlockquote({ children }: { children: React.ReactNode }) {
-  const childArray = React.Children.toArray(children);
-  const firstChild = childArray[0];
+function CalloutBlockquote({ children, node }: { children?: React.ReactNode; node?: { properties?: Record<string, unknown> } }) {
+  const callout = node?.properties?.dataCallout;
+  const alertType = typeof callout === 'string' ? callout.toUpperCase() : '';
+  if (['NOTE', 'IMPORTANT', 'TIP', 'WARNING', 'CAUTION'].includes(alertType)) {
+    const alertMap: Record<
+      string,
+      {
+        label: string;
+        icon: React.ComponentType<{ className?: string }>;
+        border: string;
+        bg: string;
+        text: string;
+        badge: string;
+      }
+    > = {
+      NOTE: {
+        label: 'Note',
+        icon: Info,
+        border: 'border-l-4 border-blue-500',
+        bg: 'bg-blue-50/60 dark:bg-blue-950/25',
+        text: 'text-slate-900 dark:text-slate-100',
+        badge: 'text-blue-700 dark:text-blue-300 font-semibold',
+      },
+      IMPORTANT: {
+        label: 'Important',
+        icon: AlertTriangle,
+        border: 'border-l-4 border-rose-500',
+        bg: 'bg-rose-50/60 dark:bg-rose-950/25',
+        text: 'text-slate-900 dark:text-slate-100',
+        badge: 'text-rose-700 dark:text-rose-300 font-semibold',
+      },
+      TIP: {
+        label: 'Helpful Tip',
+        icon: Lightbulb,
+        border: 'border-l-4 border-emerald-500',
+        bg: 'bg-emerald-50/60 dark:bg-emerald-950/25',
+        text: 'text-slate-900 dark:text-slate-100',
+        badge: 'text-emerald-700 dark:text-emerald-300 font-semibold',
+      },
+      WARNING: {
+        label: 'Warning',
+        icon: AlertTriangle,
+        border: 'border-l-4 border-amber-500',
+        bg: 'bg-amber-50/60 dark:bg-amber-950/25',
+        text: 'text-slate-900 dark:text-slate-100',
+        badge: 'text-amber-700 dark:text-amber-300 font-semibold',
+      },
+      CAUTION: {
+        label: 'Caution',
+        icon: AlertTriangle,
+        border: 'border-l-4 border-red-500',
+        bg: 'bg-red-50/60 dark:bg-red-950/25',
+        text: 'text-slate-900 dark:text-slate-100',
+        badge: 'text-red-700 dark:text-red-300 font-semibold',
+      },
+    };
 
-  if (React.isValidElement(firstChild) && firstChild.type === 'p') {
-    const pChildren = React.Children.toArray((firstChild.props as any).children);
-    const firstText = typeof pChildren[0] === 'string' ? pChildren[0] : '';
-    const match = firstText.match(/^\[!(NOTE|IMPORTANT|TIP|WARNING|CAUTION)\]\s*/i);
+    const current = alertMap[alertType] || alertMap.NOTE;
+    const IconComponent = current.icon;
 
-    if (match) {
-      const alertType = match[1].toUpperCase();
-      const remainingFirst = firstText.slice(match[0].length);
-      const newPChildren = remainingFirst ? [remainingFirst, ...pChildren.slice(1)] : pChildren.slice(1);
-      const newFirstChild = React.cloneElement(firstChild, {}, ...newPChildren);
-      const restChildren = [newFirstChild, ...childArray.slice(1)];
-
-      const alertMap: Record<
-        string,
-        {
-          label: string;
-          icon: React.ComponentType<{ className?: string }>;
-          border: string;
-          bg: string;
-          text: string;
-          badge: string;
-        }
-      > = {
-        NOTE: {
-          label: 'Note',
-          icon: Info,
-          border: 'border-l-4 border-blue-500',
-          bg: 'bg-blue-50/60 dark:bg-blue-950/25',
-          text: 'text-slate-900 dark:text-slate-100',
-          badge: 'text-blue-700 dark:text-blue-300 font-semibold',
-        },
-        IMPORTANT: {
-          label: 'Important',
-          icon: AlertTriangle,
-          border: 'border-l-4 border-rose-500',
-          bg: 'bg-rose-50/60 dark:bg-rose-950/25',
-          text: 'text-slate-900 dark:text-slate-100',
-          badge: 'text-rose-700 dark:text-rose-300 font-semibold',
-        },
-        TIP: {
-          label: 'Helpful Tip',
-          icon: Lightbulb,
-          border: 'border-l-4 border-emerald-500',
-          bg: 'bg-emerald-50/60 dark:bg-emerald-950/25',
-          text: 'text-slate-900 dark:text-slate-100',
-          badge: 'text-emerald-700 dark:text-emerald-300 font-semibold',
-        },
-        WARNING: {
-          label: 'Warning',
-          icon: AlertTriangle,
-          border: 'border-l-4 border-amber-500',
-          bg: 'bg-amber-50/60 dark:bg-amber-950/25',
-          text: 'text-slate-900 dark:text-slate-100',
-          badge: 'text-amber-700 dark:text-amber-300 font-semibold',
-        },
-        CAUTION: {
-          label: 'Caution',
-          icon: AlertTriangle,
-          border: 'border-l-4 border-red-500',
-          bg: 'bg-red-50/60 dark:bg-red-950/25',
-          text: 'text-slate-900 dark:text-slate-100',
-          badge: 'text-red-700 dark:text-red-300 font-semibold',
-        },
-      };
-
-      const current = alertMap[alertType] || alertMap.NOTE;
-      const IconComponent = current.icon;
-
-      return (
-        <div
-          data-callout={alertType.toLowerCase()}
-          className={`note-callout p-4 my-4 rounded-r-xl border border-l-0 ${current.border} ${current.bg} ${current.text} text-sm`}
-        >
-          <div className={`flex items-center gap-1.5 text-xs uppercase tracking-wider mb-2 ${current.badge}`}>
-            <IconComponent className="w-4 h-4 shrink-0" />
-            <span>{current.label}</span>
-          </div>
-          <div className="space-y-2">{restChildren}</div>
+    return (
+      <div
+        data-callout={alertType.toLowerCase()}
+        className={`note-callout p-4 my-4 rounded-r-xl border ${current.border} ${current.bg} ${current.text} text-sm`}
+      >
+        <div className={`flex items-center gap-1.5 text-xs uppercase tracking-wider mb-2 ${current.badge}`}>
+          <IconComponent className="w-4 h-4 shrink-0" />
+          <span>{current.label}</span>
         </div>
-      );
-    }
+        <div className="space-y-2">{children}</div>
+      </div>
+    );
   }
 
   return (
@@ -511,8 +499,8 @@ export const NoteViewer: React.FC<NoteViewerProps> = ({
     h2({ children, id }: any) {
       return (
         <h2 id={id} className="font-editorial text-xl md:text-2xl font-bold text-foreground mt-7 mb-3.5 flex items-center gap-2.5 tracking-tight leading-snug scroll-mt-3">
-          <span className="w-2 h-2 rounded-full bg-amber-500 shrink-0" />
-          {children}
+          <span aria-hidden="true" className="w-2 h-2 rounded-full bg-amber-500 shrink-0" />
+          <span className="min-w-0 break-words">{children}</span>
         </h2>
       );
     },
@@ -793,7 +781,7 @@ export const NoteViewer: React.FC<NoteViewerProps> = ({
       >
         <ReactMarkdown
           remarkPlugins={[remarkGfm, remarkMath]}
-          rehypePlugins={[rehypeRaw, rehypeKatex, rehypeNoteAnchors]}
+          rehypePlugins={[rehypeRaw, rehypeNoteCallouts, rehypeKatex, rehypeNoteAnchors]}
           components={markdownComponents}
         >
           {processedContent}

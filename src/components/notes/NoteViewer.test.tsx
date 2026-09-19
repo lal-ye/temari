@@ -53,7 +53,8 @@ describe('NoteViewer Markdown Rendering', () => {
     const html = renderToString(<NoteViewer note={baseNote} />);
 
     // Must render Note callout header
-    expect(html).toContain('Note');
+    expect(html).toContain('data-callout="note"');
+    expect(html).not.toContain('[!NOTE]');
     expect(html).toContain('This is a callout note');
   });
 });
@@ -144,5 +145,53 @@ describe('NoteViewer figure numbering', () => {
     expect(renderToString(<NoteViewer note={noteWithFigures} />)).toBe(
       renderToString(<NoteViewer note={noteWithFigures} />)
     );
+  });
+});
+
+
+describe('NoteViewer callout parsing regressions', () => {
+  const renderNote = (content: string) => renderToString(<NoteViewer note={{ ...baseNote, content }} />);
+
+  it.each(['NOTE', 'TIP', 'IMPORTANT', 'WARNING', 'CAUTION'])('renders %s markers on their own line without leaking syntax', type => {
+    const html = renderNote(`> [!${type}]\n> Keep **bold** and \`code\` intact.`);
+    expect(html).toContain(`data-callout="${type.toLowerCase()}"`);
+    expect(html).not.toContain(`[!${type}]`);
+    expect(html).toContain('bold</strong>');
+    expect(html).toContain('code</code>');
+  });
+
+  it('supports same-line content, lowercase tags, multiple paragraphs and lists', () => {
+    const html = renderNote('> [!tip] First paragraph.\n>\n> Second paragraph.\n>\n> - List entry');
+    expect(html).toContain('data-callout="tip"');
+    expect(html).not.toContain('[!tip]');
+    for (const text of ['First paragraph.', 'Second paragraph.', 'List entry']) expect(html).toContain(text);
+    expect(html).toContain('<ul');
+  });
+
+  it('handles nested callouts independently', () => {
+    const html = renderNote('> [!NOTE] Outer.\n>\n> > [!WARNING] Inner.');
+    expect(html).toContain('data-callout="note"');
+    expect(html).toContain('data-callout="warning"');
+    expect(html).not.toContain('[!');
+  });
+
+  it.each([
+    '> Ordinary quotation.',
+    '> [!UNKNOWN] Literal tag.',
+    '> Prefix [!NOTE] is not an alert.',
+    '> `[!NOTE]` documents the syntax.',
+    '> \\[!NOTE] explicitly escaped.',
+    '```markdown\n> [!NOTE] Code example\n```',
+  ])('preserves non-callout content: %s', content => {
+    const html = renderNote(content);
+    expect(html).not.toContain('data-callout=');
+    if (content.includes('[!')) expect(html).toContain('[!');
+  });
+
+  it('parses heading syntax while preserving inline formatting', () => {
+    const html = renderNote('## Components of **Assembly Language**');
+    expect(html).toContain('<h2');
+    expect(html).toContain('Assembly Language</strong>');
+    expect(html).not.toContain('##');
   });
 });
