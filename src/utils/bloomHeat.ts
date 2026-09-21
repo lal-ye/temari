@@ -1,19 +1,7 @@
 import { BLOOM_LEVELS, type BloomLevel } from '../types';
-import { glyphFor } from '../components/landing/asciiFieldMath';
 import type { TopicLevelStat } from './analytics';
 
-/**
- * Pure maths for the Bloom mastery heatmap figure (audit phase 8).
- *
- * The dashboard's `topicLevelStats` is the topic × cognitive-level axis the
- * app was missing; this turns it into a matrix the view renders as an ASCII
- * density figure — cell glyph = accuracy, cell tint = cognitive level
- * (BLOOM_TINTS in figureTokens). A figure in ADR-0010's sense: no charting
- * runtime, just text.
- */
-
-/** Sparsest-to-densest heat ramp; monospace-safe ASCII only. */
-export const HEAT_RAMP = '.,:;i+*#%@';
+/** Build the topic × cognitive-level matrix; presentation lives in BloomHeatmap. */
 
 /** Key separator: a byte no topic name can contain. */
 const SEP = '\u0000';
@@ -30,11 +18,6 @@ export interface BloomMatrix {
   topics: string[];
   /** One row per topic, cells in BLOOM_LEVELS order. */
   rows: BloomCell[][];
-}
-
-/** Cell glyph: accuracy 0–100 mapped onto the heat ramp. */
-export function glyphForAccuracy(accuracy: number): string {
-  return glyphFor(accuracy / 100, HEAT_RAMP);
 }
 
 /**

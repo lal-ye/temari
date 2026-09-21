@@ -19,18 +19,18 @@ offline drafts when none is reachable.
 
 ## Setup
 
-Requires Node.js 20+.
+Requires Node.js 22.22.3 and Bun 1.3.9 (see `.nvmrc` and `package.json`).
 
 ```bash
-npm install
-npm run dev
+bun install --frozen-lockfile
+bun run dev
 ```
 
 Open <http://localhost:3000>. `/` is the landing page; `/app` is the study shell.
 
 ### AI keys (optional)
 
-Give the server a Provider key in `.env` — `GEMINI_API_KEY`, `OPENAI_API_KEY`,
+For local/private self-hosting, give the server a Provider key in `.env` — `GEMINI_API_KEY`, `OPENAI_API_KEY`,
 `ANTHROPIC_API_KEY`, `GROQ_API_KEY`, `DEEPSEEK_API_KEY` or
 `OPENROUTER_API_KEY` (the full list is in `shared/aiCatalog.ts`) — or let a
 learner paste their own key in Settings (BYOK). With neither, generation falls
@@ -39,19 +39,25 @@ back to the offline adapter and is labelled as an offline draft.
 ### Commands
 
 ```bash
-npm run dev      # Express + Vite dev server (port 3000)
-npm test         # unit tests (Vitest)
-npm run lint     # typecheck (tsc --noEmit)
-npm run build    # production build → dist/
-npm run start    # serve the build (Node)
+bun run dev      # Express + Vite dev server (port 3000)
+bun run test     # unit tests (Vitest)
+bun run lint     # typecheck (tsc --noEmit)
+bun run build    # frontend → dist/; private server bundle → build/
+bun run start    # serve the build (Node; NODE_ENV=production for static serving)
+bun run build:render # typecheck + tests + build + deployment smoke test
 ```
 
 ## Deployment
 
-- **Self-hosted Node** — `npm run build && npm run start`.
-- **Netlify** (`netlify.toml`) — client-only: the AI module falls back to the
-  offline adapter, and server-only operations (connection test, PDF extraction)
-  fail explicitly by design.
+- **Render (recommended)** — one Node web service serves frontend + API, BYOK-only.
+  `render.yaml` targets `arena/01a09569-temari` for testing **before merging**.
+  Follow the [Render deployment guide](./docs/RENDER.md). No database required.
+- **Self-hosted Node** — `bun run build && NODE_ENV=production bun run start`.
+  Set `TEMARI_HOSTED=true` for public BYOK-only hosting.
+- **Netlify (optional alternative)** (`netlify.toml`) — frontend + Express API on Netlify Functions,
+  using learner-supplied keys (BYOK). No server provider secrets required.
+  Custom/Ollama endpoints require self-hosting. See the
+  [step-by-step deployment guide](./docs/NETLIFY.md) for CI/CD, setup and limits.
 
 ## Documentation
 

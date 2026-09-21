@@ -53,7 +53,8 @@ describe('NoteViewer Markdown Rendering', () => {
     const html = renderToString(<NoteViewer note={baseNote} />);
 
     // Must render Note callout header
-    expect(html).toContain('Note');
+    expect(html).toContain('data-callout="note"');
+    expect(html).not.toContain('[!NOTE]');
     expect(html).toContain('This is a callout note');
   });
 });
@@ -144,5 +145,85 @@ describe('NoteViewer figure numbering', () => {
     expect(renderToString(<NoteViewer note={noteWithFigures} />)).toBe(
       renderToString(<NoteViewer note={noteWithFigures} />)
     );
+  });
+});
+
+
+describe('NoteViewer callout parsing regressions', () => {
+  const renderNote = (content: string) => renderToString(<NoteViewer note={{ ...baseNote, content }} />);
+
+  it.each(['NOTE', 'TIP', 'IMPORTANT', 'WARNING', 'CAUTION'])('renders %s markers on their own line without leaking syntax', type => {
+    const html = renderNote(`> [!${type}]\n> Keep **bold** and \`code\` intact.`);
+    expect(html).toContain(`data-callout="${type.toLowerCase()}"`);
+    expect(html).not.toContain(`[!${type}]`);
+    expect(html).toContain('bold</strong>');
+    expect(html).toContain('code</code>');
+  });
+
+  it('supports same-line content, lowercase tags, multiple paragraphs and lists', () => {
+    const html = renderNote('> [!tip] First paragraph.\n>\n> Second paragraph.\n>\n> - List entry');
+    expect(html).toContain('data-callout="tip"');
+    expect(html).not.toContain('[!tip]');
+    for (const text of ['First paragraph.', 'Second paragraph.', 'List entry']) expect(html).toContain(text);
+    expect(html).toContain('<ul');
+  });
+
+  it('handles nested callouts independently', () => {
+    const html = renderNote('> [!NOTE] Outer.\n>\n> > [!WARNING] Inner.');
+    expect(html).toContain('data-callout="note"');
+    expect(html).toContain('data-callout="warning"');
+    expect(html).not.toContain('[!');
+  });
+
+  it.each([
+    '> Ordinary quotation.',
+    '> [!UNKNOWN] Literal tag.',
+    '> Prefix [!NOTE] is not an alert.',
+    '> `[!NOTE]` documents the syntax.',
+    '> \\[!NOTE] explicitly escaped.',
+    '```markdown\n> [!NOTE] Code example\n```',
+  ])('preserves non-callout content: %s', content => {
+    const html = renderNote(content);
+    expect(html).not.toContain('data-callout=');
+    if (content.includes('[!')) expect(html).toContain('[!');
+  });
+
+  it('parses heading syntax while preserving inline formatting', () => {
+    const html = renderNote('## Components of **Assembly Language**');
+    expect(html).toContain('<h2');
+    expect(html).toContain('Assembly Language</strong>');
+    expect(html).not.toContain('##');
+  });
+});
+
+
+describe('display-only repairs for generated note formatting', () => {
+  const renderNote = (content: string) => renderToString(<NoteViewer note={{ ...baseNote, content }} />);
+  it('removes a duplicated heading prefix, preserving the actual heading level', () => {
+    const html = renderNote('## ## Components of **Assembly Language** &amp; Architecture');
+    expect(html).toContain('<h2 id="sec-1"');
+    expect(html).not.toContain('##');
+    expect(html).toContain('Assembly Language</strong>');
+  });
+  it('repairs entity-escaped callouts with blank lines between quoted paragraphs', () => {
+    const html = renderNote('&gt; [!NOTE]\n\n&gt; Comments begin with a semicolon `;`.\n\n&gt; [!TIP]\n\n&gt; Keep **instructions** distinct.');
+    expect(html).toContain('data-callout="note"');
+    expect(html).toContain('data-callout="tip"');
+    expect(html).not.toContain('[!');
+    expect(html).toContain('instructions</strong>');
+    expect(html).toContain(';');
+  });
+  it('does not alter code examples, escaped heading text or unknown quote tags', () => {
+    const html = renderNote('## \\#\\# Literal hashes\n\n```text\n## ## Example\n&gt; [!NOTE]\n```\n\n&gt; [!UNKNOWN] Literal.');
+    expect(html).toContain('## Literal hashes');
+    expect(html).toContain('## ## Example');
+    expect(html).not.toContain('data-callout=');
+    expect(html).toContain('[!UNKNOWN]');
+  });
+  it('does not modify saved source while rendering', () => {
+    const note = { ...baseNote, content: '## ## Heading\n\n&gt; [!NOTE] Text.' };
+    const original = note.content;
+    renderToString(<NoteViewer note={note} />);
+    expect(note.content).toBe(original);
   });
 });

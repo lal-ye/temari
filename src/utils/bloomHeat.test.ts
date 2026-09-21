@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { BLOOM_LEVELS } from '../types';
 import type { TopicLevelStat } from './analytics';
-import { HEAT_RAMP, buildBloomMatrix, glyphForAccuracy } from './bloomHeat';
+import { buildBloomMatrix } from './bloomHeat';
 
 const stat = (
   topic: string,
@@ -14,22 +14,6 @@ const stat = (
   correct,
   total,
   accuracy: Math.round((correct / total) * 100),
-});
-
-describe('glyphForAccuracy', () => {
-  it('maps the extremes of the ramp', () => {
-    expect(glyphForAccuracy(0)).toBe(HEAT_RAMP[0]);
-    expect(glyphForAccuracy(100)).toBe(HEAT_RAMP[HEAT_RAMP.length - 1]);
-  });
-
-  it('is monotone: better accuracy never yields a sparser glyph', () => {
-    let last = -1;
-    for (let a = 0; a <= 100; a += 5) {
-      const idx = HEAT_RAMP.indexOf(glyphForAccuracy(a));
-      expect(idx).toBeGreaterThanOrEqual(last);
-      last = idx;
-    }
-  });
 });
 
 describe('buildBloomMatrix', () => {

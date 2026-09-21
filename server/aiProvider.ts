@@ -29,19 +29,10 @@ export interface ExecuteAiResult {
   model: string;
 }
 
-// Global cached Gemini instances
-const geminiClients = new Map<string, GoogleGenAI>();
-
+// Do not retain learner keys in a process-wide cache between requests.
 function getGeminiClient(customKey?: string): GoogleGenAI | null {
   const key = customKey?.trim() || process.env.GEMINI_API_KEY;
-  if (!key) return null;
-
-  let client = geminiClients.get(key);
-  if (!client) {
-    client = new GoogleGenAI({ apiKey: key });
-    geminiClients.set(key, client);
-  }
-  return client;
+  return key ? new GoogleGenAI({ apiKey: key, httpOptions: { timeout: 20000 } }) : null;
 }
 
 /**

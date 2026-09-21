@@ -115,7 +115,7 @@ describe('NoteViewer wires the landmarks', () => {
   const viewer = readFileSync(join(here, './NoteViewer.tsx'), 'utf8');
 
   it('runs the plugin and passes the ids through the heading renderers', () => {
-    expect(viewer).toContain('rehypePlugins={[rehypeRaw, rehypeKatex, rehypeNoteAnchors]}');
+    expect(viewer).toContain('rehypePlugins={[rehypeRaw, rehypeNoteRepairs, rehypeNoteCallouts, rehypeKatex, rehypeNoteAnchors]}');
     expect(viewer).toMatch(/h1\(\{ children, id \}: any\)[\s\S]*<h1 id=\{id\}/);
     expect(viewer).toMatch(/h2\(\{ children, id \}: any\)[\s\S]*<h2 id=\{id\}/);
     expect(viewer).toMatch(/h3\(\{ children, id \}: any\)[\s\S]*<h3 id=\{id\}/);
