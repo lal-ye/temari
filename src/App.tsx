@@ -15,11 +15,12 @@ import {
   useSubjects,
 } from './hooks/useStudyStore';
 import { computeStudyStreak } from './utils/analytics';
+import { downloadPortableExport } from './services/portableExport';
 import { useOnlineStatus } from './hooks/useOnlineStatus';
 import { SkeletonAnalytics } from './components/ui/Skeleton';
 import { CommandPalette, type Command } from './components/ui/CommandPalette';
 import { Kbd } from './components/ui/kbd';
-import { ToastRegion } from './components/ui/toast';
+import { ToastRegion, toast } from './components/ui/toast';
 import { ConfirmRegion, confirm } from './components/ui/confirm';
 import { ShortcutsOverlay } from './components/ui/ShortcutsOverlay';
 import { SubjectSwitcher } from './components/nav/SubjectSwitcher';
@@ -56,6 +57,7 @@ import {
   Trash2,
   X,
   Search,
+  Download,
 } from 'lucide-react';
 
 /** AnalyticsView pulls in recharts (~200kB gzip); load it only when opened. */
@@ -183,6 +185,17 @@ export default function App() {
     setExplainTermData({ term, context });
   };
 
+  const handleExportForAndroid = () => {
+    try {
+      const { fileName, counts } = downloadPortableExport();
+      toast.success(
+        `Exported ${fileName} · ${counts.notes} Notes, ${counts.quizzes} Quizzes and ${counts.subjects} Subjects.`
+      );
+    } catch {
+      toast.error('Could not create the Android export. Your library was not changed.');
+    }
+  };
+
   /**
    * Hub names use the canonical nouns from CONTEXT.md — Subject, Note, Quiz,
    * Exam — not the near-misses they replaced ("Mock Exams", "Course"). The
@@ -239,6 +252,14 @@ export default function App() {
         modalOrigin.capture(null);
         setOpenModal('pomodoro');
       },
+    },
+    {
+      id: 'export-android',
+      label: 'Export library for Android',
+      group: 'Data',
+      icon: Download,
+      keywords: 'portable transfer mobile backup',
+      run: handleExportForAndroid,
     },
     {
       id: 'settings',
@@ -412,6 +433,18 @@ export default function App() {
                 <Kbd>K</Kbd>
               </span>
             </button>
+
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleExportForAndroid}
+              title="Export this credential-free library for Android"
+              aria-label="Export library for Android"
+              className="gap-1.5"
+            >
+              <Download className="w-3.5 h-3.5" />
+              <span className="hidden xl:inline">Export for Android</span>
+            </Button>
 
             {/* Dynamic Active AI Model Selector */}
             <div className="hidden md:block">

@@ -1,0 +1,16 @@
+{
+  "expo": {
+    "name": "Temari Android Prototype",
+    "slug": "temari-android-prototype",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "scheme": "temari-prototype",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "plugins": ["expo-router"],
+    "android": {
+      "package": "com.lalye.temari.prototype",
+      "versionCode": 1
+    }
+  }
+}

@@ -1,0 +1,3 @@
+[install]
+# Expo's native dependency graph expects one hoisted copy of SDK modules in a Bun workspace.
+linker = "hoisted"

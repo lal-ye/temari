@@ -1,0 +1,29 @@
+{
+  "format": "temari-portable",
+  "schemaVersion": 1,
+  "exportedAt": "2026-09-21T10:00:00.000Z",
+  "data": {
+    "subjects": [
+      {
+        "id": "fixture-subject-am",
+        "name": "Cellular Biology",
+        "amharicName": "የህዋስ ባዮሎጂ",
+        "createdAt": "2026-09-20T10:00:00.000Z"
+      }
+    ],
+    "notes": [
+      {
+        "id": "fixture-note-am",
+        "subjectId": "fixture-subject-am",
+        "title": "የህዋስ ኃይል ማመንጫ",
+        "content": "ATP በግላይኮሊሲስ እና በኦክሲዳቲቭ ፎስፎሪሌሽን ሂደቶች ይመረታል።",
+        "createdAt": "2026-09-20T10:01:00.000Z",
+        "updatedAt": "2026-09-20T10:01:00.000Z"
+      }
+    ],
+    "quizzes": [],
+    "attempts": [],
+    "tasks": []
+  },
+  "preferences": { "theme": "system" }
+}
