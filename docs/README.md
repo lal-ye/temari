@@ -93,3 +93,7 @@ historical.
 
 - [Render: one service, branch-first deployment](./RENDER.md) — recommended.
 - [Netlify Functions](./NETLIFY.md) — optional alternative.
+
+## Mobile prototype planning
+
+- [Android feasibility prototype and new-session handoff](./ANDROID-PROTOTYPE-PLAN.md) — planned, not implemented. Read section 0 before starting native work.
