@@ -1,0 +1,22 @@
+{
+  "format": "temari-portable",
+  "schemaVersion": 1,
+  "exportedAt": "2026-09-21T10:00:00.000Z",
+  "data": {
+    "subjects": [],
+    "notes": [
+      {
+        "id": "fixture-note-orphan",
+        "subjectId": "missing-subject",
+        "title": "Orphan note",
+        "content": "This must not import.",
+        "createdAt": "2026-09-20T10:00:00.000Z",
+        "updatedAt": "2026-09-20T10:00:00.000Z"
+      }
+    ],
+    "quizzes": [],
+    "attempts": [],
+    "tasks": []
+  },
+  "preferences": { "theme": "system" }
+}

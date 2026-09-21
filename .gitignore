@@ -8,6 +8,12 @@ dist/
 /server.js
 *.tsbuildinfo
 
+# --- Expo / native generated state ---
+apps/mobile/.expo/
+apps/mobile/android/
+apps/mobile/ios/
+apps/mobile/.metro-health-check*
+
 # --- Logs ---
 *.log
 

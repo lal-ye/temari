@@ -1,0 +1,69 @@
+{
+  "format": "temari-portable",
+  "schemaVersion": 1,
+  "exportedAt": "2026-09-21T10:00:00.000Z",
+  "data": {
+    "subjects": [
+      {
+        "id": "fixture-subject-en",
+        "name": "Cellular Biology",
+        "code": "BIO-201",
+        "createdAt": "2026-09-20T10:00:00.000Z"
+      }
+    ],
+    "notes": [
+      {
+        "id": "fixture-note-en",
+        "subjectId": "fixture-subject-en",
+        "title": "Cellular respiration",
+        "content": "ATP is produced through glycolysis, the citric acid cycle, and oxidative phosphorylation.",
+        "sourceName": "synthetic fixture",
+        "tags": ["metabolism"],
+        "createdAt": "2026-09-20T10:01:00.000Z",
+        "updatedAt": "2026-09-20T10:01:00.000Z"
+      }
+    ],
+    "quizzes": [
+      {
+        "id": "fixture-quiz-en",
+        "subjectId": "fixture-subject-en",
+        "name": "Respiration recall",
+        "flashcards": [
+          {
+            "id": "fixture-card-en",
+            "question": "Where does glycolysis take place?",
+            "answer": "In the cytosol.",
+            "difficulty": "Easy"
+          }
+        ],
+        "quizLengthUsed": 1,
+        "difficulty": "Easy",
+        "createdAt": "2026-09-20T10:02:00.000Z",
+        "updatedAt": "2026-09-20T10:02:00.000Z"
+      }
+    ],
+    "attempts": [
+      {
+        "id": "fixture-attempt-en",
+        "subjectId": "fixture-subject-en",
+        "subjectName": "Cellular Biology",
+        "name": "Respiration recall",
+        "type": "Quiz",
+        "date": "2026-09-21T09:00:00.000Z",
+        "overallScore": 100,
+        "totalQuestions": 1,
+        "correctQuestions": 1
+      }
+    ],
+    "tasks": [
+      {
+        "id": "fixture-task-en",
+        "subjectId": "fixture-subject-en",
+        "title": "Review ATP",
+        "dueDate": "2026-09-22",
+        "completed": false
+      }
+    ]
+  },
+  "preferences": { "theme": "neobrutalist" }
+}

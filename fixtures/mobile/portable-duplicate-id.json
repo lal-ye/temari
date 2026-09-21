@@ -1,0 +1,24 @@
+{
+  "format": "temari-portable",
+  "schemaVersion": 1,
+  "exportedAt": "2026-09-21T10:00:00.000Z",
+  "data": {
+    "subjects": [
+      {
+        "id": "duplicate-id",
+        "name": "One",
+        "createdAt": "2026-09-20T10:00:00.000Z"
+      },
+      {
+        "id": "duplicate-id",
+        "name": "Two",
+        "createdAt": "2026-09-20T10:01:00.000Z"
+      }
+    ],
+    "notes": [],
+    "quizzes": [],
+    "attempts": [],
+    "tasks": []
+  },
+  "preferences": { "theme": "system" }
+}
