@@ -21,6 +21,14 @@ export default function HelloScreen() {
         >
           <Text style={styles.buttonText}>Open device check</Text>
         </Pressable>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Open reader asset spike"
+          onPress={() => router.push('/reader-spike')}
+          style={({ pressed }) => [styles.button, pressed && styles.buttonPressed]}
+        >
+          <Text style={styles.buttonText}>Open reader asset spike</Text>
+        </Pressable>
       </View>
     </SafeAreaView>
   );

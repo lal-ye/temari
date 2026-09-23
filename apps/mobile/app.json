@@ -7,10 +7,18 @@
     "scheme": "temari-prototype",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
-    "plugins": ["expo-router"],
+    "plugins": [
+      "expo-router"
+    ],
     "android": {
       "package": "com.lalye.temari.prototype",
       "versionCode": 1
+    },
+    "owner": "lal-ye",
+    "extra": {
+      "eas": {
+        "projectId": "d714fc77-cb03-4a67-8899-2620e52b5b63"
+      }
     }
   }
 }

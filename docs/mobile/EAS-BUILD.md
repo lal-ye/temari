@@ -1,78 +1,99 @@
-# Running EAS builds for the Android prototype
+# EAS builds for the Android prototype
 
-Status: prepared 2026-09-21. EAS CLI is authenticated in this environment
-(`bunx eas-cli whoami` lists accounts `lal-ye` and `lalye_s`). No EAS project
-exists yet and no build has run.
+Updated 2026-09-23. A fresh development APK has built and run on the user's phone;
+see [M0 device record](./M0-SETUP.md). Authentication is local to each computer —
+this document does not imply the current sandbox is signed into Expo.
 
-## Prerequisite repairs completed before the first build
+## Project identity (verify before every build)
 
-The working tree had accidental damage from installs run in the wrong
-directories: `apps/mobile` `expo` had been downgraded to `^46.0.21` (SDK 46),
-`netlify-cli` was added to the mobile app, root gained an unused
-`expo-router@5.1.11` and the `bun` package, root `netlify-cli` was downgraded,
-root `unified` was removed, and a gitignored `package-lock.json` appeared.
-Restored the three affected files to the committed `2dbaefe` content, deleted
-the stray `package-lock.json`, removed the stale `apps/mobile/node_modules`,
-and re-ran `bun install --frozen-lockfile`. Then, with `bun.lock` containing a
-single `expo@57.0.24`:
+Run every EAS/Expo command from **`apps/mobile`**, not the web repository root
+whose package is named `react-example`.
 
-- `apps/mobile/app.json`: removed `newArchEnabled` — the property is no longer
-  valid in the SDK 57 config schema; New Architecture is the SDK default.
-- `apps/mobile/package.json`: `react-native-safe-area-context` `~5.6.2` →
-  `~5.7.0` (SDK 57 bundled version) via `bunx expo install`.
-- `apps/mobile/eas.json`: added `cli.appVersionSource: "remote"` and the
-  `preview` profile (internal APK with an embedded JS bundle, no Metro).
+- Owner/slug: `@lal-ye/temari-android-prototype`
+- EAS project ID: `d714fc77-cb03-4a67-8899-2620e52b5b63`
+- Android application ID: `com.lalye.temari.prototype`
 
-Verified after the repairs: web/core/mobile typechecks pass, `expo-doctor`
-reports 20/20 checks passed, and `CI=1 bunx expo export --platform android`
-produces a 2.7 MB Hermes bundle.
+The user confirmed this existing project during the M0 repair. Its ID/owner are now
+recorded in `app.json`. Do not create a second project. Project IDs are identifiers,
+not secrets; never place access tokens or signing credentials in source or chat.
 
-## Steps to run a build
+```sh
+# Root, Node 22.22.3 / Bun 1.3.9:
+bun install --frozen-lockfile
+bun run typecheck:all
+bun run check:reader
 
-Run every EAS command from `apps/mobile` so the CLI picks up the correct
-project directory.
+cd apps/mobile
+bunx expo install --check
+bunx expo-modules-autolinking resolve --platform android
+bunx eas-cli@latest whoami
+bunx eas-cli@latest project:info
+```
 
-1. **Choose the Expo account.** Two are logged in (`lal-ye`, `lalye_s`). Confirm
-   the intended owner before creating the project; verify afterwards via the
-   project URL that `eas init` prints. If it lands under the wrong owner, remove
-   it in the expo.dev dashboard and re-run `init`.
-2. **Link the EAS project (once):**
-   ```sh
-   cd apps/mobile
-   bunx eas-cli init
-   ```
-   This creates the EAS project and writes `extra.eas.projectId` into
-   `app.json`. Commit that change.
-3. **Check queue/quota first.** Free-tier builds are limited; review the
-   billing/limits page for the chosen account before spending slots
-   (plan §8 requires this check).
-4. **Development client build (M0 gate):**
-   ```sh
-   bunx eas-cli build --platform android --profile development
-   ```
-   The first build generates an Android keystore on EAS servers; keep it there
-   and never export, commit, or paste it. Internal distribution, APK output.
-5. **Collect the artifact:** the CLI prints a build page URL; `bunx eas-cli
-   build:list --platform android --limit 1` also works. Free-tier queueing can
-   take a while.
-6. **Install on the Samsung A325F:**
-   - With USB debugging: `bunx eas-cli build:run --platform android --profile development`.
-   - Without: open the build page on the phone, download the APK, allow
-     install-unknown-apps for the browser, install.
-7. **Run against Metro:** `bunx expo start --dev-client` from `apps/mobile`
-   (phone and dev machine on one network; add `--tunnel` otherwise). The dev
-   APK is a native shell — it does not run without Metro.
-8. **Offline installed-build gate (M5):** `bunx eas-cli build --platform
-   android --profile preview` produces the Metro-free APK used for airplane
-   mode, cold-start and size measurements.
+If not authenticated, use `bunx eas-cli@latest login --browser`. Verify the project
+name and ID above, not a `react-example` project. Only when repairing a missing
+link, use `bunx eas-cli@latest init --id d714fc77-cb03-4a67-8899-2620e52b5b63`.
+Review `git diff -- app.json eas.json package.json`. Never blindly force a new link.
 
-## Guardrails
+## Profiles
 
-- EAS detects the Bun workspace through the root `bun.lock` and installs at the
-  repo root on the build server; `.nvmrc` (22.22.3) selects the cloud Node
-  version, matching the root `engines` range.
-- Uploads contain git-tracked files only. `apps/mobile/android`, `ios` and
-  `.expo` stay uncommitted, so EAS runs CNG prebuild server-side.
-- Build artifacts stay in EAS or external storage; never commit APKs.
-- Never record Expo access tokens, keystores, or provider keys in chat, logs,
-  or fixtures.
+- `development`: internal APK with dev client. Needs Metro for the local JS app.
+- `preview`: internal release-like APK with embedded bundles. No Metro required.
+- Both use the **same Android application ID**; they do not install side by side.
+- `cli.appVersionSource` is remote. The local `android.versionCode` warning is
+  informational; it does not explain missing native modules or Metro connectivity.
+
+```sh
+# Development binary, when native dependencies change:
+bunx eas-cli@latest build --platform android --profile development
+
+# Offline gate:
+bunx eas-cli@latest build --platform android --profile preview
+```
+
+Use `--clear-cache` for a suspected stale native build (as in the ExpoLinking repair),
+not as a substitute for checking source/project identity. Check quota before cloud
+builds. Local preview is optional: append `--local` only if your computer already
+has the compatible Android toolchain. Let EAS manage signing; reuse the correct
+project's credential and never export/paste the keystore.
+
+In the Gradle **Using expo modules** section confirm `expo-linking` at SDK 57's
+compatible version. The M2 reader also needs `@expo/dom-webview` (included by Expo
+SDK 57). Gradle success alone does not establish module inclusion or runtime success.
+
+## Install and launch
+
+Download from the correct build page and verify its profile/build ID/timestamp.
+Uninstall stale prototype binaries before testing. On a physical phone, use the
+APK download or `adb install /path/to/new.apk`; do not confuse emulator install
+commands with physical-device testing.
+
+Development, same Wi-Fi:
+
+```sh
+bunx expo start --dev-client --lan
+```
+
+Or USB:
+
+```sh
+adb devices
+adb reverse tcp:8081 tcp:8081
+bunx expo start --dev-client --localhost
+```
+
+Use the **Metro terminal's QR code**, not the APK download QR, to connect the
+installed development client. Keep Metro running. Preview launches from its app
+icon with Metro off; the [M2 checkpoint](./M2-READER-SPIKE.md) describes its cold
+launch/airplane-mode test.
+
+## Build inputs and guardrails
+
+- One root `bun.lock`; install from root, never independently inside a workspace.
+- Root postinstall regenerates the ignored reader font/math asset CSS from pinned
+  packages. If scripts were skipped, run `bun run prepare:reader-assets` explicitly.
+- EAS archives honor ignore rules and can include uncommitted, non-ignored changes;
+  do not assume only committed/tracked files are uploaded. Review the working tree.
+- Generated native directories, `.expo`, exports and APKs stay out of Git. Keep CNG
+  configuration in source; do not use stale local native prebuilds for cloud builds.
+- No Render service, branch, credentials or hosting plan changes are needed.

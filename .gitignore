@@ -51,3 +51,12 @@ pnpm-lock.yaml
 # --- Locally installed agent/skill tooling ---
 .agents/
 .env
+
+# Recreated from pinned fonts by the root postinstall hook
+src/reader-core/assets.generated.css
+
+# Native artifacts and local signing credentials are never source
+*.apk
+*.aab
+*.jks
+*.keystore
