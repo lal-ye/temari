@@ -81,7 +81,8 @@ robot token into chat, source files, `.env` files, fixtures, or logs.
 
 ## Device gate
 
-1. Build the development APK with the EAS `development` profile.
+1. Build the development APK with the EAS `development` profile
+   (exact commands and prerequisites: [`EAS-BUILD.md`](./EAS-BUILD.md)).
 2. Install it on the Samsung A325F.
 3. Confirm the hello screen respects the safe area.
 4. Open **Device check** and verify both the in-app and Android system Back actions.
