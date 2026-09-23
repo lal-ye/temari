@@ -96,4 +96,4 @@ historical.
 
 ## Mobile prototype planning
 
-- [Android feasibility prototype and new-session handoff](./ANDROID-PROTOTYPE-PLAN.md) — planned, not implemented. Read section 0 before starting native work.
+- [Android feasibility prototype](./ANDROID-PROTOTYPE-PLAN.md) — M0 device startup/navigation passed; M1 export implemented; [M2 asset checkpoint](./mobile/M2-READER-SPIKE.md) awaiting the installed offline device test. Section 0 is historical.

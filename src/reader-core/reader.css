@@ -1,0 +1,32 @@
+@import './assets.generated.css';
+
+html, body { margin: 0; padding: 0; background: #f7f4ed; color: #242722; }
+#root { width: 100%; min-height: 100vh; }
+.reader-lab { box-sizing: border-box; width: 100%; max-width: 760px; margin: auto; padding: 24px; font: 17px/1.7 'Geist Variable', 'Abyssinica SIL', sans-serif; overflow-wrap: anywhere; }
+.reader-lab *, .reader-lab *::before, .reader-lab *::after { box-sizing: border-box; }
+.reader-lab h1, .reader-lab h2, .reader-lab h3 { font-family: 'Playfair Display', 'Abyssinica SIL', serif; font-weight: 700; line-height: 1.2; margin: 1.6em 0 .6em; }
+.reader-lab h1 { font-size: clamp(2rem, 7vw, 3rem); }
+.reader-lab h2 { font-size: 1.6rem; }
+.reader-lab h3 { font-size: 1.25rem; }
+.reader-lab p { margin: 1em 0; }
+.reader-eyebrow, .reader-callout-label { font: 700 11px/1.5 'Geist Variable', sans-serif; text-transform: uppercase; letter-spacing: .12em; color: #78521d; }
+.reader-lab .reader-intro { font-size: 15px; color: #575e52; }
+.reader-status { border: 1px solid #596b55; background: #edf2e8; padding: 12px 16px; font-size: 13px; margin: 20px 0; }
+.reader-status[data-failed='true'] { border: 2px solid #b42318; background: #fff0ee; }
+.reader-status ul { padding-left: 20px; margin: 4px 0; }
+.reader-lab blockquote { border-left: 3px solid #8d9f80; margin: 20px 0; padding: 4px 16px; background: #eeefe7; }
+.reader-lab blockquote[data-callout='warning'] { border-color: #b06921; background: #fff3de; }
+.reader-lab blockquote p { margin: .5em 0; }
+.reader-lab pre { overflow-x: auto; padding: 16px; border: 1px solid #c6c6b8; font-size: 13px; background: #fffdf7; }
+.reader-lab code { font-size: .85em; }
+.reader-overflow { max-width: 100%; overflow-x: auto; }
+.reader-lab table { border-collapse: collapse; min-width: 560px; width: 100%; font-size: 14px; }
+.reader-lab th, .reader-lab td { border: 1px solid #c6c6b8; padding: 10px; text-align: left; }
+.reader-lab th { background: #e9ebdf; }
+.reader-figure { margin: 24px 0; padding: 12px; border: 1px solid #c6c6b8; background: #fffdf7; }
+.reader-figure svg { min-width: 480px; width: 100%; height: auto; display: block; }
+.reader-figure figcaption { font-size: 12px; color: #575e52; border-top: 1px solid #c6c6b8; padding-top: 10px; }
+.reader-figure svg text { font-family: 'Geist Variable', 'Abyssinica SIL', sans-serif; }
+.reader-inert-link { text-decoration: underline dotted; color: #575e52; }
+.reader-lab .katex-display { overflow-x: auto; overflow-y: hidden; padding-block: 6px; }
+.reader-lab :focus-visible { outline: 2px solid #315d8f; outline-offset: 4px; }

@@ -1,10 +1,16 @@
 # Temari Android feasibility prototype
 
-Status: handoff-ready proposal. The user intends to continue in a fresh session;
-confirm the first implementation batch and unresolved inputs before installing or restructuring.
+Status update (2026-09-23): M0 startup/navigation passed on the user's phone;
+M1 portable export/validation is implemented. M2 checkpoint A (fixture + local
+DOM asset spike) is implemented, with the installed preview airplane-mode gate
+still pending. See [M0 record](./mobile/M0-SETUP.md) and
+[M2 checkpoint](./mobile/M2-READER-SPIKE.md) for current evidence and next steps.
+
+The preparation handoff in section 0 below is historical, not current repo state.
+Do not follow its "no native work exists" or "create project" assumptions.
 Prepared: 2026-09-21. Scope: Android only, one physical test device first.
 
-## 0. New-session handoff — read this first
+## 0. Historical preparation handoff (2026-09-21)
 
 ### What the user wants next
 
@@ -275,9 +281,8 @@ src/                         # existing web app, preserved
 server/                      # existing API, preserved
 apps/mobile/                 # Expo app, config, native adapters and screens
 packages/core/               # only portable types/contracts and needed pure logic
-packages/note-renderer/      # extracted React DOM reader, no native secrets/store
-  src/                       # Markdown plugins, reader, diagram dependencies/assets
-  # Exact renderer package boundary decided after import-graph audit
+src/reader-core/             # source-shared DOM code; no separate build/package
+  # M2 starts with the asset spike; full NoteViewer extraction follows its device gate
 fixtures/mobile/             # synthetic, credential-free datasets and small PDFs
 docs/mobile/                 # setup, device test log, size/timing measurements
 ```
@@ -367,6 +372,17 @@ The mobile re-export is validated against the same schema; bidirectional web
 restore UI is a follow-up, not implicit cloud sync.
 
 ### M2 — Reader + async action risk spike (2–3 days; early stop/go gate)
+
+Execution-order refinement approved 2026-09-23: kitchen-sink fixture → bare DOM
+asset/offline checkpoint → full renderer extraction using a dev-only browser
+fixture route → sanitizer regression coverage → minimal mock selection bridge →
+final preview gate. Use a source folder, not a built/published package. Reuse the
+existing diagram primitives/Markdown repairs, with web compatibility re-exports.
+Do not start full extraction before the first physical offline asset checkpoint.
+Use a maintained sanitizer; CSP supplements it and must account for Expo bootstrap,
+inline math styles and development HMR. See `mobile/M2-READER-SPIKE.md` for the
+current CSP limits and generated local-font strategy.
+
 
 1. Extract the content renderer from NoteViewer. Keep web toolbar, printing,
    downloads, local reading-place store, modal origins and toasts in the web wrapper.
