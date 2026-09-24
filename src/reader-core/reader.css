@@ -1,4 +1,3 @@
-@import './assets.generated.css';
 
 html, body { margin: 0; padding: 0; background: #f7f4ed; color: #242722; }
 #root { width: 100%; min-height: 100vh; }

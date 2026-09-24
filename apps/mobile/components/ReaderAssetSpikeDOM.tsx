@@ -1,6 +1,7 @@
 'use dom';
 
 import { ReaderAssetSpike } from '../../../src/reader-core/ReaderAssetSpike';
+import '../../../src/reader-core/assets.generated.css';
 import '../../../src/reader-core/reader.css';
 
 export default function ReaderAssetSpikeDOM({ title, content }: {

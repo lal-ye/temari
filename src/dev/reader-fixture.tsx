@@ -2,6 +2,7 @@ import React from 'react';
 import { createRoot } from 'react-dom/client';
 import fixture from '../../fixtures/mobile/reader-kitchen-sink.json';
 import { ReaderAssetSpike } from '../reader-core/ReaderAssetSpike';
+import '../reader-core/assets.generated.css';
 import '../reader-core/reader.css';
 
 // Served only by the Vite development middleware, not imported by the web app.
