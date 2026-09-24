@@ -1,6 +1,9 @@
 # M2 checkpoint A — offline DOM assets
 
-Status: implemented 2026-09-23; **physical preview APK gate pending**.
+Status: implemented 2026-09-23; **physical preview APK gate passed**
+(user-reported 2026-09-24 — Samsung A32, Android 13, WebView 152.0.x; the
+development client and the preview APK behaved the same; no clear anomalies
+were reported).
 This is the deliberately early asset experiment, not completion of M2.
 
 ## What is in this checkpoint
@@ -120,7 +123,16 @@ bun run check:reader:export
 If Expo's online check fails, report that separately; `EXPO_OFFLINE=1` validates
 against the installed SDK's bundled version map, not the online service.
 
-## Phone gate — the next user action
+## Phone gate — completed 2026-09-24 (user-reported)
+
+Result, recorded from the user's report (amend if details differ): Samsung A32
+running Android 13, WebView 152.0.x (abbreviated; fill in the full WebView
+version and the preview artifact checksum when available). Both the development
+client and the preview APK were exercised and behaved the same. The airplane-mode
+offline checks passed with no clear anomalies reported. The checklist below is
+retained because checkpoint B's final gate re-runs it.
+
+The original checklist follows.
 
 Use this branch's updated source and run the root frozen install first. The EAS
 project link confirmed during M0 is now in `apps/mobile/app.json`; do not initialize
@@ -171,12 +183,15 @@ or create another project. Use the existing signing credentials.
 
    scrcpy is optional for mirroring/screenshots; it is not bundled or required.
 
-## Checkpoint B, only after A passes on the phone
+## Checkpoint B — planned
 
-Extract the rest of the content renderer into the same source folder, preserving
-web behavior/regression tests. Reuse the browser fixture as the fast feedback loop.
-Then add a top-level async mock Explain action: bounded selection + note/request ID,
-no credentials or DOM nodes; native result panel; request ID + mounted-state guard
-and duplicate-tap prevention. Add approved HTTPS link handling only through an
-explicit native action. Final M2 preview gate retests the complete renderer and
-real DOM/native mock bridge. Do not add persistence or real AI at this checkpoint.
+A passed on the phone on 2026-09-24, so checkpoint B is unblocked. Scope is
+unchanged: extract the rest of the content renderer into the same source folder,
+preserving web behavior/regression tests; reuse the browser fixture as the fast
+feedback loop; add a top-level async mock Explain action (bounded selection +
+note/request ID, no credentials or DOM nodes; native result panel; request ID +
+mounted-state guard and duplicate-tap prevention); approved HTTPS link handling
+only through an explicit native action; final M2 preview gate over the complete
+renderer and the real DOM/native mock bridge. Do not add persistence or real AI
+at this checkpoint. The reviewed implementation plan is
+[M2-CHECKPOINT-B-PLAN.md](./M2-CHECKPOINT-B-PLAN.md).
