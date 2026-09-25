@@ -484,6 +484,7 @@ export const NoteViewer: React.FC<NoteViewerProps> = ({
           content={note.content}
           noteTitle={note.title}
           skin="web"
+          linkMode="web"
           legacyFigure={LegacyEditorialDiagram}
           onTermActivate={handleTermActivate}
         />

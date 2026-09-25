@@ -5,8 +5,9 @@ Supersedes the v1 draft. Incorporates the review of 2026-09-24 (request-handler,
 sanitizer, callback-contract and link-policy corrections) and is structured with
 the `show-me` skill's compact-visual guidance
 (<https://github.com/humanlayer/skills/tree/main/plugins/show-me/skills/show-me>).
-Phases 0–2 are implemented (PR #27). Phase 3 continues from the
-[session handoff](./M2-B-PHASE3-HANDOFF.md).
+Phases 0–2 are implemented (PR #27). Phase 3 is implemented (2026-09-25,
+branch `arena/01a0d998-temari`). Phase 4 continues from the
+[Phase 4 handoff](./M2-B-PHASE4-HANDOFF.md).
 
 ## 1. Scope and non-goals
 

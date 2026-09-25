@@ -118,7 +118,13 @@ describe('NoteViewer wires the landmarks', () => {
   const content = readFileSync(join(here, '../../reader-core/NoteContent.tsx'), 'utf8');
 
   it('runs the plugin and passes the ids through the heading renderers', () => {
-    expect(content).toContain('rehypePlugins={[rehypeRaw, rehypeNoteRepairs, rehypeNoteCallouts, rehypeKatex, rehypeNoteAnchors]}');
+    // Checkpoint B Phase 3: the one shared, sanitized pipeline (plan §7.1).
+    // Sanitization runs before the anchors pass, so heading ids are generated
+    // after authored ids are dropped — sec-N stays a pure function of the
+    // Markdown.
+    expect(content).toMatch(
+      /rehypeRaw,\s*rehypeTaskListInputs,\s*\[rehypeSanitize, readerSchema\],\s*rehypeNoteRepairs,\s*rehypeNoteCallouts,\s*rehypeNoteAnchors,/,
+    );
     expect(content).toMatch(/h1\(\{ children, id \}: any\)[\s\S]*<h1 id=\{id\}/);
     expect(content).toMatch(/h2\(\{ children, id \}: any\)[\s\S]*<h2 id=\{id\}/);
     expect(content).toMatch(/h3\(\{ children, id \}: any\)[\s\S]*<h3 id=\{id\}/);

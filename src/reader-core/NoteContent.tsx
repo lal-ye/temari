@@ -4,27 +4,49 @@ import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 import rehypeRaw from 'rehype-raw';
+import rehypeSanitize from 'rehype-sanitize';
 import { Info, AlertTriangle, Lightbulb } from 'lucide-react';
 import { rehypeNoteCallouts } from './markdown/rehypeNoteCallouts';
 import { rehypeNoteRepairs } from './markdown/rehypeNoteRepairs';
 import { figureLanguage, rehypeNoteAnchors } from './markdown/rehypeNoteAnchors';
 import { FigureBlock } from './diagrams/FigureBlock';
+import { readerSchema, rehypeTaskListInputs } from './sanitize';
+import { isApprovedLink, newRequestId, type OpenLinkAction } from './bridge';
 
 /**
- * The shared content renderer (checkpoint B extraction). One Markdown
- * pipeline and one components map for every host; presentation varies through
- * the `NoteSkin` token maps (`web` reproduces the web app's classes and callout
- * icons exactly, `reader` is the reader-lab skin). CSS is imported by each
- * host. KaTeX runs trusted (`trust: false`) AFTER raw HTML passes the shared
- * display repairs. Sanitization/link policy converge here in Phase 3 of the
- * checkpoint B plan; until then this pipeline is the web pipeline, moved
- * verbatim so behavior diffs stay attributable.
+ * The shared content renderer (checkpoint B extraction). ONE Markdown
+ * pipeline and one components map for every host (plan §7.1): raw HTML is
+ * re-parsed, task-list inputs are pre-filtered, then rehype-sanitize strips
+ * everything the schema does not allow BEFORE the trusted display repairs,
+ * callout/anchor passes and KaTeX (`trust: false`). Presentation varies
+ * through the `NoteSkin` token maps (`web` reproduces the web app's classes
+ * and callout icons exactly, `reader` is the reader-lab skin). CSS is
+ * imported by each host.
+ *
+ * Links are governed by the explicit `linkMode` policy (plan §7.3), never by
+ * handler presence: `isApprovedLink` (bridge.ts) is the single URL rule at
+ * render time, and the native side applies it again before any OS handoff.
  */
 export interface NoteContentProps {
   /** `note.content` raw — citation normalization happens inside, in one place. */
   content: string;
   /** Figure captions and legacy fallbacks only; never a settings object. */
   noteTitle?: string;
+  /**
+   * Link policy (plan §7.3), explicit — an omitted `onOpenLink` never
+   * upgrades content to navigable anchors:
+   * - `disabled` (default): every link renders as inert text.
+   * - `web`: approved HTTPS renders `<a target="_blank" rel="noopener
+   *   noreferrer">`; local fragments/paths render plain `<a>`; everything
+   *   else is inert. Only the web NoteViewer opts in.
+   * - `native-action`: approved HTTPS renders a real `<button type="button">`
+   *   dispatching `onOpenLink`; without a handler the content stays inert.
+   * `skin` never affects link behavior — presentation only.
+   */
+  linkMode?: 'disabled' | 'web' | 'native-action';
+  /** native-action mode only: hands the approved URL to the host, which owns
+   * the single (native) confirmation and the `Linking.openURL` handoff. */
+  onOpenLink?: OpenLinkAction;
   /**
    * Term hits (diagram nodes today). The element is host-side UI (the web
    * explainer's morph origin) and must not cross a native bridge — native
@@ -72,6 +94,10 @@ interface NoteSkin {
   li: string;
   strong: string;
   a: string;
+  /** native-action link button presentation (behavior comes from linkMode). */
+  linkButton: string;
+  /** inert link text presentation (all non-navigable cases). */
+  inertLink: string;
   hr: string;
 }
 
@@ -146,6 +172,8 @@ const webSkin: NoteSkin = {
   li: 'leading-relaxed pl-1',
   strong: 'font-semibold text-foreground bg-amber-50/80 dark:bg-amber-950/40 px-1 py-0.5 rounded',
   a: 'text-amber-600 dark:text-amber-400 font-medium underline underline-offset-4 hover:opacity-80 transition-opacity',
+  linkButton: 'text-amber-600 dark:text-amber-400 font-medium underline underline-offset-4 hover:opacity-80 transition-opacity',
+  inertLink: '',
   hr: 'my-8 border-border',
 };
 
@@ -183,6 +211,8 @@ const readerSkin: NoteSkin = {
   li: '',
   strong: '',
   a: 'reader-link',
+  linkButton: 'reader-link-button',
+  inertLink: 'reader-inert-link',
   hr: '',
 };
 
@@ -190,9 +220,24 @@ const skins = { web: webSkin, reader: readerSkin };
 
 const InPreContext = createContext(false);
 
+/**
+ * Web-mode local navigation: in-document fragments (`#sec-1`) and
+ * app-relative paths (`/app`). Protocol-relative URLs (`//host`) are
+ * deliberately NOT local — they reference an external origin and render
+ * inert, like every other non-approved URL. Sanitizer protocol filtering
+ * passes all of these through, so this check (with `isApprovedLink`) is the
+ * actual render-time policy.
+ */
+function isLocalHref(url: string): boolean {
+  if (url.startsWith('#')) return true;
+  return url.startsWith('/') && !url.startsWith('//');
+}
+
 function buildComponents(
   skin: NoteSkin,
   noteTitle: string | undefined,
+  linkMode: NoteContentProps['linkMode'],
+  onOpenLink: NoteContentProps['onOpenLink'],
   onTermActivate: NoteContentProps['onTermActivate'],
   legacyFigure: NoteContentProps['legacyFigure'],
 ) {
@@ -334,11 +379,57 @@ function buildComponents(
     strong({ children }: any) {
       return <strong className={skin.strong}>{children}</strong>;
     },
+    /**
+     * Link policy matrix (plan §7.3). Rendering-time approval always calls
+     * `isApprovedLink` — the same predicate the native side applies again
+     * before the OS handoff. The sanitizer's https-only protocol filter is
+     * not this strict (scheme-less and `//host` values survive it), so this
+     * renderer is where the policy actually lands. No DOM confirm bar: the
+     * single confirmation is native, and only in native-action mode.
+     */
     a({ href, children }: any) {
+      const url = typeof href === 'string' ? href.trim() : '';
+      if (linkMode === 'web') {
+        if (isApprovedLink(url)) {
+          return (
+            <a href={url} target="_blank" rel="noopener noreferrer" className={skin.a}>
+              {children}
+            </a>
+          );
+        }
+        if (isLocalHref(url)) {
+          return (
+            <a href={url} className={skin.a}>
+              {children}
+            </a>
+          );
+        }
+      } else if (linkMode === 'native-action' && onOpenLink && isApprovedLink(url)) {
+        const openLink = onOpenLink;
+        return (
+          <button
+            type="button"
+            className={skin.linkButton}
+            title={url}
+            onClick={() => {
+              // The URL may show up as inert data on this trusted chrome
+              // button; that is not a fetch. The host owns the one
+              // confirmation and the Linking.openURL handoff.
+              openLink({ url, requestId: newRequestId() }).catch(() => {
+                // Failures surface on the native side; the reader adds nothing.
+              });
+            }}
+          >
+            {children}
+          </button>
+        );
+      }
+      // `disabled`, non-approved URLs, and native-action without a handler
+      // (or without an approved URL) all render inert text — never an anchor.
       return (
-        <a href={href} target="_blank" rel="noopener noreferrer" className={skin.a}>
+        <span className={skin.inertLink} title="Link unavailable on this host">
           {children}
-        </a>
+        </span>
       );
     },
     hr() {
@@ -350,6 +441,8 @@ function buildComponents(
 export const NoteContent: React.FC<NoteContentProps> = React.memo(function NoteContent({
   content,
   noteTitle,
+  linkMode = 'disabled',
+  onOpenLink,
   onTermActivate,
   legacyFigure,
   skin,
@@ -362,14 +455,25 @@ export const NoteContent: React.FC<NoteContentProps> = React.memo(function NoteC
   }, [content]);
 
   const components = useMemo(
-    () => buildComponents(skins[skin] ?? webSkin, noteTitle, onTermActivate, legacyFigure),
-    [skin, noteTitle, onTermActivate, legacyFigure],
+    () => buildComponents(skins[skin] ?? webSkin, noteTitle, linkMode, onOpenLink, onTermActivate, legacyFigure),
+    [skin, noteTitle, linkMode, onOpenLink, onTermActivate, legacyFigure],
   );
 
   return (
     <ReactMarkdown
       remarkPlugins={[remarkGfm, remarkMath]}
-      rehypePlugins={[rehypeRaw, rehypeNoteRepairs, rehypeNoteCallouts, rehypeKatex, rehypeNoteAnchors]}
+      rehypePlugins={[
+        // The one shared pipeline (plan §7.1): raw HTML is re-parsed, task-list
+        // inputs are pre-filtered, then sanitization runs BEFORE the trusted
+        // display repairs/callouts/anchors and KaTeX generation.
+        rehypeRaw,
+        rehypeTaskListInputs,
+        [rehypeSanitize, readerSchema],
+        rehypeNoteRepairs,
+        rehypeNoteCallouts,
+        rehypeNoteAnchors,
+        [rehypeKatex, { trust: false, maxExpand: 100, maxSize: 20 }],
+      ]}
       components={components}
     >
       {normalized}

@@ -1,9 +1,10 @@
 # Checkpoint B · Phase 3 — session handoff
 
-Status: **Phases 0–2 implemented and merged to `main`** (PR #27, commits
-`d4ea872` + `f1999ef` + this handoff). Phase 3 is **not started**. This file is
-the authoritative starting point for the next session; the design authority
-remains [M2-CHECKPOINT-B-PLAN.md](./M2-CHECKPOINT-B-PLAN.md) (v2, review-corrected).
+Status: **historical** — Phases 0–2 merged to `main` via PR #27; **Phase 3 is
+implemented** (2026-09-25, branch `arena/01a0d998-temari`). The next session
+starts from [M2-B-PHASE4-HANDOFF.md](./M2-B-PHASE4-HANDOFF.md); this file is
+retained as the Phase 3 scope record. The design authority remains
+[M2-CHECKPOINT-B-PLAN.md](./M2-CHECKPOINT-B-PLAN.md) (v2, review-corrected).
 
 ## 0. Suggested opening prompt for the next session
 

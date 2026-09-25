@@ -1,4 +1,3 @@
-
 html, body { margin: 0; padding: 0; background: #f7f4ed; color: #242722; }
 #root { width: 100%; min-height: 100vh; }
 .reader-lab { box-sizing: border-box; width: 100%; max-width: 760px; margin: auto; padding: 24px; font: 17px/1.7 'Geist Variable', 'Abyssinica SIL', sans-serif; overflow-wrap: anywhere; }
@@ -13,29 +12,49 @@ html, body { margin: 0; padding: 0; background: #f7f4ed; color: #242722; }
 .reader-status { border: 1px solid #596b55; background: #edf2e8; padding: 12px 16px; font-size: 13px; margin: 20px 0; }
 .reader-status[data-failed='true'] { border: 2px solid #b42318; background: #fff0ee; }
 .reader-status ul { padding-left: 20px; margin: 4px 0; }
-.reader-lab blockquote { border-left: 3px solid #8d9f80; margin: 20px 0; padding: 4px 16px; background: #eeefe7; }
-/* Callouts: the shared NoteContent renderer wraps callouts in a div; the
-   fixture's spike renderer still uses blockquotes. Attribute selectors cover
-   both structures during the checkpoint B transition. */
-.reader-lab [data-callout] { border-left: 3px solid #8d9f80; margin: 20px 0; padding: 10px 16px; background: #eeefe7; }
-.reader-lab [data-callout='warning'] { border-color: #b06921; background: #fff3de; }
-.reader-lab blockquote p { margin: .5em 0; }
+
+/* --- Note content, shared structure (NoteContent skin="reader") ----------
+   The fixture and the phone reader render the same classes the web skin maps
+   onto Tailwind tokens. Element selectors stay for chrome that carries only
+   Tailwind classes in the web app (e.g. the figure error disclosure's <pre>),
+   which are inert in this Tailwind-less page. */
+.reader-lab blockquote, .reader-lab .reader-quote { border-left: 3px solid #8d9f80; margin: 20px 0; padding: 4px 16px; background: #eeefe7; }
+.reader-lab blockquote p, .reader-lab .reader-quote p { margin: .5em 0; }
+.reader-callout { border-left: 3px solid #8d9f80; margin: 20px 0; padding: 10px 16px; background: #eeefe7; }
+.reader-callout[data-callout='warning'] { border-color: #b06921; background: #fff3de; }
 .reader-lab pre { overflow-x: auto; padding: 16px; border: 1px solid #c6c6b8; font-size: 13px; background: #fffdf7; }
-.reader-lab code { font-size: .85em; }
+.reader-lab code, .reader-lab .reader-inline-code { font-size: .85em; }
+.reader-inline-code { background: #eeefe7; border-radius: 4px; padding: 1px 5px; }
 .reader-overflow { max-width: 100%; overflow-x: auto; }
-.reader-lab table { border-collapse: collapse; min-width: 560px; width: 100%; font-size: 14px; }
-.reader-lab th, .reader-lab td { border: 1px solid #c6c6b8; padding: 10px; text-align: left; }
-.reader-lab th { background: #e9ebdf; }
-.reader-figure { margin: 24px 0; padding: 12px; border: 1px solid #c6c6b8; background: #fffdf7; }
-/* Diagram SVG sizing is scoped to the diagram itself so lucide chrome icons
-   (figure error disclosure etc.) never inherit figure-sized dimensions. */
-.reader-figure .reader-overflow > svg { min-width: 480px; width: 100%; height: auto; display: block; }
-.reader-figure .reader-overflow > svg text { font-family: 'Geist Variable', 'Abyssinica SIL', sans-serif; }
-.reader-figure figcaption { font-size: 12px; color: #575e52; border-top: 1px solid #c6c6b8; padding-top: 10px; }
-/* Shared figure frame (NoteContent reader skin): same diagram sizing, scoped
-   to the framed figure so the error disclosure's chevron stays icon-sized. */
+.reader-lab table, .reader-lab .reader-table { border-collapse: collapse; min-width: 560px; width: 100%; font-size: 14px; }
+.reader-lab th, .reader-lab td, .reader-lab .reader-table th, .reader-lab .reader-table td { border: 1px solid #c6c6b8; padding: 10px; text-align: left; }
+.reader-lab th, .reader-lab .reader-table th { background: #e9ebdf; }
+/* Task lists: the pre-filter keeps only disabled checkboxes; hide the bullet
+   of the item that owns one. */
+.reader-lab li:has(> input[type='checkbox']) { list-style: none; }
+.reader-lab input[type='checkbox'] { accent-color: #2457a5; margin-right: .45em; }
+
+/* Links (plan §7.3): skin never decides behavior — linkMode does. These are
+   the three presentations the reader skin maps onto. */
+.reader-link { color: #1d4f8f; text-decoration: underline; text-underline-offset: 3px; }
+.reader-link-button { font: inherit; color: #1d4f8f; background: none; border: 0; padding: 0; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; text-align: left; }
+.reader-inert-link { text-decoration: underline dotted; color: #575e52; }
+
+/* Figure frame (NoteContent reader skin → FigureShell). FigureShell's frame
+   styles are Tailwind classes, inert on this Tailwind-less page, so the lab
+   skin redraws the frame here; the diagram SVG sizing stays scoped to the
+   diagram itself so lucide chrome icons (the error disclosure chevron) never
+   inherit figure-sized dimensions. */
+.reader-figure-wrap .temari-figure { margin: 24px 0; padding: 12px; border: 1px solid #c6c6b8; background: #fffdf7; overflow-x: auto; }
 .reader-figure-wrap .temari-figure svg { min-width: 480px; width: 100%; height: auto; display: block; }
 .reader-figure-wrap .temari-figure svg text { font-family: 'Geist Variable', 'Abyssinica SIL', sans-serif; }
-.reader-inert-link { text-decoration: underline dotted; color: #575e52; }
+.reader-figure-wrap .temari-figure figcaption { font-size: 12px; color: #575e52; border-top: 1px solid #c6c6b8; padding-top: 10px; }
+
 .reader-lab .katex-display { overflow-x: auto; overflow-y: hidden; padding-block: 6px; }
 .reader-lab :focus-visible { outline: 2px solid #315d8f; outline-offset: 4px; }
+
+/* --- Dev fixture only (src/dev/reader-fixture.tsx) ------------------------
+   Mock bridge-action panel; never part of the note content or the phone. */
+.reader-dev-panel { box-sizing: border-box; max-width: 760px; margin: 0 auto 32px; padding: 12px 16px; border: 1px dashed #596b55; background: #f2f4ec; font: 13px/1.6 'Geist Variable', 'Abyssinica SIL', sans-serif; color: #242722; }
+.reader-dev-panel ul { padding-left: 20px; margin: 6px 0; }
+.reader-dev-panel button { font: 600 12px/1.4 'Geist Variable', sans-serif; padding: 8px 12px; color: #242722; background: #edf2e8; border: 1px solid #596b55; border-radius: 6px; cursor: pointer; }
