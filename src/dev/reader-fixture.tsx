@@ -44,24 +44,26 @@ function DevFixture() {
       },
     });
   }
-  const session = sessionRef.current;
 
-  // Mocks only (D3): labeled as mock wherever they surface.
+  // Stable bridge actions (plan §8.2): empty deps reading refs — the session
+  // identity never changes, so nothing re-serializes across the boundary.
+  const onExplain = useCallback(async (raw: unknown) => {
+    await sessionRef.current?.submit(raw);
+  }, []);
   const onOpenLink = useCallback(async (request: OpenLinkRequest) => {
     push(`onOpenLink (mock) · ${request.url} · ${request.requestId}`);
   }, [push]);
-
   const sendMock = useCallback(() => {
-    void session.submit({
+    void sessionRef.current?.submit({
       noteId: fixture.id,
       term: 'Dev panel',
       context: 'constant payload from the dev fixture (mock)',
       requestId: newRequestId(),
     });
-  }, [session]);
+  }, []);
   const invalidate = useCallback(() => {
-    session.invalidate();
-  }, [session]);
+    sessionRef.current?.invalidate();
+  }, []);
 
   return (
     <>
@@ -71,15 +73,17 @@ function DevFixture() {
         development
         linkMode="native-action"
         onOpenLink={onOpenLink}
+        noteId={fixture.id}
+        onExplain={onExplain}
       />
       <aside className="reader-dev-panel" aria-label="Mock bridge actions (dev panel)">
         <strong>Mock bridge actions (dev panel)</strong>
         <p>
-          The mock Explain host runs the same session factory as the phone
-          screen: submit twice quickly and the second is absorbed; Close while
-          pending drops the late completion and never wedges the guard.
-          Selection wiring arrives in Phase 4.2 — the button below feeds the
-          session directly with a constant payload.
+          Select a phrase in the note (or tap a diagram node) to propose it;
+          the chip runs a mock Explain through the same session factory the
+          phone screen uses. Submit twice quickly and the second is absorbed;
+          Close while pending drops the late completion and never wedges the
+          guard. The button below feeds the session a constant payload.
         </p>
         <div className="reader-dev-actions">
           <button type="button" onClick={sendMock}>Send mock Explain (dev panel)</button>

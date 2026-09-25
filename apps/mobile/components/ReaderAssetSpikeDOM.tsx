@@ -1,36 +1,39 @@
 'use dom';
 
 import { NoteReader } from '../../../src/reader-core/NoteReader';
-import { newRequestId, type ExplainAction } from '../../../src/reader-core/bridge';
+import type { ExplainAction, OpenLinkAction } from '../../../src/reader-core/bridge';
 import '../../../src/reader-core/assets.generated.css';
 import '../../../src/reader-core/reader.css';
 
-export default function ReaderAssetSpikeDOM({ title, content, noteId, onExplain }: {
+/**
+ * The one 'use dom' seam (checkpoint B): note fields plus the two top-level
+ * async actions. Serializable payloads only — no DOM nodes, nested callbacks
+ * or settings. The Phase-1 smoke button is retired in Phase 4.2: real
+ * selection wiring drives `onExplain` now, and approved links dispatch
+ * `onOpenLink` (native-action) for the host's single native confirmation.
+ */
+export default function ReaderAssetSpikeDOM({ title, content, noteId, onExplain, onOpenLink, dom }: {
   title: string;
   content: string;
   /** Checkpoint B bridge: the note's id, sent with every action payload. */
   noteId?: string;
-  /** Checkpoint B bridge: top-level async action (mock at B). Serializable
-   * payloads only — no DOM nodes, nested callbacks or settings. */
+  /** Checkpoint B bridge: Explain action (mock at B). */
   onExplain?: ExplainAction;
+  /** Checkpoint B bridge: approved-HTTPS link handoff (native confirm). */
+  onOpenLink?: OpenLinkAction;
   dom?: import('expo/dom').DOMProps;
 }) {
-  return <>
-    {onExplain && noteId && (
-      <button
-        type="button"
-        style={{ display: 'block', width: '100%', padding: '10px 12px', font: '600 13px/1.4 "Geist Variable", sans-serif', color: '#fffaf0', background: '#2457a5', border: 0 }}
-        onClick={async () => {
-          // Phase 1 smoke: constant payload over the real function-prop bridge.
-          // Replaced by selection → Explain wiring in Phase 4.
-          try {
-            await onExplain({ noteId, term: 'Smoke', context: 'constant payload', requestId: newRequestId() });
-          } catch {
-            // Failures are surfaced natively; the DOM shows nothing extra.
-          }
-        }}
-      >Send test action (checkpoint B bridge smoke)</button>
-    )}
-    <NoteReader title={title} content={content} development={process.env.NODE_ENV !== 'production'} />
-  </>;
+  return (
+    <NoteReader
+      title={title}
+      content={content}
+      development={process.env.NODE_ENV !== 'production'}
+      noteId={noteId}
+      onExplain={onExplain}
+      // The reader screen's explicit policy; without an onOpenLink handler
+      // approved links render inert (never navigable anchors by accident).
+      linkMode="native-action"
+      onOpenLink={onOpenLink}
+    />
+  );
 }

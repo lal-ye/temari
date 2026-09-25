@@ -59,3 +59,15 @@ html, body { margin: 0; padding: 0; background: #f7f4ed; color: #242722; }
 .reader-dev-panel ul { padding-left: 20px; margin: 6px 0; }
 .reader-dev-panel button { font: 600 12px/1.4 'Geist Variable', sans-serif; padding: 8px 12px; color: #242722; background: #edf2e8; border: 1px solid #596b55; border-radius: 6px; cursor: pointer; }
 .reader-dev-actions { display: flex; gap: 8px; margin: 8px 0; }
+
+/* --- Selection chip (NoteReader, plan §8.1) --------------------------------
+   A FIXED bottom bar inside the DOM, never a positioned popover near the
+   selection: Android's floating ActionMode toolbar (Copy/Share/Select all)
+   owns the space above a selection in a WebView. One flex row. */
+.reader-chip-bar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 20; display: flex; align-items: center; gap: 10px; padding: 10px 14px calc(10px + env(safe-area-inset-bottom, 0px)); background: #1d2433; border-top: 2px solid #2457a5; color: #fffaf0; font: 13px/1.5 'Geist Variable', 'Abyssinica SIL', sans-serif; }
+.reader-chip-term { font-weight: 700; max-width: 40%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.reader-chip-hint { color: #d9e2f1; min-width: 0; }
+.reader-chip-spacer { flex: 1 1 auto; }
+.reader-chip-bar button { font: 600 12px/1.4 'Geist Variable', sans-serif; padding: 8px 12px; border-radius: 6px; cursor: pointer; border: 0; }
+.reader-chip-run { background: #f0b429; color: #1d2433; }
+.reader-chip-dismiss { background: transparent; color: #9db8e8; border: 1px solid #3a4a6b; }
