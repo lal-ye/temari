@@ -1,6 +1,6 @@
 'use dom';
 
-import { ReaderAssetSpike } from '../../../src/reader-core/ReaderAssetSpike';
+import { NoteReader } from '../../../src/reader-core/NoteReader';
 import { newRequestId, type ExplainAction } from '../../../src/reader-core/bridge';
 import '../../../src/reader-core/assets.generated.css';
 import '../../../src/reader-core/reader.css';
@@ -31,6 +31,6 @@ export default function ReaderAssetSpikeDOM({ title, content, noteId, onExplain 
         }}
       >Send test action (checkpoint B bridge smoke)</button>
     )}
-    <ReaderAssetSpike title={title} content={content} development={process.env.NODE_ENV !== 'production'} />
+    <NoteReader title={title} content={content} development={process.env.NODE_ENV !== 'production'} />
   </>;
 }

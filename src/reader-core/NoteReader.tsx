@@ -10,13 +10,15 @@ const fontChecks = [
   { label: 'Math / KaTeX', font: '17px KaTeX_Main', text: 'E=mc' },
 ];
 
-/** Fixture-only shell; deliberately no settings object or browser store access.
- * CSS is imported by each host, keeping this module importable in a Node smoke test.
+/** Reader host shell (renamed from ReaderAssetSpike at checkpoint B Phase 4.1
+ * — pure rename, zero behavior change); deliberately no settings object or
+ * browser store access. CSS is imported by each host, keeping this module
+ * importable in a Node smoke test.
  * The note itself renders through the shared NoteContent pipeline (skin
  * "reader") — the same renderer the web app uses, so the fixture exercises the
  * exact production pipeline at Phase 3 of checkpoint B.
  */
-export function ReaderAssetSpike({ title, content, development, linkMode = 'disabled', onOpenLink }: {
+export function NoteReader({ title, content, development, linkMode = 'disabled', onOpenLink }: {
   title: string;
   content: string;
   development: boolean;

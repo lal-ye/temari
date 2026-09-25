@@ -1,7 +1,7 @@
 import React, { useCallback, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import fixture from '../../fixtures/mobile/reader-kitchen-sink.json';
-import { ReaderAssetSpike } from '../reader-core/ReaderAssetSpike';
+import { NoteReader } from '../reader-core/NoteReader';
 import { newRequestId, type ExplainRequest, type OpenLinkRequest } from '../reader-core/bridge';
 import '../reader-core/assets.generated.css';
 import '../reader-core/reader.css';
@@ -29,7 +29,7 @@ function DevFixture() {
 
   return (
     <>
-      <ReaderAssetSpike
+      <NoteReader
         title={fixture.title}
         content={fixture.content}
         development

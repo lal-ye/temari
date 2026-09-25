@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { ReaderAssetSpike } from '../src/reader-core/ReaderAssetSpike.tsx';
+import { NoteReader } from '../src/reader-core/NoteReader.tsx';
 import { NoteContent } from '../src/reader-core/NoteContent.tsx';
 import { buildExplainRequest, isApprovedLink, validateExplainRequest } from '../src/reader-core/bridge.ts';
 
@@ -44,7 +44,7 @@ assert.ok(inert.includes('Remote link label'), 'inert label text preserved');
 
 // The fixture shell SSR-renders under Node as well (content mounts after the
 // CSP/font effect, so SSR shows the preparing state).
-assert.ok(renderToStaticMarkup(React.createElement(ReaderAssetSpike, { ...fixture, development: false })).includes('Preparing protected reader'));
+assert.ok(renderToStaticMarkup(React.createElement(NoteReader, { ...fixture, development: false })).includes('Preparing protected reader'));
 
 // The bridge contract is pure: building and validating a request needs no browser globals.
 const request = buildExplainRequest({ noteId: fixture.id, term: 'Energy', context: 'bounded' });
