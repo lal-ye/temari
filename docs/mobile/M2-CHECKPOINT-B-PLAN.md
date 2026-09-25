@@ -1,9 +1,12 @@
-# M2 checkpoint B — implementation plan (v2)
+# M2 checkpoint B — implementation plan (v3)
 
-Status: **ready to implement**, 2026-09-24. Branch `arena/01a0d381-temari`.
-Supersedes the v1 draft. Incorporates the review of 2026-09-24 (request-handler,
-sanitizer, callback-contract and link-policy corrections) and is structured with
-the `show-me` skill's compact-visual guidance
+Status: **ready to implement**, updated 2026-09-25 after the Phase-4 review.
+Supersedes the v1 draft. v2 incorporated the review of 2026-09-24
+(request-handler, sanitizer, callback-contract and link-policy corrections);
+v3 incorporates the Phase-4 review of 2026-09-25 (session-handler extraction,
+lifecycle consolidation, selection debounce/multi-block rejection/chip
+placement, native link confirm) — the scope is unchanged, the corrections land
+in §8–§12. Structured with the `show-me` skill's compact-visual guidance
 (<https://github.com/humanlayer/skills/tree/main/plugins/show-me/skills/show-me>).
 Phases 0–2 are implemented (PR #27). Phase 3 is implemented (2026-09-25,
 branch `arena/01a0d998-temari`). Phase 4 continues from the
@@ -358,15 +361,29 @@ trusted application chrome               -> expected: native-mode link action bu
                                             FigureShell.Error "Show source" disclosure
 ```
 
-## 8. Phase 4 — selection, single-active request, native panel
+## 8. Phase 4 — selection, single-active request, native panel, link confirm
 
 ### 8.1 Selection safeguards
 
 - Both selection endpoints (`anchorNode`, `focusNode`) must be inside the
   note-content container; selections from the status panel, chips or other UI
   are ignored.
-- Capture `term` + `context` **at selection time**, before the Explain button
-  changes focus/collapses the selection.
+- **Debounce `selectionchange`** (Phase-4 review): Android fires it
+  continuously while a selection handle is dragged; deriving a candidate per
+  event thrashes the chip and re-renders the tree mid-drag. Derive once,
+  ~250–300 ms after the last event — and capture `term` + `context` **at that
+  settle moment**, before the Explain button changes focus/collapses the
+  selection (never on chip tap).
+- **Multi-block and oversized selections are rejected, not repaired**
+  (Phase-4 review): collapse whitespace in the selected string; if the trimmed
+  phrase exceeds 60 chars, or the anchor and focus blocks differ, show no
+  chip. `contextWindow` assumes one text context — a phrase spanning a
+  paragraph boundary or crossing into a figure yields garbage. Rejecting
+  matches web behavior, which already caps at 60.
+- **The chip is a fixed bottom bar inside the DOM, not a positioned popover**
+  (Phase-4 review): Android's floating ActionMode toolbar (Copy/Share/Select
+  all) owns the space above a selection in a WebView; a positioned chip fights
+  it. One flex row of CSS sidesteps the whole overlap class.
 - Word path (`termAtOffset`, ≤48 chars) and selection-phrase path (2..60
   inclusive) both feed `buildExplainRequest`.
 - The builder clamps `context` to `MAX_CONTEXT_LENGTH = 300` before dispatch:
@@ -382,30 +399,54 @@ never re-keyed/remounted when the panel opens — so opening/closing the panel
 preserves the reader's scroll position. The panel is a **native bottom card
 sibling of the reader** (not a Modal — avoids modal Back-behavior at B).
 
-### 8.3 Single-active-request handler (the v1 bug fix)
+Phase-4 review, adopted: "stable callbacks" means `useCallback` with **empty
+deps reading refs** — not deps on session state. Every panel state change would
+otherwise re-serialize the function props across the DOM bridge.
+
+### 8.3 Single-active request — a pure, testable session factory (the v1 bug fix)
 
 v1's `dispatch(submit)` + `await mockExplain(...)` let two calls start two mock
 operations: a reducer ignoring `submit` does not stop the next line from
-running. Corrected control flow:
+running. Phase-4 review, adopted: the corrected control flow lives in a **pure
+factory in `reader-core`**, not in the Expo screen — the §9 call-count rows
+must run in the web vitest suite, there is no RN harness for
+`reader-spike.tsx` at checkpoint B (and none gets added), and the browser
+fixture reuses the same factory so the fast loop and the phone run identical
+semantics instead of parallel reimplementations.
 
 ```text
-onExplain(raw)                                // top-level async function prop
-  if activeRequestId != null                  // ANY pending work, even another id
-    return                                    // duplicate/rapid tap absorbed; no supersede at B
+src/reader-core/session/createExplainSessionHandler.ts   # pure; no DOM/RN APIs
+
+createExplainSessionHandler({ expectedNoteId, isAlive, isFocused, dispatch, run })
+  -> { submit(raw), invalidate() }
+// (extends the review's sketch with the note id `validateExplainRequest`
+//  needs; a note change is invalidate + a new session)
+
+submit(raw)                                  // the DOM action prop calls this
+  if activeRequestId != null                 // ANY pending work, even another id
+    return                                   // duplicate/rapid tap absorbed; no supersede at B
   checked = validateExplainRequest(expectedNoteId, raw)
   if !checked.ok
-    setView(error(checked.reason))            // no mock work starts on invalid input
+    dispatch(error(checked.reason))          // no work starts on invalid input
     return
-  request = checked.request                   // fresh object, permitted fields only
-  activeRequestId = request.requestId         // check-and-set BEFORE starting the mock
-  setView(pending(request))
-  try      settled = await mockExplain(request)      // exactly one mock op (tests count calls)
-  catch    settled = reject(request.requestId, 'mock-failed')
+  request = checked.request                  // fresh object, permitted fields only
+  activeRequestId = request.requestId        // check-and-set BEFORE run
+  dispatch(pending(request))
+  try      settled = await run(request)      // exactly one op (tests count calls)
+  catch    settled = reject('mock-failed')
   finally  if activeRequestId == request.requestId: activeRequestId = null
-  if !aliveRef.current || !isFocused || viewRequestId != request.requestId
-    return                                    // stale: Close, Back/blur, note change, unmount
-  setView(settled)
+  if !isAlive() || !isFocused() || invalidatedSinceSubmit
+    return                                   // stale: Close, blur, note change, unmount
+  dispatch(settled)
+
+invalidate()                                 // Close · note change · route blur · unmount
+  activeRequestId = null                     // clears the guard too — see below
+  dispatch(idle)
 ```
+
+The screen (`reader-spike.tsx`) shrinks to wiring: refs, a tiny `useReducer`
+for the view, and ONE `useFocusEffect` (below). The dev fixture's mock host
+calls the same factory.
 
 ```mermaid
 stateDiagram-v2
@@ -423,13 +464,27 @@ stateDiagram-v2
     end note
 ```
 
+The stuck-guard hole (Phase-4 review): absorb-everything's classic failure
+mode is an `activeRequestId` that never clears — an error path or a missed
+invalidation wedges the session so nothing can ever submit again. `invalidate()`
+and the `finally` block BOTH clear the guard; the fourth §9 test row (submit →
+invalidate while pending → submit again succeeds) pins it.
+
+One lifecycle mechanism (Phase-4 review): `useFocusEffect` alone covers
+focus/blur AND mount/unmount for a focused screen, and its setup/cleanup
+already behaves correctly under Strict Mode re-runs. One `useFocusEffect` sets
+alive/focused on focus and calls `invalidate()` on blur — it replaces the
+`useEffect` aliveRef pair entirely, and the factory is the single place
+invalidation lands.
+
 Rules: no request-id history; acceptance only when the completing id still
-matches `activeRequestId`; invalidation on **Close**, note change, route blur
-(`useFocusEffect`, not just unmount) and unmount. The `aliveRef` effect must set
-`aliveRef.current = true` during setup (React Strict Mode does
-setup/cleanup/setup). View state can stay a tiny reducer; it renders
-`idle/pending/done/error` and is not the concurrency guard. Use
-`try/catch/finally` so cleanup still belongs to the same request.
+matches the session; invalidation on **Close**, note change, route blur and
+unmount — all through `invalidate()`. View state stays a tiny reducer; it
+renders `idle/pending/done/error` and is not the concurrency guard.
+`try/catch/finally` keeps cleanup in the same request. Keep the
+single-active-absorb-all simplification (Phase-4 review, explicit): no
+supersede, no request-id history — easier to prove on a phone checklist than
+supersede semantics; M4 can revisit cancellation if real AI needs it.
 
 ### 8.4 Mock content
 
@@ -439,23 +494,47 @@ not merely the result panel), the panel header reads `MOCK · checkpoint B`. No
 credentials, no network, no AI — same rule as the fixture's
 `sk_test_reader_fixture_NOT_A_CREDENTIAL` authored text.
 
+### 8.5 Native link confirm (Phase 4 implements §7.3's handoff)
+
+- **`Alert.alert` is the confirm** (Phase-4 review): native, accessible,
+  modal, free — not a custom sheet. The parsed **host** is shown prominently;
+  the full URL is truncated below it.
+- **Never `canOpenURL`** (Phase-4 review): on Android 11+ it returns false
+  negatives without package-visibility `queries` entries. Just
+  `try { await Linking.openURL(url) } catch { … error row }`.
+- **Guard the link button's double-tap** (Phase-4 review): two rapid taps →
+  two stacked Alerts is the same bug class as duplicate Explain. Route
+  `OpenLinkRequest`s through the same single-flight guard as Explain —
+  extracted beside the session factory so the §9 row stays a plain vitest
+  test (a bare `confirmOpenRef` in the screen would push the test back onto
+  the phone checklist).
+- The §7.3 wording rule stays verbatim: the app hands the URL to the
+  operating system outside the reader — in airplane mode the success
+  criterion is that the OS handler opens (the handoff), not that anything
+  renders.
+
 ## 9. Tests and gates
 
 Roles, corrected: `NoteViewer.test.tsx` (kept unchanged) pins SSR **markup** —
 callouts, figure numbering, determinism. It is not "proof of preserved web
 behavior". Client-side tests + the fixture pass carry interaction.
 
-| New client-side test | Catches |
-| --- | --- |
-| Diagram click reaches web callback **with its element** | lost morph-origin path |
-| Rapid submissions invoke the mock **once** (assert call count) | reducer-only "deduplication" |
-| Close/blur then late completion | result panel reopening |
-| `native-action` without `onOpenLink` stays inert | accidental WebView navigation |
-| Invalid bridge payload starts **no** mock work | validation existing only on paper |
-| Hostile inputs removed; task checkboxes remain disabled | wrong sanitizer assumptions |
+Landed in Phases 2–3 (kept green): diagram click reaches the web callback with
+its element · `native-action` without `onOpenLink` stays inert · hostile inputs
+removed with task checkboxes disabled (§7.4 authored-vs-trusted split; seed-note
+text comparison stays **supplementary** coverage only).
 
-Also: security tests split authored vs trusted buttons (§7.4); seed-note
-text-comparison kept as **supplementary** coverage only.
+The Phase-4 concurrency rows run against the **pure session factory** in the
+web vitest suite (Phase-4 review: no RN harness for the Expo screen at
+checkpoint B — assert call counts on a mock `run`):
+
+| New client-side test (factory, vitest) | Catches |
+| --- | --- |
+| Rapid submissions invoke `run` **once** (assert call count) | reducer-only "deduplication" |
+| `invalidate()` while pending, then late completion stays dropped | result panel reopening |
+| Invalid bridge payload starts **no** work (`run` never called) | validation existing only on paper |
+| submit → `invalidate()` while pending → submit again **succeeds** | stuck active-request guard |
+| Link double-tap → **one** confirm/handoff | duplicate-Explain bug class on links |
 
 Iteration loop (cheap, every step): targeted vitest files + `bun run check:reader`
 + the browser fixture at 408px. Integration points only:
@@ -486,11 +565,14 @@ launch, no Metro.
    callouts, repairs, Amharic, long scroll, fonts, CSP panel quiet.
 2. Selection (native handles) → mock-labeled chip → run → native bottom-card
    result with term + requestId; **panel open/close preserves scroll position**.
-3. Rapid double-tap → exactly **one** mock invocation.
+3. Rapid double-tap → exactly **one** mock invocation; rapid double-tap on a
+   link action → exactly **one** confirm (no stacked Alerts).
 4. **Close while pending** and **Back while pending** → no panel, no crash, no
-   state on a dead screen; late completion is dropped.
+   state on a dead screen; late completion is dropped — and a fresh submission
+   afterwards starts normally (the guard never sticks).
 5. Diagram node tap → same mock flow with the node label.
-6. HTTPS link → **native confirm shows the URL** → confirm hands it to the OS
+6. HTTPS link → **native `Alert` confirm shows the host prominently with the
+   full URL truncated** → confirm hands it to the OS
    outside the reader (in airplane mode, the handoff attempt is success — the
    external page need not load); cancel leaves the app in place; `//host`,
    relative, fragment and non-HTTPS links stay inert; imported HTML cannot move
@@ -508,7 +590,16 @@ Arena.
 2. Mechanical extraction: selection/, FigureShell/FigureBlock, NoteContent,
    NoteViewer slim-down, legacy split, skin tokens + CSS fixes   (Phase 2)
 3. Sanitizer + task-list filter + linkMode policy + security-test rework  (Phase 3)
-4. Selection wiring + single-active handler + native panel + link confirm (Phase 4)
+4. Phase 4, review-ordered steps (Phase-4 review; each ends green):
+   4.1 pure rename ReaderAssetSpike → NoteReader (isolated commit) + extract
+       createExplainSessionHandler into reader-core + retarget reader-spike.tsx
+       to it + the factory test rows, all in web vitest
+   4.2 DOM selection: debounced selectionchange funnel, bounds/multi-block
+       rejection, fixed-bottom mock-labeled chip, diagram taps through the
+       same builder; verify in the browser fixture
+   4.3 native link confirm: Alert.alert + isApprovedLink re-check + openURL in
+       try/catch + double-tap guard; useFocusEffect lifecycle consolidation
+   4.4 phase gates (§9's list; NoteViewer.test.tsx byte-unchanged)
 5. Full gate matrix + phone checklist + checkpoint-B record (Phase 5)
 ```
 
@@ -521,7 +612,9 @@ lands apart from the mechanical move so behavior diffs stay attributable.
 | --- | --- |
 | hast-util-sanitize `input` semantics (required-attribute defaults) | Pre-filter removes the ambiguity; tests decide — verify against the installed version during Phase 3, don't trust either of our summaries |
 | Legacy pre-JSON fences on imported notes | D4: labelled source fallback now; **legacy import parity = unresolved, M3 decision** |
-| Android WebView selection event quirks | Dual funnel (selectionchange + touchend + mouseup); container-scoped; re-probed at the gate |
+| Android WebView selection event quirks | ONE debounced `selectionchange` derive (250–300 ms settle; touchend/mouseup only re-arm it); container-scoped; fixed-bottom chip clear of the ActionMode toolbar; re-probed at the gate |
+| Expo screen logic untestable from web vitest | Session control flow lives in the pure reader-core factory; the screen is wiring only (§8.3) — no RN harness added at checkpoint B |
+| Stuck single-active guard (absorb-all failure mode) | `invalidate()` and `finally` both clear the guard; the resubmit-after-close factory test pins it (§9) |
 | Function-prop marshaling surprises | Phase 1 device smoke isolates this before the big extraction |
 | Sanitizer deltas to web (images, exotic tags) | Documented §7.3; supplementary seed-note tests; review diff of `readerSchema` in the PR |
 
