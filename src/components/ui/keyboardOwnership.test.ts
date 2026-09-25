@@ -127,7 +127,9 @@ describe('predictable control (Phase 2)', () => {
   });
 
   it('term recognition uses the Unicode-aware segmenter and one Explain path', () => {
-    expect(noteViewer).toContain("from '../../utils/segmentTerm'");
+    // Segmenter/term utilities live in src/reader-core/selection since
+    // checkpoint B; NoteViewer keeps consuming them from there.
+    expect(noteViewer).toContain("from '../../reader-core/selection/segmentTerm'");
     expect(noteViewer).not.toMatch(/\\u1200-\\u137F/);
     expect(noteViewer).not.toMatch(/slice\(0, 200\)/);
     // Long-press proposes; only the Explain button generates.

@@ -96,4 +96,4 @@ historical.
 
 ## Mobile prototype planning
 
-- [Android feasibility prototype](./ANDROID-PROTOTYPE-PLAN.md) — M0 device startup/navigation passed; M1 export implemented; [M2 asset checkpoint](./mobile/M2-READER-SPIKE.md) awaiting the installed offline device test. Section 0 is historical.
+- [Android feasibility prototype](./ANDROID-PROTOTYPE-PLAN.md) — M0 device startup/navigation passed; M1 export implemented; [M2 asset checkpoint](./mobile/M2-READER-SPIKE.md) passed its installed offline device test (2026-09-24); [checkpoint B plan](./mobile/M2-CHECKPOINT-B-PLAN.md) in progress. Section 0 is historical.
