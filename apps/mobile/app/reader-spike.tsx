@@ -4,21 +4,33 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useRouter } from 'expo-router';
 import ReaderAssetSpikeDOM from '../components/ReaderAssetSpikeDOM';
 import fixture from '../../../fixtures/mobile/reader-kitchen-sink.json';
-import { validateExplainRequest, type ExplainRequest } from '../../../src/reader-core/bridge';
+import {
+  createExplainSessionHandler,
+  type ExplainSessionHandler,
+  type ExplainSessionState,
+} from '../../../src/reader-core/session/createExplainSessionHandler';
+import type { ExplainRequest } from '../../../src/reader-core/bridge';
 
-/** Native result panel state (checkpoint B: mock results only). */
-type PanelState =
-  | { kind: 'done'; request: ExplainRequest; text: string }
-  | { kind: 'error'; reason: string }
-  | null;
+/**
+ * Checkpoint B reader screen: wiring only (plan §8.3). The single-active
+ * control flow lives in the pure `createExplainSessionHandler` factory, where
+ * the §9 call-count rows test it in web vitest — no RN harness at B.
+ */
+
+/** Mock at checkpoint B: latency plus canned text, no credentials/network/AI. */
+async function mockExplain(request: ExplainRequest): Promise<string> {
+  await new Promise((resolve) => setTimeout(resolve, 800));
+  return `MOCK · checkpoint B — “${request.term}”: ${request.context.slice(0, 120)}`;
+}
 
 export default function ReaderSpikeScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const [panel, setPanel] = useState<PanelState>(null);
+  const [panel, setPanel] = useState<ExplainSessionState>({ kind: 'idle' });
 
   // Mounted-state guard. Set to true during setup as well: React Strict Mode's
   // setup/cleanup/setup cycle would otherwise leave it false after remount.
+  // (Phase 4.3 consolidates this into ONE useFocusEffect.)
   const aliveRef = useRef(true);
   useEffect(() => {
     aliveRef.current = true;
@@ -27,42 +39,26 @@ export default function ReaderSpikeScreen() {
     };
   }, []);
 
-  // Single active request at a time (check-and-set BEFORE starting the mock).
-  // While pending, further submissions are absorbed — even with another id.
-  // There is no supersede and no request-id history at checkpoint B.
-  const activeRequestIdRef = useRef<string | null>(null);
+  // The session is created once; its deps read refs and the stable setState —
+  // never session state — so the DOM action prop identity never changes and
+  // nothing re-serializes across the bridge (plan §8.2).
+  const sessionRef = useRef<ExplainSessionHandler | null>(null);
+  if (sessionRef.current === null) {
+    sessionRef.current = createExplainSessionHandler({
+      expectedNoteId: fixture.id,
+      isAlive: () => aliveRef.current,
+      isFocused: () => true, // Phase 4.3: useFocusEffect drives this
+      dispatch: setPanel,
+      run: mockExplain,
+    });
+  }
 
+  // Stable bridge actions: empty deps, reading refs only (plan §8.2).
   const onExplain = useCallback(async (raw: unknown) => {
-    if (activeRequestIdRef.current !== null) return;
-    const checked = validateExplainRequest(fixture.id, raw);
-    if (!checked.ok) {
-      if (aliveRef.current) setPanel({ kind: 'error', reason: checked.reason });
-      return;
-    }
-    const request = checked.request;
-    activeRequestIdRef.current = request.requestId;
-    try {
-      // Mock latency only. No credentials, no network, no AI at checkpoint B.
-      await new Promise((resolve) => setTimeout(resolve, 800));
-      if (!aliveRef.current || activeRequestIdRef.current !== request.requestId) return;
-      setPanel({
-        kind: 'done',
-        request,
-        text: `MOCK · checkpoint B — “${request.term}”: ${request.context.slice(0, 120)}`,
-      });
-    } catch {
-      if (aliveRef.current && activeRequestIdRef.current === request.requestId) {
-        setPanel({ kind: 'error', reason: 'mock-failed' });
-      }
-    } finally {
-      if (activeRequestIdRef.current === request.requestId) activeRequestIdRef.current = null;
-    }
+    await sessionRef.current?.submit(raw);
   }, []);
-
   const closePanel = useCallback(() => {
-    // Invalidate any pending request: a late completion must not reopen the panel.
-    activeRequestIdRef.current = null;
-    setPanel(null);
+    sessionRef.current?.invalidate();
   }, []);
 
   return (
@@ -71,7 +67,7 @@ export default function ReaderSpikeScreen() {
         <Pressable accessibilityRole="button" accessibilityLabel="Back to hello" onPress={() => router.back()} style={styles.back}>
           <Text style={styles.backText}>← Back</Text>
         </Pressable>
-        <Text style={styles.title}>Offline reader · asset spike</Text>
+        <Text style={styles.title}>Offline reader · checkpoint B</Text>
       </View>
       <ReaderAssetSpikeDOM
         title={fixture.title}
@@ -84,16 +80,23 @@ export default function ReaderSpikeScreen() {
           unstable_useExpoModulesBridge: false,
         }}
       />
-      {panel && (
+      {panel.kind !== 'idle' && (
         <View style={[styles.panel, { paddingBottom: Math.max(insets.bottom, 12) }]} accessibilityViewIsModal>
-          <Text style={styles.panelEyebrow}>{panel.kind === 'done' ? 'MOCK · CHECKPOINT B' : 'REQUEST REJECTED'}</Text>
-          {panel.kind === 'done' ? (
+          <Text style={styles.panelEyebrow}>{panel.kind === 'done' ? 'MOCK · CHECKPOINT B' : panel.kind === 'pending' ? 'MOCK · RUNNING' : 'REQUEST REJECTED'}</Text>
+          {panel.kind === 'pending' && (
             <>
               <Text style={styles.panelTerm}>{panel.request.term}</Text>
-              <Text style={styles.panelBody}>{panel.text}</Text>
+              <Text style={styles.panelBody}>Running the mock explanation… (no network, no AI at checkpoint B)</Text>
+            </>
+          )}
+          {panel.kind === 'done' && (
+            <>
+              <Text style={styles.panelTerm}>{panel.request.term}</Text>
+              <Text style={styles.panelBody}>{panel.result}</Text>
               <Text style={styles.panelMeta}>requestId {panel.request.requestId}</Text>
             </>
-          ) : (
+          )}
+          {panel.kind === 'error' && (
             <Text style={styles.panelBody}>The mock action did not start: {panel.reason}.</Text>
           )}
           <Pressable accessibilityRole="button" accessibilityLabel="Close result panel" onPress={closePanel} style={styles.panelClose}>

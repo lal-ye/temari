@@ -58,3 +58,4 @@ html, body { margin: 0; padding: 0; background: #f7f4ed; color: #242722; }
 .reader-dev-panel { box-sizing: border-box; max-width: 760px; margin: 0 auto 32px; padding: 12px 16px; border: 1px dashed #596b55; background: #f2f4ec; font: 13px/1.6 'Geist Variable', 'Abyssinica SIL', sans-serif; color: #242722; }
 .reader-dev-panel ul { padding-left: 20px; margin: 6px 0; }
 .reader-dev-panel button { font: 600 12px/1.4 'Geist Variable', sans-serif; padding: 8px 12px; color: #242722; background: #edf2e8; border: 1px solid #596b55; border-radius: 6px; cursor: pointer; }
+.reader-dev-actions { display: flex; gap: 8px; margin: 8px 0; }
