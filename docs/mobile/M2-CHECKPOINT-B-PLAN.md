@@ -5,6 +5,8 @@ Supersedes the v1 draft. Incorporates the review of 2026-09-24 (request-handler,
 sanitizer, callback-contract and link-policy corrections) and is structured with
 the `show-me` skill's compact-visual guidance
 (<https://github.com/humanlayer/skills/tree/main/plugins/show-me/skills/show-me>).
+Phases 0–2 are implemented (PR #27). Phase 3 continues from the
+[session handoff](./M2-B-PHASE3-HANDOFF.md).
 
 ## 1. Scope and non-goals
 
