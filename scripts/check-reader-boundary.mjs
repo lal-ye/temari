@@ -4,7 +4,9 @@ import ts from 'typescript';
 import { fileURLToPath } from 'node:url';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../src/reader-core');
-const allowed = new Set(['react', 'react-markdown', 'remark-gfm', 'remark-math', 'rehype-raw', 'rehype-sanitize', 'rehype-katex']);
+// lucide-react: reviewed for the DOM reader — pure SVG React components (inline
+// vectors, no DOM storage, network, native or dynamic code APIs).
+const allowed = new Set(['react', 'react-markdown', 'remark-gfm', 'remark-math', 'rehype-raw', 'rehype-sanitize', 'rehype-katex', 'lucide-react']);
 const forbidden = new Set(['localStorage', 'sessionStorage', 'indexedDB', 'fetch', 'XMLHttpRequest', 'WebSocket', 'Worker', 'eval']);
 const files = fs.readdirSync(root, { recursive: true }).filter(name => /\.(ts|tsx)$/.test(name) && !name.includes('.test.'));
 for (const name of files) {

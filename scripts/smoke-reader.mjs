@@ -16,6 +16,12 @@ assert.ok(html.includes('katex'));
 assert.ok(html.includes('fig-1-title'));
 assert.ok(!html.includes('example.invalid'));
 assert.ok(renderToStaticMarkup(React.createElement(ReaderAssetSpike, { ...fixture, development: false })).includes('Preparing protected reader'));
+// The extracted shared renderer SSR-renders under Node too (both skins).
+const { NoteContent } = await import('../src/reader-core/NoteContent.tsx');
+for (const skin of ['web', 'reader']) {
+  const noteHtml = renderToStaticMarkup(React.createElement(NoteContent, { content: fixture.content, noteTitle: fixture.title, skin }));
+  assert.ok(noteHtml.includes('End of fixture') && noteHtml.includes('katex'), `NoteContent (${skin})`);
+}
 // The bridge contract is pure: building and validating a request needs no browser globals.
 const request = buildExplainRequest({ noteId: fixture.id, term: 'Energy', context: 'bounded' });
 assert.ok(request && validateExplainRequest(fixture.id, request).ok);

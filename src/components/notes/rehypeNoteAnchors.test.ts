@@ -113,16 +113,20 @@ describe('rehypeNoteAnchors: figure numbering', () => {
 describe('NoteViewer wires the landmarks', () => {
   const here = dirname(fileURLToPath(import.meta.url));
   const viewer = readFileSync(join(here, './NoteViewer.tsx'), 'utf8');
+  // The content renderer moved to src/reader-core/NoteContent.tsx at
+  // checkpoint B; these wiring assertions follow it there, unchanged.
+  const content = readFileSync(join(here, '../../reader-core/NoteContent.tsx'), 'utf8');
 
   it('runs the plugin and passes the ids through the heading renderers', () => {
-    expect(viewer).toContain('rehypePlugins={[rehypeRaw, rehypeNoteRepairs, rehypeNoteCallouts, rehypeKatex, rehypeNoteAnchors]}');
-    expect(viewer).toMatch(/h1\(\{ children, id \}: any\)[\s\S]*<h1 id=\{id\}/);
-    expect(viewer).toMatch(/h2\(\{ children, id \}: any\)[\s\S]*<h2 id=\{id\}/);
-    expect(viewer).toMatch(/h3\(\{ children, id \}: any\)[\s\S]*<h3 id=\{id\}/);
+    expect(content).toContain('rehypePlugins={[rehypeRaw, rehypeNoteRepairs, rehypeNoteCallouts, rehypeKatex, rehypeNoteAnchors]}');
+    expect(content).toMatch(/h1\(\{ children, id \}: any\)[\s\S]*<h1 id=\{id\}/);
+    expect(content).toMatch(/h2\(\{ children, id \}: any\)[\s\S]*<h2 id=\{id\}/);
+    expect(content).toMatch(/h3\(\{ children, id \}: any\)[\s\S]*<h3 id=\{id\}/);
   });
 
   it('does not count with a render-scoped counter (memoised renderers never reset it)', () => {
     expect(viewer).not.toMatch(/let (figureCounter|headingCounter)\s*=\s*0/);
+    expect(content).not.toMatch(/let (figureCounter|headingCounter)\s*=\s*0/);
   });
 
   it('uses the reading-place hook with the Note revision, and the Return pill reads the store', () => {

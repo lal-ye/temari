@@ -154,6 +154,12 @@ Phase 2's extraction. If marshaling misbehaves, the failure is isolated to
 `bridge.ts` + one screen instead of a half-moved renderer. Remove the button in
 Phase 4 (or keep behind `development`).
 
+Smoke evidence, 2026-09-24: all four steps passed per the user's screenshots
+(button → MOCK panel with requestId, duplicate-tap absorbed, Close/back safe) —
+on Expo web (`localhost:8081`), where function props are plain calls. The
+Android WebView marshaling itself is therefore **not yet proven at B**; the
+2-minute on-phone re-smoke is folded into the Phase 5 gate checklist.
+
 ## 6. Phase 2 — mechanical renderer extraction
 
 Goal: web DOM byte-stable, web interaction path preserved. Sanitizer and link
@@ -245,7 +251,11 @@ or native APIs).
   covered by §9's client-side tests and the fixture pass).
 - New client-side test: a diagram click reaches the web callback **with its
   element** (morph-origin path intact).
-- Fixture renders the complete renderer via `NoteContent` (fast loop).
+- *Sequencing note (amended 2026-09-24):* the fixture rewires to `NoteContent`
+  at Phase 3, not here — its security suite must flip in the same change that
+  unifies the pipeline and introduces `linkMode`, keeping behavior diffs
+  attributable (§11). During Phase 2 the fast loop is the web app's NoteViewer
+  plus the `NoteContent` skin tests.
 
 ## 7. Phase 3 — sanitizer + explicit link policy (separate change)
 

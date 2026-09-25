@@ -14,7 +14,11 @@ html, body { margin: 0; padding: 0; background: #f7f4ed; color: #242722; }
 .reader-status[data-failed='true'] { border: 2px solid #b42318; background: #fff0ee; }
 .reader-status ul { padding-left: 20px; margin: 4px 0; }
 .reader-lab blockquote { border-left: 3px solid #8d9f80; margin: 20px 0; padding: 4px 16px; background: #eeefe7; }
-.reader-lab blockquote[data-callout='warning'] { border-color: #b06921; background: #fff3de; }
+/* Callouts: the shared NoteContent renderer wraps callouts in a div; the
+   fixture's spike renderer still uses blockquotes. Attribute selectors cover
+   both structures during the checkpoint B transition. */
+.reader-lab [data-callout] { border-left: 3px solid #8d9f80; margin: 20px 0; padding: 10px 16px; background: #eeefe7; }
+.reader-lab [data-callout='warning'] { border-color: #b06921; background: #fff3de; }
 .reader-lab blockquote p { margin: .5em 0; }
 .reader-lab pre { overflow-x: auto; padding: 16px; border: 1px solid #c6c6b8; font-size: 13px; background: #fffdf7; }
 .reader-lab code { font-size: .85em; }
@@ -23,9 +27,15 @@ html, body { margin: 0; padding: 0; background: #f7f4ed; color: #242722; }
 .reader-lab th, .reader-lab td { border: 1px solid #c6c6b8; padding: 10px; text-align: left; }
 .reader-lab th { background: #e9ebdf; }
 .reader-figure { margin: 24px 0; padding: 12px; border: 1px solid #c6c6b8; background: #fffdf7; }
-.reader-figure svg { min-width: 480px; width: 100%; height: auto; display: block; }
+/* Diagram SVG sizing is scoped to the diagram itself so lucide chrome icons
+   (figure error disclosure etc.) never inherit figure-sized dimensions. */
+.reader-figure .reader-overflow > svg { min-width: 480px; width: 100%; height: auto; display: block; }
+.reader-figure .reader-overflow > svg text { font-family: 'Geist Variable', 'Abyssinica SIL', sans-serif; }
 .reader-figure figcaption { font-size: 12px; color: #575e52; border-top: 1px solid #c6c6b8; padding-top: 10px; }
-.reader-figure svg text { font-family: 'Geist Variable', 'Abyssinica SIL', sans-serif; }
+/* Shared figure frame (NoteContent reader skin): same diagram sizing, scoped
+   to the framed figure so the error disclosure's chevron stays icon-sized. */
+.reader-figure-wrap .temari-figure svg { min-width: 480px; width: 100%; height: auto; display: block; }
+.reader-figure-wrap .temari-figure svg text { font-family: 'Geist Variable', 'Abyssinica SIL', sans-serif; }
 .reader-inert-link { text-decoration: underline dotted; color: #575e52; }
 .reader-lab .katex-display { overflow-x: auto; overflow-y: hidden; padding-block: 6px; }
 .reader-lab :focus-visible { outline: 2px solid #315d8f; outline-offset: 4px; }
