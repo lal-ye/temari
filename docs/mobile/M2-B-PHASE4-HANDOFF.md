@@ -1,12 +1,13 @@
 # Checkpoint B · Phase 4 — session handoff
 
-Status: **Phases 0–2 merged to `main`** (PR #27) · **Phase 3 implemented**
-(2026-09-25, branch `arena/01a0d998-temari`) · the plan is **v3** — the
-Phase-4 review of 2026-09-25 is incorporated (session-handler extraction,
-lifecycle consolidation, selection debounce/multi-block rejection/chip
-placement, native link confirm). Phase 4 is **not started**. This file is the
-authoritative starting point for the next session; the design authority
-remains [M2-CHECKPOINT-B-PLAN.md](./M2-CHECKPOINT-B-PLAN.md) (v3).
+Status: **historical** — Phases 0–2 merged to `main` (PR #27); **Phase 3
+implemented** (`f53069e`) and **Phase 4 implemented** (2026-09-25, branch
+`arena/01a0d998-temari`: `3028aa5` rename · `e3c8707` session factory ·
+`96f9dd6` selection · `a8cdf7f` link confirm + lifecycle). The next session
+starts from [M2-B-PHASE5-HANDOFF.md](./M2-B-PHASE5-HANDOFF.md); this file is
+retained as the Phase 4 scope record (its §8 Phase 3 record is carried
+forward there). The design authority remains
+[M2-CHECKPOINT-B-PLAN.md](./M2-CHECKPOINT-B-PLAN.md) (v3).
 
 ## 0. Suggested opening prompt for the next session
 
