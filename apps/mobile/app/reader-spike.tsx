@@ -1,68 +1,122 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useCallback, useRef, useState } from 'react';
+import { Alert, Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import ReaderAssetSpikeDOM from '../components/ReaderAssetSpikeDOM';
 import fixture from '../../../fixtures/mobile/reader-kitchen-sink.json';
-import { validateExplainRequest, type ExplainRequest } from '../../../src/reader-core/bridge';
+import {
+  createExplainSessionHandler,
+  type ExplainSessionHandler,
+  type ExplainSessionState,
+} from '../../../src/reader-core/session/createExplainSessionHandler';
+import {
+  createOpenLinkHandler,
+  type OpenLinkEvent,
+  type OpenLinkHandler,
+} from '../../../src/reader-core/session/createOpenLinkHandler';
+import type { ExplainRequest } from '../../../src/reader-core/bridge';
 
-/** Native result panel state (checkpoint B: mock results only). */
-type PanelState =
-  | { kind: 'done'; request: ExplainRequest; text: string }
-  | { kind: 'error'; reason: string }
-  | null;
+/**
+ * Checkpoint B reader screen: wiring only (plan §8.3/§8.5). The single-active
+ * control flows live in the pure reader-core factories, where the §9
+ * call-count rows test them in web vitest — no RN harness at B.
+ */
+
+/** Mock at checkpoint B: latency plus canned text, no credentials/network/AI. */
+async function mockExplain(request: ExplainRequest): Promise<string> {
+  await new Promise((resolve) => setTimeout(resolve, 800));
+  return `MOCK · checkpoint B — “${request.term}”: ${request.context.slice(0, 120)}`;
+}
+
+/** The parsed host, shown prominently; the full URL truncated below. */
+function linkHost(url: string): string {
+  const match = /^https:\/\/[^/?#]+/i.exec(url);
+  return match ? match[0].slice('https://'.length) : url;
+}
+
+/**
+ * The ONE confirmation, native (plan §8.5): `Alert.alert` — native,
+ * accessible, modal, free. Confirming hands the URL to the operating system
+ * outside the reader (`Linking.openURL` may open an associated app, not a
+ * browser). Never `canOpenURL`: on Android 11+ it returns false negatives
+ * without package-visibility entries.
+ */
+function confirmOpenLink(url: string): Promise<boolean> {
+  return new Promise((resolve) => {
+    const truncated = url.length > 96 ? `${url.slice(0, 96)}…` : url;
+    Alert.alert(
+      'Open this link outside Temari?',
+      `${linkHost(url)}\n${truncated}\n\nTemari hands the link to another app on your device.`,
+      [
+        { text: 'Cancel', style: 'cancel', onPress: () => resolve(false) },
+        { text: 'Open', onPress: () => resolve(true) },
+      ],
+      { cancelable: true, onDismiss: () => resolve(false) },
+    );
+  });
+}
 
 export default function ReaderSpikeScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const [panel, setPanel] = useState<PanelState>(null);
+  const [panel, setPanel] = useState<ExplainSessionState>({ kind: 'idle' });
+  const [linkPanel, setLinkPanel] = useState<OpenLinkEvent>({ kind: 'idle' });
 
-  // Mounted-state guard. Set to true during setup as well: React Strict Mode's
-  // setup/cleanup/setup cycle would otherwise leave it false after remount.
+  // ONE lifecycle mechanism (plan §8.3, Phase-4 review): useFocusEffect covers
+  // focus/blur AND mount/unmount for a focused screen, and its setup/cleanup
+  // behaves correctly under Strict Mode re-runs. The useEffect aliveRef pair
+  // is gone; the factories are the single place invalidation lands.
   const aliveRef = useRef(true);
-  useEffect(() => {
-    aliveRef.current = true;
-    return () => {
-      aliveRef.current = false;
-    };
-  }, []);
+  const focusedRef = useRef(true);
 
-  // Single active request at a time (check-and-set BEFORE starting the mock).
-  // While pending, further submissions are absorbed — even with another id.
-  // There is no supersede and no request-id history at checkpoint B.
-  const activeRequestIdRef = useRef<string | null>(null);
+  // The sessions are created once; their deps read refs and stable setState —
+  // never session state — so the DOM action props never change identity and
+  // nothing re-serializes across the bridge (plan §8.2).
+  const explainRef = useRef<ExplainSessionHandler | null>(null);
+  if (explainRef.current === null) {
+    explainRef.current = createExplainSessionHandler({
+      expectedNoteId: fixture.id,
+      isAlive: () => aliveRef.current,
+      isFocused: () => focusedRef.current,
+      dispatch: setPanel,
+      run: mockExplain,
+    });
+  }
+  const linkRef = useRef<OpenLinkHandler | null>(null);
+  if (linkRef.current === null) {
+    linkRef.current = createOpenLinkHandler({
+      confirm: confirmOpenLink,
+      open: (url) => Linking.openURL(url),
+      dispatch: setLinkPanel,
+    });
+  }
 
+  useFocusEffect(
+    useCallback(() => {
+      aliveRef.current = true;
+      focusedRef.current = true;
+      return () => {
+        // Blur and unmount both land here: pending work is invalidated (a
+        // late completion must not reopen anything) and the guards clear, so
+        // a fresh submission always works afterwards.
+        aliveRef.current = false;
+        focusedRef.current = false;
+        explainRef.current?.invalidate();
+        linkRef.current?.invalidate();
+      };
+    }, []),
+  );
+
+  // Stable bridge actions: empty deps, reading refs only (plan §8.2).
   const onExplain = useCallback(async (raw: unknown) => {
-    if (activeRequestIdRef.current !== null) return;
-    const checked = validateExplainRequest(fixture.id, raw);
-    if (!checked.ok) {
-      if (aliveRef.current) setPanel({ kind: 'error', reason: checked.reason });
-      return;
-    }
-    const request = checked.request;
-    activeRequestIdRef.current = request.requestId;
-    try {
-      // Mock latency only. No credentials, no network, no AI at checkpoint B.
-      await new Promise((resolve) => setTimeout(resolve, 800));
-      if (!aliveRef.current || activeRequestIdRef.current !== request.requestId) return;
-      setPanel({
-        kind: 'done',
-        request,
-        text: `MOCK · checkpoint B — “${request.term}”: ${request.context.slice(0, 120)}`,
-      });
-    } catch {
-      if (aliveRef.current && activeRequestIdRef.current === request.requestId) {
-        setPanel({ kind: 'error', reason: 'mock-failed' });
-      }
-    } finally {
-      if (activeRequestIdRef.current === request.requestId) activeRequestIdRef.current = null;
-    }
+    await explainRef.current?.submit(raw);
   }, []);
-
+  const onOpenLink = useCallback(async (raw: unknown) => {
+    await linkRef.current?.submit(raw);
+  }, []);
   const closePanel = useCallback(() => {
-    // Invalidate any pending request: a late completion must not reopen the panel.
-    activeRequestIdRef.current = null;
-    setPanel(null);
+    explainRef.current?.invalidate();
+    linkRef.current?.invalidate();
   }, []);
 
   return (
@@ -71,30 +125,55 @@ export default function ReaderSpikeScreen() {
         <Pressable accessibilityRole="button" accessibilityLabel="Back to hello" onPress={() => router.back()} style={styles.back}>
           <Text style={styles.backText}>← Back</Text>
         </Pressable>
-        <Text style={styles.title}>Offline reader · asset spike</Text>
+        <Text style={styles.title}>Offline reader · checkpoint B</Text>
       </View>
       <ReaderAssetSpikeDOM
         title={fixture.title}
         content={fixture.content}
         noteId={fixture.id}
         onExplain={onExplain}
+        onOpenLink={onOpenLink}
         dom={{
           style: { flex: 1 },
           // No general-purpose native-module access from the DOM context.
           unstable_useExpoModulesBridge: false,
         }}
       />
-      {panel && (
+      {(panel.kind !== 'idle' || linkPanel.kind !== 'idle') && (
         <View style={[styles.panel, { paddingBottom: Math.max(insets.bottom, 12) }]} accessibilityViewIsModal>
-          <Text style={styles.panelEyebrow}>{panel.kind === 'done' ? 'MOCK · CHECKPOINT B' : 'REQUEST REJECTED'}</Text>
-          {panel.kind === 'done' ? (
+          {panel.kind !== 'idle' ? (
             <>
-              <Text style={styles.panelTerm}>{panel.request.term}</Text>
-              <Text style={styles.panelBody}>{panel.text}</Text>
-              <Text style={styles.panelMeta}>requestId {panel.request.requestId}</Text>
+              <Text style={styles.panelEyebrow}>{panel.kind === 'done' ? 'MOCK · CHECKPOINT B' : panel.kind === 'pending' ? 'MOCK · RUNNING' : 'REQUEST REJECTED'}</Text>
+              {panel.kind === 'pending' && (
+                <>
+                  <Text style={styles.panelTerm}>{panel.request.term}</Text>
+                  <Text style={styles.panelBody}>Running the mock explanation… (no network, no AI at checkpoint B)</Text>
+                </>
+              )}
+              {panel.kind === 'done' && (
+                <>
+                  <Text style={styles.panelTerm}>{panel.request.term}</Text>
+                  <Text style={styles.panelBody}>{panel.result}</Text>
+                  <Text style={styles.panelMeta}>requestId {panel.request.requestId}</Text>
+                </>
+              )}
+              {panel.kind === 'error' && (
+                <Text style={styles.panelBody}>The mock action did not start: {panel.reason}.</Text>
+              )}
             </>
           ) : (
-            <Text style={styles.panelBody}>The mock action did not start: {panel.reason}.</Text>
+            <>
+              <Text style={styles.panelEyebrow}>LINK HANDOFF</Text>
+              {linkPanel.kind === 'opened' && (
+                <Text style={styles.panelBody}>Opened {linkHost(linkPanel.url)} outside Temari.</Text>
+              )}
+              {linkPanel.kind === 'rejected' && (
+                <Text style={styles.panelBody}>Link blocked: not an approved HTTPS address.</Text>
+              )}
+              {linkPanel.kind === 'failed' && (
+                <Text style={styles.panelBody}>No app could open that link.</Text>
+              )}
+            </>
           )}
           <Pressable accessibilityRole="button" accessibilityLabel="Close result panel" onPress={closePanel} style={styles.panelClose}>
             <Text style={styles.panelCloseText}>Close</Text>
