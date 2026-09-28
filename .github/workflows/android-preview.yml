@@ -1,0 +1,55 @@
+name: Android preview APK
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: android-preview
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: .bun-version
+
+      - uses: android-actions/setup-android@v3
+
+      # The runner image ships an NDK; point the build at it so eas-cli-local-build-plugin
+      # stops warning and Gradle can compile the new-architecture codegen C++.
+      - name: Set ANDROID_NDK_HOME
+        run: |
+          if [ -d "$ANDROID_NDK_LATEST_HOME" ]; then
+            echo "ANDROID_NDK_HOME=$ANDROID_NDK_LATEST_HOME" >> "$GITHUB_ENV"
+            echo "using NDK $ANDROID_NDK_LATEST_HOME"
+          else
+            sdkmanager "ndk;27.1.12297006"
+            echo "ANDROID_NDK_HOME=$ANDROID_SDK_ROOT/ndk/27.1.12297006" >> "$GITHUB_ENV"
+          fi
+
+      - run: bun install --frozen-lockfile
+
+      # --local keeps the build on the runner (14 GB free SSD, 16 GB RAM) and pulls the
+      # signing keystore from Expo's remote credentials, so no keystore is stored in the repo.
+      - name: Build preview APK
+        working-directory: apps/mobile
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+          EAS_SKIP_AUTO_FINGERPRINT: '1'
+        run: bunx eas-cli@latest build --platform android --profile preview --local --output preview.apk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: temari-preview-apk
+          path: apps/mobile/preview.apk
+          if-no-files-found: error
