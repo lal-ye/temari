@@ -2,9 +2,11 @@
 
 Status: **Phases 0–2 merged to `main`** (PR #27) · **Phases 3–4 implemented**
 (2026-09-25, branch `arena/01a0d998-temari`, steps 4.1a/4.1b/4.2/4.3/4.4 as
-separate commits). Phase 5 — the full gate matrix, the phone checklist and the
-checkpoint-B record — is **not started**. This file is the authoritative
-starting point for the next session; the design authority remains
+separate commits) · **gate matrix green 2026-09-28** (see the checkpoint-B
+record in `M2-READER-SPIKE.md`; `expo install --check` was performed as a local
+drift check because the sandbox blocks expo.io). Remaining for Phase 5: the
+**phone checklist on the physical device** and folding its evidence into the
+record. This file remains the map for that pass; the design authority is
 [M2-CHECKPOINT-B-PLAN.md](./M2-CHECKPOINT-B-PLAN.md) (v3).
 
 ## 0. Suggested opening prompt for the next session
@@ -26,7 +28,7 @@ starting point for the next session; the design authority remains
 | 2 · mechanical renderer extraction | done, `f1999ef` | `NoteContent.tsx` (one map + skins), `FigureBlock`, `selection/`; `NoteViewer.test.tsx` byte-unchanged 25/25 throughout |
 | 3 · sanitizer + link policy | done, `f53069e` | unified sanitized pipeline; `FixtureMarkdown` retired; fixture mounts `NoteContent`; security suite re-scoped (record: Phase 4 handoff §8) |
 | 4 · selection + single-active session + native panel + link confirm | **done (this branch)** | see §8 below |
-| 5 · full gates + phone checklist + checkpoint-B record | **not started** | plan §9–§10 = the scope |
+| 5 · full gates + phone checklist + checkpoint-B record | **in progress** — gate matrix green 2026-09-28 (record in `M2-READER-SPIKE.md` §Checkpoint B); phone checklist + evidence fold-in remain | plan §9–§10 = the scope |
 
 Gates at the Phase 4 close (all green, run in order):
 

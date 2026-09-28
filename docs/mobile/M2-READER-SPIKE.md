@@ -183,15 +183,91 @@ or create another project. Use the existing signing credentials.
 
    scrcpy is optional for mirroring/screenshots; it is not bundled or required.
 
-## Checkpoint B — planned
+## Checkpoint B — implemented; final phone gate pending
 
-A passed on the phone on 2026-09-24, so checkpoint B is unblocked. Scope is
-unchanged: extract the rest of the content renderer into the same source folder,
-preserving web behavior/regression tests; reuse the browser fixture as the fast
-feedback loop; add a top-level async mock Explain action (bounded selection +
-note/request ID, no credentials or DOM nodes; native result panel; request ID +
-mounted-state guard and duplicate-tap prevention); approved HTTPS link handling
-only through an explicit native action; final M2 preview gate over the complete
-renderer and the real DOM/native mock bridge. Do not add persistence or real AI
-at this checkpoint. The reviewed implementation plan is
-[M2-CHECKPOINT-B-PLAN.md](./M2-CHECKPOINT-B-PLAN.md).
+Status, 2026-09-28: **Phases 0–4 implemented** on branch `arena/01a0d998-temari`
+(Phases 0–2 also on `main` via PR #27) and the **full local gate matrix is
+green** (below). What remains for checkpoint B is the **phone checklist on the
+physical device** (§ "Checkpoint B phone checklist"), which also re-runs
+checkpoint A's visual checks. Scope held throughout: no persistence, real AI,
+SQLite, SecureStore, import UI or app network calls; the URL handoff is
+`Linking.openURL`, not a request.
+
+### What checkpoint B delivered
+
+| Phase | Commits | Summary |
+| --- | --- | --- |
+| 1 · bridge contract | `d4ea872` | `src/reader-core/bridge.ts`: `ExplainRequest`/`OpenLinkRequest`, inclusive bounds (term 2–60, context ≤300 with the 302→300 builder clamp), fresh-object rebuilds, `isApprovedLink` as the one URL rule; action smoke over the real function-prop bridge |
+| 2 · renderer extraction | `f1999ef` | `NoteContent.tsx` (one sanitized pipeline, one components map, web/reader skins), `FigureBlock`, `selection/`; `NoteViewer` a wrapper; `NoteViewer.test.tsx` byte-unchanged throughout |
+| 3 · sanitizer + link policy | `f53069e` | unified pipeline `[rehypeRaw, rehypeTaskListInputs, [rehypeSanitize, readerSchema], repairs, callouts, anchors, KaTeX(trust:false, maxExpand:100, maxSize:20)]` everywhere; `FixtureMarkdown` retired; explicit `linkMode` (`disabled` default / `web` / `native-action`) with `isApprovedLink` at render time; security suite re-scoped to authored-vs-trusted chrome |
+| 4 · selection + session + panel + links | `3028aa5` `e3c8707` `96f9dd6` `a8cdf7f` | pure `createExplainSessionHandler`/`createOpenLinkHandler` + shared `singleFlight` guard in `reader-core/session/` (18 web-vitest rows incl. the stuck-guard and link double-tap rows); debounced selection (300 ms settle, single-block, 2–60 chars) → fixed-bottom mock-labeled chip; native `Alert` confirm (host prominent, URL truncated) → `Linking.openURL` try/catch, never `canOpenURL`; ONE `useFocusEffect` lifecycle |
+
+Records with the full reasoning live in
+[M2-B-PHASE4-HANDOFF.md](./M2-B-PHASE4-HANDOFF.md) §8 and
+[M2-B-PHASE5-HANDOFF.md](./M2-B-PHASE5-HANDOFF.md) §8.
+
+### Verified nuances worth keeping (from the implementation records)
+
+- hast-util-sanitize 5.0.2 shallow-merges the schema, so its default
+  `required: {input: {disabled, type: 'checkbox'}}` still applies — a hostile
+  `<input>` really does surface as a disabled checkbox without the
+  `rehypeTaskListInputs` pre-filter (reproduced before writing it).
+- `protocols: {href: ['https']}` passes `#frag`, `/path` and `//host` (a colon
+  after `/?#` is not a scheme) — `isApprovedLink` is the actual rule; and the
+  protocol match is case-sensitive, so authored `HTTPS://…` renders inert
+  (fail-closed layering; pinned by a test).
+- Intentional web deltas: note images and exotic tags (`<mark>`, `<details>`…)
+  no longer render (unwrap to text); authored `id`s drop (only generated
+  `sec-N`); `javascript:` schemes were already nulled by react-markdown's
+  `urlTransform` — not a new change.
+- The root tsconfig has no `strictNullChecks`, under which `if (!checked.ok)`
+  does not narrow — the session factory uses the literal `checked.ok === false`
+  form (documented in-file).
+- The link handler deliberately has no focus-staleness checks (single-flight
+  guard only): a confirm resolved after blur still opens the URL the user
+  approved.
+
+### Local gate matrix — green, 2026-09-28 (branch `arena/01a0d998-temari` @ `3c5b7f5`)
+
+```text
+bun install --frozen-lockfile                        1677 packages; assets.generated.css regenerated (git-ignored)
+bun run typecheck:all                                exit 0 (web + packages/core + apps/mobile)
+NODE_ENV=test bun run test                           466/466 (34 files; trail: 425 → 438 → 448 → 458 → 466)
+NODE_ENV=production RENDER=true bun run build:render exit 0 (suite 466/466 inside; deploy smoke passed)
+CI=1 bunx expo export --platform android             exit 0 (~65 s; 2.7 MB Hermes bundle, 5 files)
+bun run check:reader:export                          one HTML doc; DOM assets in Android metadata; 24 valid embedded WOFF2; no @import
+```
+
+Sandbox limitation, recorded: `bunx expo install --check` requires Expo's
+servers, which the Arena sandbox blocks (TLS failure). The equivalent drift
+check was performed locally against `expo/bundledNativeModules.json`: **12
+SDK-managed dependencies compared, 0 drift** (expo 57.0.24, react-native
+0.86.3, expo-router ~57.0.22). No EAS quota was spent inside Arena; the APK
+build happens on the developer's side.
+
+### Checkpoint B phone checklist
+
+Preview APK (existing EAS project and credentials; see the checkpoint A
+instructions above), airplane mode **and Wi-Fi off**, cold launch, no Metro.
+Record device, OS, WebView version, build/artifact id.
+
+1. Complete kitchen-sink: math, table, structured figure + `Fig. N`, nested
+   callouts, repairs, Amharic, long scroll, fonts, CSP panel quiet.
+2. Selection (native handles) → fixed-bottom mock-labeled chip → run → native
+   bottom-card result (term + requestId); **panel open/close preserves scroll
+   position**. With the Phase-1 smoke button retired, items 2–6 are the real
+   function-prop marshaling proof over Android WebView.
+3. Rapid double-tap on the chip → exactly **one** mock invocation; rapid
+   double-tap on a link action → exactly **one** Alert (never stacked).
+4. **Close while pending** and **Back while pending** → no panel, no crash,
+   late completion dropped — and a fresh submission afterwards works (the
+   `MOCK · RUNNING` row makes "while pending" observable).
+5. Diagram node tap → the same mock flow with the node label.
+6. HTTPS link → native `Alert` shows the parsed host prominently with the full
+   URL truncated → confirm hands it to the OS outside Temari (in airplane mode
+   the handoff attempt is success; a no-handler error row is also honest);
+   cancel stays in place; `//host`, relative, fragment, non-HTTPS stay inert;
+   imported HTML cannot move the WebView.
+7. Re-run checkpoint A's checks (fonts, Back, selection handles, scrolling).
+
+Result: **pending** — record here when run.
