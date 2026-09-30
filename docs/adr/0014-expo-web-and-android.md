@@ -75,7 +75,7 @@ while shipping its successor is the state this ADR closes.
 - End shape: two packages + one app — `packages/core`, `packages/reader-core`,
   `apps/mobile`.
 - The superseded ADRs stay in place, superseded — not deleted, not relocated.
-- Deletion commit: *(recorded here when the deletion PR lands)*.
+- Deletion commit: `35d33295e177317a9e434168d0c338205372da6f` (PR B — the web tree dies here; everything before it is one `git log` away).
 - Physical-device evidence remains the standard: the checkpoint-B phone
   checklist gates the retirement's start, and is re-run after the promotion PR
   because that PR moves exactly the paths the evidence certifies.
