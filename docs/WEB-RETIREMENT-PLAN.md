@@ -421,12 +421,11 @@ include-extension and PR B's atomicity close.
 
 M2 checkpoint B: Phases 0–2 merged in PR #27 (2026-09-25); Phases 3–5 merged in
 PR #28 (2026-09-28) — sanitizer + link policy, selection + session, gates — with
-the gate matrix green 2026-09-28 and the checkpoint-B record written; PR #29 (the
-APK workflow's `setup-android` fix) merged 2026-09-29. Nothing on main depends on
-any `arena/*` branch; the leftover heads are deleted in PR C. What remains of
-Phase 5 is the **physical-device checklist and folding its evidence into the
-checkpoint-B record** —
-[`M2-B-PHASE5-HANDOFF.md`](./mobile/M2-B-PHASE5-HANDOFF.md) is the map. Finish it
-before this cleanup starts — it is the only outstanding item in the phase this
-cleanup is meant to certify — and run it once more after PR A, which moves exactly
-the paths that evidence certifies.
+the gate matrix green 2026-09-28; PR #29 (the APK workflow's `setup-android` fix)
+merged 2026-09-29. The **physical-device checklist is done (2026-09-30)**:
+items 1–4 and 6–7 passed; the item-5 bug (tap chip auto-dismiss) was fixed in
+PR #31 and re-verified on a fresh APK, and the evidence is in the checkpoint-B
+record in [`M2-READER-SPIKE.md`](./mobile/M2-READER-SPIKE.md). Nothing on main
+depends on any `arena/*` branch; the leftover heads are deleted in PR C. The
+one remaining carry-over: **run the checklist once more after PR A**, which
+moves exactly the paths that evidence certifies.
