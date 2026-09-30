@@ -427,5 +427,7 @@ items 1–4 and 6–7 passed; the item-5 bug (tap chip auto-dismiss) was fixed i
 PR #31 and re-verified on a fresh APK, and the evidence is in the checkpoint-B
 record in [`M2-READER-SPIKE.md`](./mobile/M2-READER-SPIKE.md). Nothing on main
 depends on any `arena/*` branch; the leftover heads are deleted in PR C. The
-one remaining carry-over: **run the checklist once more after PR A**, which
-moves exactly the paths that evidence certifies.
+post-PR-A re-run is **done (2026-09-30)**: all 7 items pass on the APK from
+`android-preview` run `36730738604` (head `7fc9da3`, the PR #33 merge);
+evidence is appended to the checkpoint-B record. No device gate remains
+before PR B.

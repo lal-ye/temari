@@ -313,3 +313,14 @@ exceeded vitest's 5 s default timeout under the full 34-worker suite (7.2 s
 and 10.1 s, both against `build:render`; standalone runs always pass). The
 sync `execFileSync` also blocks its worker, so the timeout fires late. That
 one test's timeout is now 30 s; the smoke itself is unchanged.
+
+Post-PR-A re-run — all 7 pass, 2026-09-30: PR A (`b2a285d`, PR #33) moved
+exactly the paths this checklist certifies (reader-core →
+`packages/reader-core`, the AI port into `packages/core`, workspace-name
+imports everywhere), so the full checklist ran again on the fresh APK from
+`android-preview` run `36730738604` (head `7fc9da3`, the PR #33 merge, built
+2026-09-30). Same device and setup (Samsung A32, Android 13, WebView 152.0.x;
+airplane mode, cold launch, no Metro). **All 7 items pass**, including item 5
+— the tap chip persists until Run / Not now. Checkpoint B's phone evidence now
+covers the promoted layout; no device gate remains before the web-tree
+deletion (PR B).
