@@ -8,13 +8,13 @@ import {
   createExplainSessionHandler,
   type ExplainSessionHandler,
   type ExplainSessionState,
-} from '../../../src/reader-core/session/createExplainSessionHandler';
+} from '@temari/reader-core/session/createExplainSessionHandler';
 import {
   createOpenLinkHandler,
   type OpenLinkEvent,
   type OpenLinkHandler,
-} from '../../../src/reader-core/session/createOpenLinkHandler';
-import type { ExplainRequest } from '../../../src/reader-core/bridge';
+} from '@temari/reader-core/session/createOpenLinkHandler';
+import type { ExplainRequest } from '@temari/reader-core/bridge';
 
 /**
  * Checkpoint B reader screen: wiring only (plan §8.3/§8.5). The single-active

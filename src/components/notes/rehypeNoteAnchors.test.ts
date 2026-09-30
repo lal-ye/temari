@@ -113,9 +113,9 @@ describe('rehypeNoteAnchors: figure numbering', () => {
 describe('NoteViewer wires the landmarks', () => {
   const here = dirname(fileURLToPath(import.meta.url));
   const viewer = readFileSync(join(here, './NoteViewer.tsx'), 'utf8');
-  // The content renderer moved to src/reader-core/NoteContent.tsx at
-  // checkpoint B; these wiring assertions follow it there, unchanged.
-  const content = readFileSync(join(here, '../../reader-core/NoteContent.tsx'), 'utf8');
+  // The content renderer moved to @temari/reader-core (web retirement PR A);
+  // these wiring assertions follow it there, unchanged.
+  const content = readFileSync(join(here, '../../../packages/reader-core/NoteContent.tsx'), 'utf8');
 
   it('runs the plugin and passes the ids through the heading renderers', () => {
     // Checkpoint B Phase 3: the one shared, sanitized pipeline (plan §7.1).

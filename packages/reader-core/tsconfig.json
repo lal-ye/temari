@@ -3,14 +3,14 @@
     "target": "ES2022",
     "module": "ESNext",
     "moduleResolution": "bundler",
-    "lib": ["ES2022", "DOM"],
-
-    "strict": true,
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "jsx": "react-jsx",
     "skipLibCheck": true,
     "isolatedModules": true,
     "moduleDetection": "force",
+    "allowImportingTsExtensions": true,
     "noEmit": true
   },
-  "include": ["src/**/*.ts"],
+  "include": ["**/*.ts", "**/*.tsx"],
   "exclude": ["node_modules"]
 }

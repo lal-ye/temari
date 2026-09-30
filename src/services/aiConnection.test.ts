@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createAiConnection } from './aiConnection';
-import { resolveCredentials } from './ai/credentials';
+import { resolveCredentials } from '@temari/core';
 import type { UserSettings } from '../types';
 
 const saved = {

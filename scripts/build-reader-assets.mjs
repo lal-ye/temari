@@ -35,6 +35,6 @@ const urls = [...css.matchAll(/url\(["']?([^\s)"']+)/g)].map(match => match[1]);
 if (!urls.length || urls.some(url => !url.startsWith('data:font/woff2;base64,'))) {
   throw new Error('Reader asset CSS contains an unembedded resource');
 }
-const output = path.join(root, 'src/reader-core/assets.generated.css');
+const output = path.join(root, 'packages/reader-core/assets.generated.css');
 fs.writeFileSync(output, css + '\n');
 console.log(`Reader assets: ${urls.length} embedded WOFF2 faces, ${Buffer.byteLength(css)} bytes (uncompressed CSS).`);

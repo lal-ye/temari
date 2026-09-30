@@ -18,14 +18,16 @@
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
     "typecheck:core": "tsc -p packages/core/tsconfig.json --noEmit && node scripts/check-core-boundary.mjs",
+    "typecheck:reader": "tsc -p packages/reader-core/tsconfig.json --noEmit && node scripts/check-reader-boundary.mjs",
     "typecheck:mobile": "tsc -p apps/mobile/tsconfig.json --noEmit",
-    "typecheck:all": "bun run typecheck && bun run typecheck:core && bun run typecheck:mobile",
+    "typecheck:all": "bun run typecheck && bun run typecheck:core && bun run typecheck:reader && bun run typecheck:mobile",
     "test:deploy": "node scripts/smoke-deploy.mjs",
     "build:render": "bun run typecheck && NODE_ENV=test bun run test && bun run build && bun run test:deploy",
     "prepare:reader-assets": "node scripts/build-reader-assets.mjs",
     "postinstall": "bun run prepare:reader-assets",
     "check:reader": "node scripts/check-reader-boundary.mjs && node --import tsx scripts/smoke-reader.mjs",
-    "check:reader:export": "node scripts/check-reader-export.mjs"
+    "check:reader:export": "node scripts/check-reader-export.mjs",
+    "check:mobile:imports": "node scripts/check-mobile-imports.mjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.8.0",
@@ -34,6 +36,7 @@
     "@google/genai": "^2.4.0",
     "@tailwindcss/vite": "^4.1.14",
     "@temari/core": "workspace:*",
+    "@temari/reader-core": "workspace:*",
     "@types/katex": "^0.16.8",
     "@vitejs/plugin-react": "^5.0.4",
     "class-variance-authority": "^0.7.1",

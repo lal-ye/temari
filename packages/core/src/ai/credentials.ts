@@ -1,5 +1,5 @@
-import { UserSettings } from '../../types';
-import { AIProviderId, DEFAULT_AI_PROVIDER, resolveActiveModel } from '../../../shared/aiCatalog';
+import { UserSettings } from '../types';
+import { AIProviderId, DEFAULT_AI_PROVIDER, resolveActiveModel } from '../aiCatalog';
 import { AiCredentials } from './contracts';
 
 /**

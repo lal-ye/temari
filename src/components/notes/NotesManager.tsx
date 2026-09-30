@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { StoredNote } from '../../types';
 import { ai, type FallbackReason } from '../../services/ai';
-import { isAbortError } from '../../services/ai/isAbortError';
+import { isAbortError } from '@temari/core';
 import { aiConnection } from '../../services/aiConnection';
 import { OfflineBanner } from '../tools/OfflineBanner';
 import { studyStore } from '../../hooks/useStudyStore';

@@ -7,7 +7,6 @@ import { JSDOM } from 'jsdom';
 import { NoteContent } from './NoteContent';
 import { isApprovedLink } from './bridge';
 import fixture from '../../fixtures/mobile/reader-kitchen-sink.json';
-import { SEED_NOTES } from '../services/seedData';
 
 const fence = (title: string) =>
   [
@@ -376,12 +375,67 @@ describe('fixture security and rendering (kitchen-sink through NoteContent, nati
 });
 
 describe('seed note through the shared pipeline (supplementary, plan §9)', () => {
+  // Formerly SEED_NOTES[0] from the web tree's seedData.ts (deleted in PR B):
+  // inlined verbatim so the reader package stays self-contained.
+  const seed = {
+    title: 'Cellular Respiration & ATP Synthesis',
+    content: `# Cellular Respiration & ATP Synthesis
+<span class="citation">[[1]]</span>
+
+Cellular respiration is a set of metabolic reactions and processes that take place in the cells of organisms to convert biochemical energy from nutrients into adenosine triphosphate (ATP), releasing waste products.
+
+## 1. Overview of Key Stages
+
+> [!IMPORTANT]
+> The complete oxidation of one glucose molecule ($C_6H_{12}O_6$) produces an estimated net yield of **30 to 32 ATP molecules**.
+
+### Stage Comparison
+
+| Stage | Location | Primary Input | Net Output per Glucose |
+| :--- | :--- | :--- | :--- |
+| **Glycolysis** | Cytosol | 1 Glucose, 2 NAD+, 2 ATP | 2 Pyruvate, 2 NADH, 2 ATP (net) |
+| **Pyruvate Oxidation** | Mitochondrial Matrix | 2 Pyruvate, 2 CoA, 2 NAD+ | 2 Acetyl-CoA, 2 CO2, 2 NADH |
+| **Citric Acid (Krebs) Cycle** | Mitochondrial Matrix | 2 Acetyl-CoA, 6 NAD+, 2 FAD | 4 CO2, 6 NADH, 2 FADH2, 2 ATP |
+| **Oxidative Phosphorylation** | Inner Mitochondrial Membrane | 10 NADH, 2 FADH2, 6 O2 | ~26-28 ATP, 6 H2O |
+
+## 2. Concept Graph (Editorial Vector Diagram)
+
+\`\`\`diagram
+root((Cellular Respiration))
+  Glycolysis
+    Occurs in Cytosol
+    Anaerobic Pathway
+    Net 2 ATP + 2 NADH
+  Pyruvate Oxidation
+    Translocates into Matrix
+    Forms Acetyl-CoA
+    Releases Carbon Dioxide
+  Citric Acid Cycle
+    Oxaloacetate Regeneration
+    High Yield of NADH and FADH2
+  Oxidative Phosphorylation
+    Electron Transport Chain
+    Proton Gradient Formation
+    ATP Synthase Chemiosmosis
+\`\`\`
+
+## 3. Critical Concepts for Exams
+
+- **Chemiosmosis**: The movement of ions across a semipermeable membrane down their electrochemical gradient. Specifically, hydrogen ions ($H^+$) flow through ATP Synthase.
+- **Oxygen's Role**: Molecular oxygen ($O_2$) serves as the final electron acceptor at Complex IV, combining with electrons and protons to yield $H_2O$.
+
+> [!TIP]
+> If oxygen is absent, cells enter anaerobic fermentation (lactic acid fermentation in animals or ethanol fermentation in yeast) to regenerate $NAD^+$ for glycolysis to continue.
+
+## References
+1. Campbell, N. A. (2020). *Biology* (12th ed.). Pearson. Chapter 9: Cellular Respiration.
+`,
+  };
   it('renders the seed note with its authored text intact', () => {
     // Supplementary coverage only: sanitization does NOT always preserve text
     // (elements in `strip` lose their contents), so this asserts that one
     // realistic note survives the now-shared pipeline — it is not a general
     // text-preservation guarantee.
-    const seed = SEED_NOTES[0];
     const doc = renderNote(seed.content, { noteTitle: seed.title });
     const text = doc.body.textContent ?? '';
     for (const fragment of [

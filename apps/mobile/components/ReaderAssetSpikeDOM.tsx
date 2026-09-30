@@ -1,9 +1,9 @@
 'use dom';
 
-import { NoteReader } from '../../../src/reader-core/NoteReader';
-import type { ExplainAction, OpenLinkAction } from '../../../src/reader-core/bridge';
-import '../../../src/reader-core/assets.generated.css';
-import '../../../src/reader-core/reader.css';
+import { NoteReader } from '@temari/reader-core/NoteReader';
+import type { ExplainAction, OpenLinkAction } from '@temari/reader-core/bridge';
+import '@temari/reader-core/assets.generated.css';
+import '@temari/reader-core/reader.css';
 
 /**
  * The one 'use dom' seam (checkpoint B): note fields plus the two top-level

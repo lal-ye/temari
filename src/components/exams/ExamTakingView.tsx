@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { CognitiveMixId, ExamQuestion, ExamResult, Article, StoredAttempt } from '../../types';
 import { ai, type FallbackReason } from '../../services/ai';
-import { isAbortError } from '../../services/ai/isAbortError';
+import { isAbortError } from '@temari/core';
 import { COGNITIVE_MIXES } from '../../services/examBlueprint';
 import { BloomBadge } from '../ui/BloomBadge';
 import {

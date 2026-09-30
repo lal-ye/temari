@@ -12,7 +12,7 @@ import {
 import { studyStore } from '../../hooks/useStudyStore';
 import { useActiveSubject, useAttempts, useNotes } from '../../hooks/useStudyStore';
 import { ai, type FallbackReason } from '../../services/ai';
-import { isAbortError } from '../../services/ai/isAbortError';
+import { isAbortError } from '@temari/core';
 import { ExamTakingView } from './ExamTakingView';
 import { ExamResultsView } from './ExamResultsView';
 import { Modal, ModalCloseButton } from '../ui/Modal';

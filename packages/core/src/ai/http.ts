@@ -1,4 +1,4 @@
-import { Flashcard, ExamQuestion, KnowledgeUnit } from '../../types';
+import { Flashcard, ExamQuestion, KnowledgeUnit } from '../types';
 import { resolveCredentials } from './credentials';
 import {
   ExtractKnowledgeUnitsParams,

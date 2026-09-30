@@ -16,9 +16,9 @@ import {
   CornerLeftUp,
   X,
 } from 'lucide-react';
-import { NoteContent } from '../../reader-core/NoteContent';
-import { recogniseTermAtPoint, type RecognisedTerm } from '../../reader-core/selection/termAtPoint';
-import { contextWindow } from '../../reader-core/selection/segmentTerm';
+import { NoteContent } from '@temari/reader-core/NoteContent';
+import { recogniseTermAtPoint, type RecognisedTerm } from '@temari/reader-core/selection/termAtPoint';
+import { contextWindow } from '@temari/reader-core/selection/segmentTerm';
 import { LegacyEditorialDiagram } from '../diagrams/LegacyEditorialDiagram';
 import { pointOrigin, type MorphOrigin } from '../ui/Modal';
 import { useReadingPlace } from './useReadingPlace';

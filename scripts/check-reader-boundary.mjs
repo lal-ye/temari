@@ -3,7 +3,7 @@ import path from 'node:path';
 import ts from 'typescript';
 import { fileURLToPath } from 'node:url';
 
-const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../src/reader-core');
+const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../packages/reader-core');
 // lucide-react: reviewed for the DOM reader — pure SVG React components (inline
 // vectors, no DOM storage, network, native or dynamic code APIs).
 const allowed = new Set(['react', 'react-markdown', 'remark-gfm', 'remark-math', 'rehype-raw', 'rehype-sanitize', 'rehype-katex', 'lucide-react']);

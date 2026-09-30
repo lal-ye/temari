@@ -1,5 +1,5 @@
 import React from 'react';
-import { FigureBlock } from '../../reader-core/diagrams/FigureBlock';
+import { FigureBlock } from '@temari/reader-core/diagrams/FigureBlock';
 import { LegacyEditorialDiagram } from './LegacyEditorialDiagram';
 
 interface EditorialDiagramProps {
@@ -13,7 +13,7 @@ interface EditorialDiagramProps {
 }
 
 /**
- * Compatibility entry: shared fence routing (src/reader-core/diagrams/FigureBlock)
+ * Compatibility entry: shared fence routing (@temari/reader-core/diagrams/FigureBlock)
  * plus the web-only pre-JSON renderer. `NoteViewer` now renders the shared
  * `NoteContent` with `legacyFigure={LegacyEditorialDiagram}`; this wrapper keeps
  * the old API for callers that still want the one-call diagram surface.

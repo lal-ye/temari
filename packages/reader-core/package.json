@@ -1,0 +1,22 @@
+{
+  "name": "@temari/reader-core",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "exports": {
+    "./*": {
+      "types": ["./*.ts", "./*.tsx"],
+      "default": "./*"
+    }
+  },
+  "dependencies": {
+    "lucide-react": "^0.546.0",
+    "react": "19.2.3",
+    "react-markdown": "^10.1.0",
+    "rehype-katex": "^7.0.1",
+    "rehype-raw": "^7.0.0",
+    "rehype-sanitize": "^6.0.0",
+    "remark-gfm": "^4.0.1",
+    "remark-math": "^6.0.0"
+  }
+}

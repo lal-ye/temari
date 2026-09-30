@@ -1,2 +1,2 @@
 // Preserve the web import path while selection logic lives in reader-core.
-export * from '../reader-core/selection/segmentTerm';
+export * from '@temari/reader-core/selection/segmentTerm';

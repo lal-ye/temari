@@ -1,15 +1,15 @@
 import React, { useCallback, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import fixture from '../../fixtures/mobile/reader-kitchen-sink.json';
-import { NoteReader } from '../reader-core/NoteReader';
-import { newRequestId, type OpenLinkRequest } from '../reader-core/bridge';
+import { NoteReader } from '@temari/reader-core/NoteReader';
+import { newRequestId, type OpenLinkRequest } from '@temari/reader-core/bridge';
 import {
   createExplainSessionHandler,
   type ExplainSessionHandler,
   type ExplainSessionState,
-} from '../reader-core/session/createExplainSessionHandler';
-import '../reader-core/assets.generated.css';
-import '../reader-core/reader.css';
+} from '@temari/reader-core/session/createExplainSessionHandler';
+import '@temari/reader-core/assets.generated.css';
+import '@temari/reader-core/reader.css';
 
 // Served only by the Vite development middleware, not imported by the web app.
 // Fast loop for checkpoint B Phase 4: the kitchen-sink note through the same
