@@ -118,7 +118,10 @@ describe('portable Android contract', () => {
     });
 
     expect(result.ok).toBe(false);
-    if (result.ok) return;
+    // No strictNullChecks in the root tsconfig: `if (result.ok)` does not
+    // narrow the union — compare against false literally (same reason as the
+    // session factory's `checked.ok === false` form).
+    if (result.ok !== false) return;
     expect(result.errors.some((error) => error.code === 'invalid_reference')).toBe(true);
   });
 
@@ -135,7 +138,7 @@ describe('portable Android contract', () => {
     });
 
     expect(result.ok).toBe(false);
-    if (result.ok) return;
+    if (result.ok !== false) return;
     expect(result.errors.some((error) => error.code === 'duplicate_id')).toBe(true);
   });
 
@@ -174,7 +177,7 @@ describe('portable Android contract', () => {
     newer.schemaVersion = 2;
     const result = validatePortableExport(newer);
     expect(result.ok).toBe(false);
-    if (result.ok) return;
+    if (result.ok !== false) return;
     expect(result.errors.some((error) => error.code === 'unsupported_schema')).toBe(true);
   });
 
@@ -190,7 +193,7 @@ describe('portable Android contract', () => {
     });
 
     expect(invalidDate.ok).toBe(false);
-    if (invalidDate.ok) return;
+    if (invalidDate.ok !== false) return;
     expect(invalidDate.errors.some((error) => error.path.endsWith('.dueDate'))).toBe(true);
 
     expect(() =>

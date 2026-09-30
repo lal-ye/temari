@@ -25,11 +25,11 @@ const css = [
   `/*! KaTeX license: ${fs.readFileSync(path.join(katexDir, 'LICENSE'), 'utf8').replaceAll('*/', '* /')} */`,
   ...[[geistDir, 'Geist'], [playfairDir, 'Playfair Display']].map(([dir, name]) =>
     `/*! ${name}: ${fs.readFileSync(path.join(dir, 'LICENSE'), 'utf8').replaceAll('*/', '* /')} */`),
-  `/*! Abyssinica SIL: ${fs.readFileSync(path.join(root, 'public/fonts/OFL.txt'), 'utf8').replaceAll('*/', '* /')} */`,
+  `/*! Abyssinica SIL: ${fs.readFileSync(path.join(root, 'assets/fonts/OFL.txt'), 'utf8').replaceAll('*/', '* /')} */`,
   inlineWoff2(fs.readFileSync(path.join(katexDir, 'dist/katex.min.css'), 'utf8'), path.join(katexDir, 'dist')),
   fontFace('Geist Variable', '100 900', path.join(geistDir, 'files/geist-latin-wght-normal.woff2')),
   ...[400, 700].map(weight => fontFace('Playfair Display', weight, path.join(playfairDir, `files/playfair-display-latin-${weight}-normal.woff2`))),
-  fontFace('Abyssinica SIL', 400, path.join(root, 'public/fonts/AbyssinicaSIL-Ethiopic.woff2'), 'unicode-range:U+1200-137F,U+1380-139F,U+2D80-2DDF,U+AB00-AB2F;'),
+  fontFace('Abyssinica SIL', 400, path.join(root, 'assets/fonts/AbyssinicaSIL-Ethiopic.woff2'), 'unicode-range:U+1200-137F,U+1380-139F,U+2D80-2DDF,U+AB00-AB2F;'),
 ].join('\n');
 const urls = [...css.matchAll(/url\(["']?([^\s)"']+)/g)].map(match => match[1]);
 if (!urls.length || urls.some(url => !url.startsWith('data:font/woff2;base64,'))) {
