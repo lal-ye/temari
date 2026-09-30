@@ -43,6 +43,7 @@ them in order.
 | [0009](./adr/0009-landing-page-route-split.md) | landing page at `/`, study shell at `/app`, no router |
 | [0010](./adr/0010-editorial-design-system.md) | Modern Academic Editorial design system (surface ramp, type, accent) |
 | [0011](./adr/0011-landing-display-variant.md) | the landing page as a documented display variant (token spine, guarded) |
+| [0014](./adr/0014-expo-web-and-android.md) | one Expo app for web and Android; the standalone web app retires |
 
 ## In-flight plans
 
@@ -54,6 +55,7 @@ amendment to one) and the document moves to [`archive/`](./archive/).
 |---|---|---|
 | [`ui-plan-truthful-interaction.md`](./ui-plan-truthful-interaction.md) | Phases 1–3 implemented; device verification owed | the device pass is done and any durable decisions have an ADR |
 | [`ui-plan-editorial-shell-export.md`](./ui-plan-editorial-shell-export.md) | WS-1/2/3/4/6 shipped; WS-5 (Paged.js) and WS-7 (pdfcn) are gated go/no-go spikes | the spikes resolve |
+| [`WEB-RETIREMENT-PLAN.md`](./WEB-RETIREMENT-PLAN.md) | agreed 2026-09-29, revised 2026-09-30 after external review; PR 0 (ADR-0014) drafted | the retirement ships and [ADR-0014](./adr/0014-expo-web-and-android.md) absorbs the durable part |
 
 ## Archived
 
