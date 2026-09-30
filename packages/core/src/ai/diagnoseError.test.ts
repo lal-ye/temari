@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { diagnoseConnectionError } from './diagnoseError';
-import { findRetiredModelReplacement, RETIRED_MODELS } from '../../../shared/aiCatalog';
+import { findRetiredModelReplacement, RETIRED_MODELS } from '../aiCatalog';
 
 const base = { provider: 'openai', hasKey: true, isLocal: false };
 

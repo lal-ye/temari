@@ -12,6 +12,7 @@ export default defineConfig({
       'src/**/*.test.{ts,tsx}',
       'server/**/*.test.{ts,tsx}',
       'packages/core/**/*.test.{ts,tsx}',
+      'packages/reader-core/**/*.test.{ts,tsx}',
     ],
     exclude: ['apps/mobile/**', 'node_modules/**'],
   },

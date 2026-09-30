@@ -1,4 +1,4 @@
-import { Flashcard, ExamQuestion, Article, KnowledgeUnit } from '../../types';
+import { Flashcard, ExamQuestion, ExamResult, Article, KnowledgeUnit } from '../types';
 import {
   GenerationAdapter,
   ExtractKnowledgeUnitsParams,
@@ -222,7 +222,9 @@ test the boundaries and transitions between them.`;
     },
 
     async gradeExam(params: GradeExamParams): Promise<GradeExamResult> {
-      const results = [];
+      // Annotated (not evolving-array): core compiles under strict, where the
+      // implicit any[] no longer passes.
+      const results: ExamResult[] = [];
       let correctCount = 0;
       const topicMistakes = new Set<string>();
 

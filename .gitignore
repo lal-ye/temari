@@ -53,7 +53,7 @@ pnpm-lock.yaml
 .env
 
 # Recreated from pinned fonts by the root postinstall hook
-src/reader-core/assets.generated.css
+packages/reader-core/assets.generated.css
 
 # Native artifacts and local signing credentials are never source
 *.apk

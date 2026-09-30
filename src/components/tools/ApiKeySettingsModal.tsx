@@ -20,7 +20,7 @@ import { getStudyStore } from '../../services/studyStore';
 import { AIProvider } from '../../types';
 import { AVAILABLE_PROVIDERS, getProviderConfig, getModelOption } from './modelPresentation';
 import { resolveActiveModel, findRetiredModelReplacement } from '../../../shared/aiCatalog';
-import { diagnoseConnectionError, type Diagnosis } from '../../services/ai/diagnoseError';
+import { diagnoseConnectionError, type Diagnosis } from '@temari/core';
 import { ModelPicker } from './ModelPicker';
 import { aiConnection } from '../../services/aiConnection';
 import { Modal, ModalCloseButton, type MorphOrigin } from '../ui/Modal';

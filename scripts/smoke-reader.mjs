@@ -2,9 +2,9 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { NoteReader } from '../src/reader-core/NoteReader.tsx';
-import { NoteContent } from '../src/reader-core/NoteContent.tsx';
-import { buildExplainRequest, isApprovedLink, validateExplainRequest } from '../src/reader-core/bridge.ts';
+import { NoteReader } from '../packages/reader-core/NoteReader.tsx';
+import { NoteContent } from '../packages/reader-core/NoteContent.tsx';
+import { buildExplainRequest, isApprovedLink, validateExplainRequest } from '../packages/reader-core/bridge.ts';
 
 // Run with Node + tsx, NOT jsdom: imports/SSR cannot depend on a browser global.
 assert.equal(typeof window, 'undefined');

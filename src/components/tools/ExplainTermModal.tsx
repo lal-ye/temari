@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Sparkles, ExternalLink, BookOpen } from 'lucide-react';
 import { ai, type FallbackReason } from '../../services/ai';
-import { isAbortError } from '../../services/ai/isAbortError';
+import { isAbortError } from '@temari/core';
 import { Article } from '../../types';
 import { Modal, ModalCloseButton, type MorphOrigin } from '../ui/Modal';
 import { GenerationProgress } from '../ui/GenerationProgress';

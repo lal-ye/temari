@@ -11,6 +11,7 @@
         "@google/genai": "^2.4.0",
         "@tailwindcss/vite": "^4.1.14",
         "@temari/core": "workspace:*",
+        "@temari/reader-core": "workspace:*",
         "@types/katex": "^0.16.8",
         "@vitejs/plugin-react": "^5.0.4",
         "class-variance-authority": "^0.7.1",
@@ -62,6 +63,7 @@
       "version": "0.1.0",
       "dependencies": {
         "@expo/metro-runtime": "~57.0.16",
+        "@temari/reader-core": "workspace:*",
         "expo": "~57.0.24",
         "expo-constants": "~57.0.19",
         "expo-dev-client": "~57.0.19",
@@ -82,6 +84,20 @@
     "packages/core": {
       "name": "@temari/core",
       "version": "0.0.0",
+    },
+    "packages/reader-core": {
+      "name": "@temari/reader-core",
+      "version": "0.0.0",
+      "dependencies": {
+        "lucide-react": "^0.546.0",
+        "react": "19.2.3",
+        "react-markdown": "^10.1.0",
+        "rehype-katex": "^7.0.1",
+        "rehype-raw": "^7.0.0",
+        "rehype-sanitize": "^6.0.0",
+        "remark-gfm": "^4.0.1",
+        "remark-math": "^6.0.0",
+      },
     },
   },
   "packages": {
@@ -894,6 +910,8 @@
     "@temari/core": ["@temari/core@workspace:packages/core"],
 
     "@temari/mobile": ["@temari/mobile@workspace:apps/mobile"],
+
+    "@temari/reader-core": ["@temari/reader-core@workspace:packages/reader-core"],
 
     "@testing-library/dom": ["@testing-library/dom@10.4.1", "", { "dependencies": { "@babel/code-frame": "^7.10.4", "@babel/runtime": "^7.12.5", "@types/aria-query": "^5.0.1", "aria-query": "5.3.0", "dom-accessibility-api": "^0.5.9", "lz-string": "^1.5.0", "picocolors": "1.1.1", "pretty-format": "^27.0.2" } }, "sha512-o4PXJQidqJl82ckFaXUeoAW+XysPLauYI43Abki5hABd853iMhitooc6znOnczgbTYmEP6U6/y1ZyKAIsvMKGg=="],
 

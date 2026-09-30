@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Flashcard } from '../../types';
 import { ai, type FallbackReason } from '../../services/ai';
-import { isAbortError } from '../../services/ai/isAbortError';
+import { isAbortError } from '@temari/core';
 import { OfflineBanner } from '../tools/OfflineBanner';
 import { studyStore } from '../../hooks/useStudyStore';
 import { useActiveSubject, useNotes, useQuizzes } from '../../hooks/useStudyStore';

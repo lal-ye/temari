@@ -7,8 +7,8 @@ import {
   Article,
   KnowledgeUnit,
   UserSettings,
-} from '../../types';
-import { AIProviderId } from '../../../shared/aiCatalog';
+} from '../types';
+import { AIProviderId } from '../aiCatalog';
 import type { FailureKind } from './diagnoseError';
 
 /**

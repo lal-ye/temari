@@ -1,6 +1,6 @@
 import { getStudyStore } from './studyStore';
-import { resolveCredentials } from './ai/credentials';
-import { SettingsSource } from './ai/contracts';
+import { resolveCredentials } from '@temari/core';
+import { SettingsSource } from '@temari/core';
 
 /**
  * Server-only AI operations: connection testing, live model discovery, and

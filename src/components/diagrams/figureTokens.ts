@@ -1,2 +1,2 @@
 // Compatibility entry: shared DOM implementation, no native or study-store imports.
-export * from '../../reader-core/diagrams/figureTokens';
+export * from '@temari/reader-core/diagrams/figureTokens';
