@@ -209,6 +209,75 @@ describe('NoteReader selection funnel (plan §8.1)', () => {
     expect(onExplain.mock.calls[0][0]).toMatchObject({ term: 'Glycolysis' });
   });
 
+  it('keeps the tap chip through the settle derive the tap itself arms (Phase 5 device regression)', async () => {
+    const onExplain = vi.fn().mockResolvedValue(undefined);
+    const { container } = render(
+      <NoteReader
+        {...PROPS}
+        content={[fence('Overview'), CONTENT].join('\n')}
+        onExplain={onExplain}
+      />,
+    );
+
+    const node = container.querySelector('g[aria-label="Explain Glycolysis"]')!;
+    // A real tap arms the settle funnel (touchend, mouseup, and the
+    // selectionchange that clears any prior selection) before the click
+    // lands; jsdom does not chain these, so emit them in device order.
+    fireEvent.touchEnd(node);
+    fireEvent.mouseUp(node);
+    collapseSelection();
+    fireEvent.click(node);
+
+    await settle();
+    // The settle derive finds no selection (a tap makes none); before the
+    // Phase 5 fix it returned null and wiped the chip about 300 ms after it
+    // appeared, on every tap, on the physical device.
+    expect(container.querySelector('.reader-chip-bar')).not.toBeNull();
+
+    fireEvent.click(container.querySelector('.reader-chip-run')!);
+    expect(onExplain).toHaveBeenCalledTimes(1);
+    expect(onExplain.mock.calls[0][0]).toMatchObject({ term: 'Glycolysis' });
+  });
+
+  it('a stray selection collapse does not dismiss a tap-derived chip', async () => {
+    const onExplain = vi.fn().mockResolvedValue(undefined);
+    const { container } = render(
+      <NoteReader
+        {...PROPS}
+        content={[fence('Overview'), CONTENT].join('\n')}
+        onExplain={onExplain}
+      />,
+    );
+
+    fireEvent.click(container.querySelector('g[aria-label="Explain Glycolysis"]')!);
+    await settle();
+    expect(container.querySelector('.reader-chip-bar')).not.toBeNull();
+
+    collapseSelection();
+    await settle();
+    expect(container.querySelector('.reader-chip-bar')).not.toBeNull();
+    expect(container.querySelector('.reader-chip-term')!.textContent).toContain('Glycolysis');
+  });
+
+  it('a new text selection replaces a tap-derived chip', async () => {
+    const onExplain = vi.fn().mockResolvedValue(undefined);
+    const { container } = render(
+      <NoteReader
+        {...PROPS}
+        content={[fence('Overview'), CONTENT].join('\n')}
+        onExplain={onExplain}
+      />,
+    );
+
+    fireEvent.click(container.querySelector('g[aria-label="Explain Glycolysis"]')!);
+    await settle();
+    select(paragraph(container, 0), 0, paragraph(container, 0), 5); // "First"
+    await settle();
+
+    expect(container.querySelector('.reader-chip-bar')).not.toBeNull();
+    expect(container.querySelector('.reader-chip-term')!.textContent).toContain('First');
+  });
+
   it('“Not now” dismisses the chip without dispatching', async () => {
     const onExplain = vi.fn(async () => {});
     const { container } = render(<NoteReader {...PROPS} onExplain={onExplain} />);

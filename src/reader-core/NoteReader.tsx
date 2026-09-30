@@ -113,6 +113,13 @@ export function NoteReader({ title, content, development, linkMode = 'disabled',
   const [candidate, setCandidate] = useState<SelectionCandidate | null>(null);
   const contentRef = useRef<HTMLElement>(null);
   const settleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Provenance of the live candidate: 'selection' (mirrors the live
+  // selection, re-derived at every settle) or 'tap' (an explicit diagram
+  // node activation). A tap leaves no selection for the settle derive to
+  // read, so a null derive must not wipe it (Phase 5, physical device: the
+  // chip vanished ~300ms after every tap because the tap's own touchend
+  // armed the settle that found nothing).
+  const candidateSourceRef = useRef<'selection' | 'tap'>('selection');
 
   useEffect(() => {
     // Keep the meta for the document lifetime. Removing it does not remove an
@@ -164,7 +171,13 @@ export function NoteReader({ title, content, development, linkMode = 'disabled',
       if (settleTimerRef.current) clearTimeout(settleTimerRef.current);
       settleTimerRef.current = setTimeout(() => {
         settleTimerRef.current = null;
-        setCandidate(deriveCandidate(contentRef.current));
+        const next = deriveCandidate(contentRef.current);
+        if (next) {
+          candidateSourceRef.current = 'selection';
+          setCandidate(next);
+        } else if (candidateSourceRef.current === 'selection') {
+          setCandidate(null);
+        }
       }, SELECTION_SETTLE_MS);
     };
     document.addEventListener('selectionchange', schedule);
@@ -193,8 +206,11 @@ export function NoteReader({ title, content, development, linkMode = 'disabled',
   };
 
   // Diagram node taps join the same funnel; the element (web morph origin)
-  // stays DOM-side and is dropped here.
+  // stays DOM-side and is dropped here. A tap is an explicit activation, not
+  // selection state: it persists until Run, Not now, or a new candidate
+  // replaces it.
   const handleTermActivate = (term: string, context: string) => {
+    candidateSourceRef.current = 'tap';
     setCandidate({ term, context });
   };
 
