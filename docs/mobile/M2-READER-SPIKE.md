@@ -183,14 +183,15 @@ or create another project. Use the existing signing credentials.
 
    scrcpy is optional for mirroring/screenshots; it is not bundled or required.
 
-## Checkpoint B — implemented; final phone gate pending
+## Checkpoint B — complete
 
-Status, 2026-09-28: **Phases 0–4 implemented** on branch `arena/01a0d998-temari`
-(Phases 0–2 also on `main` via PR #27) and the **full local gate matrix is
-green** (below). What remains for checkpoint B is the **phone checklist on the
-physical device** (§ "Checkpoint B phone checklist"), which also re-runs
-checkpoint A's visual checks. Scope held throughout: no persistence, real AI,
-SQLite, SecureStore, import UI or app network calls; the URL handoff is
+Status, 2026-09-30: **Checkpoint B complete.** Phases 0–4 were implemented on
+branch `arena/01a0d998-temari` (Phases 0–2 also on `main` via PR #27) with the
+full local gate matrix green 2026-09-28 (below). The **phone checklist ran on
+the physical device**: items 1–4 and 6–7 passed; item 5 failed with one bug,
+fixed in `30d3039` (PR #31), and passed on re-test with a fresh APK (evidence
+under § "Checkpoint B phone checklist"). Scope held throughout: no persistence,
+real AI, SQLite, SecureStore, import UI or app network calls; the URL handoff is
 `Linking.openURL`, not a request.
 
 ### What checkpoint B delivered
@@ -270,4 +271,45 @@ Record device, OS, WebView version, build/artifact id.
    imported HTML cannot move the WebView.
 7. Re-run checkpoint A's checks (fonts, Back, selection handles, scrolling).
 
-Result: **pending** — record here when run.
+Result: **pass, 2026-09-30** — one bug found and fixed on the way.
+
+Device: Samsung A32, Android 13, WebView 152.0.x (the checkpoint-A device).
+Artifacts: pre-fix preview APK from `android-preview` run `36471390779`
+(head `d51a8c6`, built 2026-09-28); re-test on run `36698491237` (head
+`8af13b4`, built 2026-09-30). Airplane mode and Wi-Fi off, cold launch, no
+Metro.
+
+- Items 1–4, 6, 7: **pass on the first run** (pre-fix APK).
+- Item 5 (diagram node tap) initially **failed**: the mock chip appeared, then
+  auto-dismissed ~300 ms later without user action, unlike text selections.
+  Root cause, in `NoteReader.tsx`'s selection funnel: every
+  selectionchange/touchend/mouseup arms the 300 ms settle timer, and at settle
+  a null `deriveCandidate` result cleared the chip unconditionally. A diagram
+  node tap fires touchend *before* click, so the settle following the tap
+  found no text selection and wiped the tap candidate; text chips survived
+  because their live selection re-derives. jsdom never saw it —
+  `fireEvent.click` emits no touchend/mouseup/selectionchange.
+  Fix `30d3039` (PR #31): candidates carry a source (`selection` | `tap`); a
+  null settle now clears only selection chips. +3 regression tests, one
+  reproducing the device event order (466 → 469). Re-tested on the fresh APK:
+  item 5 **passes** — the chip persists until Run / Not now. Re-test scope was
+  item 5 only; the fix touches only the reader shell, so items 1–4 and 6–7
+  are unaffected.
+
+Post-fix gate matrix — green, 2026-09-30 (`main` @ `8af13b4`):
+
+```text
+bun run check:reader                                   19 source modules clean
+NODE_ENV=test bun run test                             469/469 (34 files; trail: 425 → 438 → 448 → 458 → 466 → 469)
+bun run typecheck:all                                  exit 0 (web + packages/core + apps/mobile)
+NODE_ENV=production RENDER=true bun run build:render   exit 0 (suite 469/469 inside; deploy smoke passed)
+CI=1 bunx expo export --platform android               exit 0 (3.2 MB Hermes bundle)
+bun run check:reader:export                            one HTML doc; DOM assets in Android metadata; 24 valid embedded WOFF2; no @import
+```
+
+Flake note, same PR as this record: the boundary SSR smoke shells out to
+`node --import tsx scripts/smoke-reader.mjs` (~3 s standalone) and twice
+exceeded vitest's 5 s default timeout under the full 34-worker suite (7.2 s
+and 10.1 s, both against `build:render`; standalone runs always pass). The
+sync `execFileSync` also blocks its worker, so the timeout fires late. That
+one test's timeout is now 30 s; the smoke itself is unchanged.
