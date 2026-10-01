@@ -55,7 +55,7 @@ amendment to one) and the document moves to [`archive/`](./archive/).
 
 | Document | Status | Leaves this table when |
 |---|---|---|
-| [`WEB-RETIREMENT-PLAN.md`](./WEB-RETIREMENT-PLAN.md) | agreed 2026-09-29, revised 2026-09-30 after external review; PRs 0, A, B merged; PR C (this pass: docs, ADRs, workflows) open | the retirement ships and [ADR-0014](./adr/0014-expo-web-and-android.md) absorbs the durable part |
+| — (none in flight) | — | — |
 
 ## Archived
 
@@ -73,6 +73,7 @@ describe code that has since moved on. Each carries a dated banner at the top.
 | [`ui-plan-editorial-shell-export.md`](./archive/ui-plan-editorial-shell-export.md) | Web-era editorial/export plan; the web app retired under [ADR-0014](./adr/0014-expo-web-and-android.md), WS-5/WS-7 undecided. |
 | [`NETLIFY.md`](./archive/NETLIFY.md) | Deployment path deleted with the web tree; Netlify never had a working deploy. |
 | [`RENDER.md`](./archive/RENDER.md) | Deployment path deleted with the web tree; the Render service was suspended. |
+| [`WEB-RETIREMENT-PLAN.md`](./archive/WEB-RETIREMENT-PLAN.md) | Shipped via PRs 0, A, B, C (2026-09-30); durable part absorbed by [ADR-0014](./adr/0014-expo-web-and-android.md). |
 
 ## Adding, changing and retiring documents
 

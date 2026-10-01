@@ -1,5 +1,9 @@
 # Web app retirement — cleanup plan
 
+> **Archived 2026-09-30 — shipped.** PRs 0 (ADR-0014), A (promotion), B
+> (web-tree deletion) and C (docs, ADRs, workflows) all merged; the durable
+> part lives in ADR-0014. History, not a plan.
+
 Status: **agreed, revised 2026-09-30 after external review; not started**. Produced by a
 design grilling session 2026-09-29; every claim below cites the artifact that proves it,
 so the plan can be checked line by line and pushed back on. The revision folds in an
