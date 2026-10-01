@@ -1,5 +1,9 @@
 # Deploy Temari to Netlify (optional alternative, full app, BYOK)
 
+> **Archived 2026-09-30 — deployment path deleted.** Netlify never had a
+> working deploy; `netlify.toml` and the Functions shim died with the web tree
+> (PR B). History, not a guide.
+
 The primary workflow is now [one Render service](./RENDER.md). Netlify remains
 available, but its packaging check is not part of the primary Render build.
 Run `bunx --no-install netlify build --offline` before choosing this alternative.

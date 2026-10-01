@@ -1,5 +1,9 @@
 # UI Plan — Editorial system canon, landing realignment, and note export
 
+> **Archived 2026-09-30 — web-era plan.** The standalone web app retired with
+> the web tree (PR B) under ADR-0014; the WS-5/WS-7 spikes died undecided with
+> it. History, not a specification.
+
 > Live plan (see [docs/README.md](./README.md)): WS-5 and WS-7 are gated
 > go/no-go spikes. Archive this document, linking the ADR or code that settles
 > them, once that decision is made.

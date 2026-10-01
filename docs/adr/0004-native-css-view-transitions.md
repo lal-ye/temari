@@ -1,6 +1,6 @@
 # ADR-0004: Native CSS View Transitions for tab navigation (not react@canary)
 
-- Status: Accepted
+- Status: Superseded by ADR-0014
 - Date: 2026-09-05
 
 ## Context

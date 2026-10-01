@@ -1,6 +1,6 @@
 # ADR-0011: Landing page as a documented display variant
 
-- Status: Accepted
+- Status: Superseded by ADR-0014
 - Date: 2026-09-10
 - Supersedes (for the landing surface): the implicit assumption in ADR-0010 that
   every surface, including `/`, uses Modern Academic Editorial verbatim

@@ -10,7 +10,9 @@ in §8–§12. Structured with the `show-me` skill's compact-visual guidance
 (<https://github.com/humanlayer/skills/tree/main/plugins/show-me/skills/show-me>).
 Phases 0–2 are implemented (PR #27). Phases 3–4 are implemented (2026-09-25,
 branch `arena/01a0d998-temari`, steps 4.1a/4.1b/4.2/4.3). Phase 5 continues
-from the [Phase 5 handoff](./M2-B-PHASE5-HANDOFF.md).
+from the [Phase 5 handoff](./M2-B-PHASE5-HANDOFF.md). Earlier session records:
+the [Phase 3 handoff](./M2-B-PHASE3-HANDOFF.md) and the
+[portable export v1 contract](./PORTABLE-EXPORT.md).
 
 ## 1. Scope and non-goals
 

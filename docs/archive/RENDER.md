@@ -1,5 +1,9 @@
 # Render: one service, test the branch before merging
 
+> **Archived 2026-09-30 — deployment path deleted.** The Render service was
+> suspended and `render.yaml` died with the web tree (PR B); device builds now
+> come from `android-preview.yml`. History, not a guide.
+
 ## Architecture and defaults
 
 One **Node Web Service** serves the Vite frontend and Express API on the same
@@ -131,7 +135,7 @@ manually before merging. All code changes in this Arena session stay on
 ### Optional: add GitHub Actions later
 
 An inactive template is saved at
-[`deployment/github-actions-ci.yml.example`](./deployment/github-actions-ci.yml.example).
+[`ci.yml`](../../.github/workflows/ci.yml) — the real workflow since PR C.
 It does not run from that location. Using GitHub's web editor or your own local
 Git setup, copy it to `.github/workflows/ci.yml` on this branch and commit it.
 No PAT needs to be shared with Arena. Once checks run successfully, change
