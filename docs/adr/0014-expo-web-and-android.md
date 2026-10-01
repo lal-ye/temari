@@ -2,7 +2,7 @@
 
 - Status: Accepted
 - Date: 2026-09-30
-- Plan: [docs/WEB-RETIREMENT-PLAN.md](../WEB-RETIREMENT-PLAN.md)
+- Plan: [docs/archive/WEB-RETIREMENT-PLAN.md](../archive/WEB-RETIREMENT-PLAN.md) (shipped 2026-09-30)
 - Supersedes: [ADR-0004](./0004-native-css-view-transitions.md),
   [ADR-0005](./0005-motion-budget-and-spatial-consistency.md),
   [ADR-0006](./0006-sidebar-removal.md),
@@ -27,7 +27,7 @@ an absolute-HTTPS link policy (checkpoint B; gate matrix green 2026-09-28).
 Meanwhile the gate matrix still certifies the old tree almost exclusively: 25
 of 34 test files and the entire `build:render` gate cover the abandoned app,
 and the forward shell is reached by exactly one gate (`typecheck:mobile`)
-([WEB-RETIREMENT-PLAN §1](../WEB-RETIREMENT-PLAN.md)). Certifying a corpse
+([WEB-RETIREMENT-PLAN §1](../archive/WEB-RETIREMENT-PLAN.md)). Certifying a corpse
 while shipping its successor is the state this ADR closes.
 
 ## Decision
