@@ -1,11 +1,12 @@
 # Temari Android feasibility prototype
 
-Status update (2026-09-24): M0 startup/navigation passed on the user's phone;
-M1 portable export/validation is implemented. M2 checkpoint A (fixture + local
-DOM asset spike) passed its installed preview airplane-mode gate on the user's
-phone on 2026-09-24. Checkpoint B is underway per the
-[checkpoint B plan](./mobile/M2-CHECKPOINT-B-PLAN.md). See [M0 record](./mobile/M0-SETUP.md)
-and [M2 checkpoint](./mobile/M2-READER-SPIKE.md) for current evidence and next steps.
+Status update (2026-10-01): M0 startup/navigation passed on the user's phone;
+M1 portable export/validation is implemented. M2 checkpoints A and B passed on
+the user's phone; B completed 2026-09-30 and the standalone web app is retired
+(ADR-0014). M3 — native library and one complete Drill — is underway per the
+[M3 plan](./mobile/M3-LIBRARY-DRILL-PLAN.md). See [M0 record](./mobile/M0-SETUP.md),
+the [M2 checkpoint](./mobile/M2-READER-SPIKE.md) and the
+[checkpoint B plan](./mobile/M2-CHECKPOINT-B-PLAN.md) for earlier evidence.
 
 The preparation handoff in section 0 below is historical, not current repo state.
 Do not follow its "no native work exists" or "create project" assumptions.

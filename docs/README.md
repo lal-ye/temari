@@ -55,7 +55,7 @@ amendment to one) and the document moves to [`archive/`](./archive/).
 
 | Document | Status | Leaves this table when |
 |---|---|---|
-| — (none in flight) | — | — |
+| [`mobile/M3-LIBRARY-DRILL-PLAN.md`](./mobile/M3-LIBRARY-DRILL-PLAN.md) | M3 (native Library + one complete Drill) — plan drafted for review 2026-10-01; implementation not started | M3 gate recorded; durable parts absorbed into ADRs; the plan moves to `archive/` with a dated banner |
 
 ## Archived
 
@@ -93,4 +93,4 @@ describe code that has since moved on. Each carries a dated banner at the top.
 
 ## Mobile prototype planning
 
-- [Android feasibility prototype](./ANDROID-PROTOTYPE-PLAN.md) — M0 device startup/navigation passed; M1 export implemented; [M2 checkpoint B](./mobile/M2-READER-SPIKE.md) complete (2026-09-30): asset checkpoint passed its installed offline device test (2026-09-24), the reader-spike checklist passed on-device with one bug found, fixed in PR #31 and re-verified. Section 0 is historical.
+- [Android feasibility prototype](./ANDROID-PROTOTYPE-PLAN.md) — M0 device startup/navigation passed; M1 export implemented; [M2 checkpoint B](./mobile/M2-READER-SPIKE.md) complete (2026-09-30): asset checkpoint passed its installed offline device test (2026-09-24), the reader-spike checklist passed on-device with one bug found, fixed in PR #31 and re-verified. Section 0 is historical. The [M3 plan](./mobile/M3-LIBRARY-DRILL-PLAN.md) (native Library + one complete Drill) was drafted 2026-10-01; implementation has not started.
