@@ -60,3 +60,6 @@ packages/reader-core/assets.generated.css
 *.aab
 *.jks
 *.keystore
+
+# CodeGraph local index (built per-machine by `codegraph init`)
+.codegraph/
