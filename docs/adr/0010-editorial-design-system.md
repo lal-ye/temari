@@ -1,6 +1,6 @@
 # ADR-0010: Modern Academic Editorial design system
 
-- Status: Accepted
+- Status: Superseded by ADR-0014
 - Date: 2026-09-07
 - Plan: [docs/ui-plan-editorial-shell-export.md](../ui-plan-editorial-shell-export.md)
 - Supersedes: the neo-brutalist prototype language (PR #15/#16 retired it)

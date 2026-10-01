@@ -1,6 +1,6 @@
 # ADR-0009: Landing page at `/`, study shell at `/app`, no router
 
-- Status: Accepted
+- Status: Superseded by ADR-0014
 - Date: 2026-09-07
 - Plan (historical): [docs/archive/ui-plan-landing-page.md](../archive/ui-plan-landing-page.md)
 

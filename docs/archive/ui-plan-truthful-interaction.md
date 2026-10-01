@@ -1,5 +1,9 @@
 # UI Plan — Truthful feedback, predictable control, and reading continuity
 
+> **Archived 2026-09-30 — web-era plan.** The standalone web app retired with
+> the web tree (PR B) under ADR-0014; what this plan describes survives only
+> where the Expo reader shell reimplements it. History, not a specification.
+
 Status: **Proposed** · Date: 2026-09-08 · Branch: `arena/01a0809f-temari`
 · Reviewed against: `main` @ `f34c42f`
 

@@ -1,6 +1,6 @@
 # ADR-0012: Full Netlify deployment with BYOK Functions
 
-- Status: Accepted
+- Status: Superseded by ADR-0014
 - Date: 2026-09-12
 
 ## Context
@@ -25,5 +25,5 @@ Run checks again in Netlify's build command. Pin Node/Bun and freeze the lockfil
 No database or account system is introduced. Hosted requests have a smaller
 body limit and are subject to platform timeouts. Custom/Ollama remains available
 only for self-hosting. BYOK protects the owner's provider quota, not hosting
-usage. Browser credential persistence is unchanged. See `docs/NETLIFY.md` for
+usage. Browser credential persistence is unchanged. See `docs/archive/NETLIFY.md` for
 limitations, release gates and operational checks.

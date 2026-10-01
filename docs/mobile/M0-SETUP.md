@@ -43,7 +43,7 @@ fields below must not be inferred from screenshots or the earlier suggested mode
 - Working branch: `arena/01a0c36b-temari`.
 - Web app remains at its existing paths and deployment configuration.
 - Render service branch: `arena/01a09569-temari`; no Render promotion was made.
-- Reference screenshots: [`docs/screenshots/`](../screenshots/).
+- Reference screenshots: removed with `docs/screenshots/` in PR C (web-era assets).
 
 ## Test device metadata (still awaiting confirmation)
 

@@ -1,6 +1,6 @@
 # ADR-0005: Motion budget and spatial consistency
 
-- Status: Accepted
+- Status: Superseded by ADR-0014
 - Date: 2026-09-05
 - Extends: [ADR-0004](./0004-native-css-view-transitions.md)
 - Background (historical): [docs/archive/ui-plan-spatial-consistency.md](../archive/ui-plan-spatial-consistency.md)

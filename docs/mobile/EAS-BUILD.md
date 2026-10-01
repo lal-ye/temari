@@ -96,4 +96,3 @@ launch/airplane-mode test.
   do not assume only committed/tracked files are uploaded. Review the working tree.
 - Generated native directories, `.expo`, exports and APKs stay out of Git. Keep CNG
   configuration in source; do not use stale local native prebuilds for cloud builds.
-- No Render service, branch, credentials or hosting plan changes are needed.

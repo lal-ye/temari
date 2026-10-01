@@ -1,6 +1,6 @@
 # ADR-0006: Remove the sidebar in favour of header navigation and a command palette
 
-- Status: Accepted
+- Status: Superseded by ADR-0014
 - Date: 2026-09-05
 - Supersedes the Zen Mode decision in [ADR-0005](./0005-motion-budget-and-spatial-consistency.md)
 

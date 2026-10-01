@@ -48,7 +48,7 @@ spike. Do not start a full React Native rewrite or all milestones at once.
 - Do not create another Blueprint/service as part of mobile scaffolding. Do not
   silently change paid compute, Render environment variables or auto-sync settings.
 - Before implementing, ask whether the user has promoted the existing service to
-  `main`. If not, follow `docs/RENDER.md` with the user: coordinate Blueprint
+  `main`. If not, follow `docs/archive/RENDER.md` with the user: coordinate Blueprint
   auto-sync, source branch and service branch together. A dashboard override alone
   can be overwritten by the next Blueprint sync. Changing the YAML service branch
   while auto-sync is active may itself initiate a deployment.
@@ -106,8 +106,9 @@ Do not regenerate package-lock.json or silently upgrade the whole dependency tre
 
 No active GitHub Actions workflow exists. Arena's GitHub App was unable to push
 `.github/workflows/ci.yml` because it lacks Workflows permission; repeated push
-attempts did not solve it. The inactive template is at
-`docs/deployment/github-actions-ci.yml.example`. Render runs checks during its
+attempts did not solve it. The inactive template was at
+`docs/deployment/github-actions-ci.yml.example` (deleted in PR C; the real
+workflow now lives at `.github/workflows/ci.yml`). Render runs checks during its
 build; failed builds block deployment but not GitHub merges. Do not add a workflow
 file through the same connection without resolving that permission first. Never
 request a PAT/provider key/signing key in chat as a workaround.
@@ -118,7 +119,7 @@ request a PAT/provider key/signing key in chat as a workaround.
 2. `docs/adr/0001-study-store-deep-module.md` and
    `docs/adr/0002-ai-generation-port.md`.
 3. `docs/adr/0003-shared-ai-provider-catalog.md`.
-4. `docs/adr/0013-render-single-service.md` and `docs/RENDER.md`.
+4. `docs/adr/0013-render-single-service.md` and `docs/archive/RENDER.md`.
 5. The actual imports/implementations named in section 2; inspect the current tree
    instead of assuming file paths/contracts are unchanged.
 

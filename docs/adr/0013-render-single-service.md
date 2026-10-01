@@ -1,6 +1,6 @@
 # ADR-0013: Prefer one Render service and validate before merging
 
-- Status: Accepted
+- Status: Superseded by ADR-0014
 - Date: 2026-09-12
 - Supersedes ADR-0012's choice of primary deployment target, not its API extraction.
 
@@ -23,7 +23,7 @@ Compile backend code to build/, separate from public dist/ assets.
 Free service cold starts affect the whole site. Runtime resource limits still
 apply, but no serverless adapter is needed for the primary deployment. Browser
 storage and credential persistence are unchanged. Netlify packaging is checked
-on demand instead of being a required part of the primary Render build. See docs/RENDER.md.
+on demand instead of being a required part of the primary Render build. See docs/archive/RENDER.md.
 
 
 GitHub Actions is deferred because the Arena GitHub connection lacks workflow

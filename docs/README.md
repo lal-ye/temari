@@ -43,6 +43,8 @@ them in order.
 | [0009](./adr/0009-landing-page-route-split.md) | landing page at `/`, study shell at `/app`, no router |
 | [0010](./adr/0010-editorial-design-system.md) | Modern Academic Editorial design system (surface ramp, type, accent) |
 | [0011](./adr/0011-landing-display-variant.md) | the landing page as a documented display variant (token spine, guarded) |
+| [0012](./adr/0012-netlify-byok-functions.md) | Netlify deployment with BYOK Functions (Superseded by ADR-0014) |
+| [0013](./adr/0013-render-single-service.md) | one Render service, branch validated before merging (Superseded by ADR-0014) |
 | [0014](./adr/0014-expo-web-and-android.md) | one Expo app for web and Android; the standalone web app retires |
 
 ## In-flight plans
@@ -53,9 +55,7 @@ amendment to one) and the document moves to [`archive/`](./archive/).
 
 | Document | Status | Leaves this table when |
 |---|---|---|
-| [`ui-plan-truthful-interaction.md`](./ui-plan-truthful-interaction.md) | Phases 1–3 implemented; device verification owed | the device pass is done and any durable decisions have an ADR |
-| [`ui-plan-editorial-shell-export.md`](./ui-plan-editorial-shell-export.md) | WS-1/2/3/4/6 shipped; WS-5 (Paged.js) and WS-7 (pdfcn) are gated go/no-go spikes | the spikes resolve |
-| [`WEB-RETIREMENT-PLAN.md`](./WEB-RETIREMENT-PLAN.md) | agreed 2026-09-29, revised 2026-09-30 after external review; PR 0 (ADR-0014) drafted | the retirement ships and [ADR-0014](./adr/0014-expo-web-and-android.md) absorbs the durable part |
+| [`WEB-RETIREMENT-PLAN.md`](./WEB-RETIREMENT-PLAN.md) | agreed 2026-09-29, revised 2026-09-30 after external review; PRs 0, A, B merged; PR C (this pass: docs, ADRs, workflows) open | the retirement ships and [ADR-0014](./adr/0014-expo-web-and-android.md) absorbs the durable part |
 
 ## Archived
 
@@ -69,11 +69,10 @@ describe code that has since moved on. Each carries a dated banner at the top.
 | [`ui-audit-taste-skill.md`](./archive/ui-audit-taste-skill.md) | Findings all fixed. Its remaining backlog is listed in the banner at the top. |
 | [`ui-plan-landing-page.md`](./archive/ui-plan-landing-page.md) | Superseded by [ADR-0009](./adr/0009-landing-page-route-split.md) and [ADR-0011](./adr/0011-landing-display-variant.md). |
 | [`ui-plan-spatial-consistency.md`](./archive/ui-plan-spatial-consistency.md) | Produced [ADR-0005](./adr/0005-motion-budget-and-spatial-consistency.md); its Zen Mode was later retired by [ADR-0006](./adr/0006-sidebar-removal.md). |
-
-Other artifacts: [`figure-gallery.html`](./figure-gallery.html) is a reference
-gallery of the diagram grammar; [`wireframe-interactive-notes.html`](./wireframe-interactive-notes.html)
-and [`screenshots/`](./screenshots/) predate the editorial redesign and are
-historical.
+| [`ui-plan-truthful-interaction.md`](./archive/ui-plan-truthful-interaction.md) | Web-era interaction plan; the web app retired under [ADR-0014](./adr/0014-expo-web-and-android.md). |
+| [`ui-plan-editorial-shell-export.md`](./archive/ui-plan-editorial-shell-export.md) | Web-era editorial/export plan; the web app retired under [ADR-0014](./adr/0014-expo-web-and-android.md), WS-5/WS-7 undecided. |
+| [`NETLIFY.md`](./archive/NETLIFY.md) | Deployment path deleted with the web tree; Netlify never had a working deploy. |
+| [`RENDER.md`](./archive/RENDER.md) | Deployment path deleted with the web tree; the Render service was suspended. |
 
 ## Adding, changing and retiring documents
 
@@ -90,11 +89,6 @@ historical.
 5. **Keep the [repository README](../README.md) small.** It is the front door —
    what Temari is, how to run it — and links here for everything else. Add new
    material to this index, not there.
-
-## Deployment guides
-
-- [Render: one service, branch-first deployment](./RENDER.md) — recommended.
-- [Netlify Functions](./NETLIFY.md) — optional alternative.
 
 ## Mobile prototype planning
 
