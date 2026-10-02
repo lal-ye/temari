@@ -4,3 +4,6 @@ export * from './aiCatalog';
 export * from './ai';
 export * from './drill/drillSession';
 export * from './drill/drillCompletion';
+export * from './repository/studyRepository';
+export * from './repository/portableToLibrary';
+export * from './repository/inMemoryBackend';
