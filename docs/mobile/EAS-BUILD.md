@@ -1,6 +1,8 @@
 # EAS builds for the Android prototype
 
-Updated 2026-09-23. A fresh development APK has built and run on the user's phone;
+Updated 2026-10-02: APK builds are dispatched by the `Android APK` workflow
+(see [CI builds](#ci-builds)). A fresh development APK has built and run on the
+user's phone;
 see [M0 device record](./M0-SETUP.md). Authentication is local to each computer —
 this document does not imply the current sandbox is signed into Expo.
 
@@ -60,6 +62,50 @@ project's credential and never export/paste the keystore.
 In the Gradle **Using expo modules** section confirm `expo-linking` at SDK 57's
 compatible version. The M2 reader also needs `@expo/dom-webview` (included by Expo
 SDK 57). Gradle success alone does not establish module inclusion or runtime success.
+
+## CI builds
+
+The commands in [Profiles](#profiles) and [Install and launch](#install-and-launch)
+are the manual path. Routine builds go through GitHub Actions instead, and both
+paths use `--local`, so neither one touches the EAS build queue or EAS compute
+quota — EAS is contacted only for the project existence check and managed signing
+credentials. This repository is public, so GitHub-hosted runner minutes are free.
+
+Two workflows:
+
+- `.github/workflows/_android-apk.yml` — reusable builder. Takes a `profile`
+  (from `apps/mobile/eas.json`) and an `artifact` name; receives `EXPO_TOKEN` as
+  a declared secret. Every step that affects the compiled binary lives here, so
+  the NDK pin has exactly one home instead of one per profile.
+- `.github/workflows/android-apk.yml` — dispatcher. Runs on push to `main` and on
+  `workflow_dispatch`.
+
+What each merge builds:
+
+| Change on `main` | `temari-preview-apk` | `temari-dev-apk` |
+|---|---|---|
+| `bun.lock`, `apps/mobile/package.json`, `app.json`, `eas.json`, or either workflow file | build | build |
+| JS only (`apps/mobile/**`, `packages/**`) | build | skipped |
+| Docs only | build | skipped |
+
+The gate is `github.event.before..github.sha`, not `HEAD^..HEAD`: a push can carry
+several commits, and the one-commit diff misses every earlier one. In the
+retirement-era pushes the native change (`bun.lock`, `package.json`) sat in an
+earlier commit of the same push, so the short form would have shipped a stale
+development APK. If the base cannot be resolved the classifier fails safe to
+`native=true`. Every run writes what it decided and why to the job summary, and a
+skipped job reports as skipped rather than leaving a required check pending.
+
+Force a build from Actions → *Android APK* → Run workflow, choosing `preview`,
+`development` or `both`. Artifacts are retained 14 days:
+
+```sh
+gh run download <run-id> -n temari-preview-apk -D /tmp/temari-preview
+adb install -r /tmp/temari-preview/temari-preview-apk.apk
+```
+
+APK workflows stay off `pull_request`: GitHub withholds repository secrets from
+forked PR runs, so an APK build there would have no credentials.
 
 ## Install and launch
 

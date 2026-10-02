@@ -29,7 +29,7 @@ bun install --frozen-lockfile
 
 The product is one Expo app (`apps/mobile`) over two packages
 (`packages/core`, `packages/reader-core`). Run it with `expo start` from
-`apps/mobile`; installable previews come from the `android-preview` workflow
+`apps/mobile`; installable APKs come from the `Android APK` workflow
 (see `docs/mobile/EAS-BUILD.md`). The standalone web app retired under
 [ADR-0014](./docs/adr/0014-expo-web-and-android.md).
 

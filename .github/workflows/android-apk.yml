@@ -1,0 +1,123 @@
+# Builds the installable APKs. `preview` is automatic on every merge to main; the
+# `development` APK is only rebuilt when a native dependency moved, because its
+# binary contains no app JS (Metro serves that) and a redundant rebuild produces an
+# artifact that implies "reinstall your dev client" when nothing native changed.
+#
+# Never gate this workflow with a workflow-level `paths` filter: a skipped workflow
+# leaves any required status check pending forever. This dispatcher always starts and
+# decides per job instead, so a skipped job reports as skipped.
+name: Android APK
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      profile:
+        description: Which APK to force-build
+        required: true
+        default: preview
+        type: choice
+        options:
+          - preview
+          - development
+          - both
+
+permissions:
+  contents: read
+
+concurrency:
+  group: android-apk-${{ inputs.profile || 'auto' }}
+  cancel-in-progress: true
+
+jobs:
+  changes:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      native: ${{ steps.classify.outputs.native }}
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # The compiled binary embeds native module code, which lives in node_modules
+      # rather than in this repository. These five paths are the only in-repo signals
+      # that a native dependency, a config plugin, or the build recipe itself moved.
+      - name: Classify native binary invalidation
+        id: classify
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          PUSH_BASE: ${{ github.event.before }}
+          HEAD_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+
+          # A manual run is an explicit force-build; the dispatch choice already says
+          # which profiles to produce, so classification has nothing left to decide.
+          if [[ "$EVENT_NAME" != "push" ]]; then
+            echo "native=true" >> "$GITHUB_OUTPUT"
+            echo "Manual dispatch — classification skipped."
+            exit 0
+          fi
+
+          # Diff the whole push range, not HEAD^..HEAD: a push can carry more than one
+          # commit and the two-dot diff would miss every earlier one. Anything that
+          # prevents resolving the base falls back to native=true, because
+          # over-building costs a runner and under-building ships a stale dev client.
+          native=true
+          files=""
+          if [[ "$PUSH_BASE" =~ ^0+$ ]] || ! files=$(git diff --name-only "$PUSH_BASE" "$HEAD_SHA"); then
+            echo "Could not diff against base '$PUSH_BASE' — treating as native."
+          elif grep -Eq '^(bun\.lock|apps/mobile/(package\.json|app\.json|eas\.json)|\.github/workflows/(_android-apk|android-apk)\.yml)$' <<< "$files"; then
+            native=true
+          else
+            native=false
+          fi
+
+          if [[ "$native" == true ]]; then
+            development="build — native binary changed"
+          else
+            development="skipped — Metro serves the JS, binary unchanged"
+          fi
+
+          {
+            echo "### Change classification"
+            echo
+            echo "| | |"
+            echo "|---|---|"
+            echo "| Native invalidation | \`$native\` |"
+            echo "| Development APK | $development |"
+            echo
+            echo "<details><summary>Changed files</summary>"
+            echo
+            echo '```'
+            echo "$files"
+            echo '```'
+            echo
+            echo "</details>"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          echo "native=$native" >> "$GITHUB_OUTPUT"
+
+  preview:
+    needs: changes
+    if: ${{ github.event_name == 'push' || inputs.profile == 'preview' || inputs.profile == 'both' }}
+    uses: ./.github/workflows/_android-apk.yml
+    with:
+      profile: preview
+      artifact: temari-preview-apk
+    secrets:
+      EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+
+  development:
+    needs: changes
+    if: ${{ (github.event_name == 'push' && needs.changes.outputs.native == 'true') || inputs.profile == 'development' || inputs.profile == 'both' }}
+    uses: ./.github/workflows/_android-apk.yml
+    with:
+      profile: development
+      artifact: temari-dev-apk
+    secrets:
+      EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
