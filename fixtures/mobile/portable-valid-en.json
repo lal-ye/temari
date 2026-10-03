@@ -9,6 +9,12 @@
         "name": "Cellular Biology",
         "code": "BIO-201",
         "createdAt": "2026-09-20T10:00:00.000Z"
+      },
+      {
+        "id": "fixture-subject-en-2",
+        "name": "Organic Chemistry",
+        "code": "CHM-101",
+        "createdAt": "2026-09-20T11:00:00.000Z"
       }
     ],
     "notes": [
@@ -21,6 +27,16 @@
         "tags": ["metabolism"],
         "createdAt": "2026-09-20T10:01:00.000Z",
         "updatedAt": "2026-09-20T10:01:00.000Z"
+      },
+      {
+        "id": "fixture-note-en-2",
+        "subjectId": "fixture-subject-en-2",
+        "title": "Alkanes",
+        "content": "Alkanes are saturated hydrocarbons: carbon chains joined by single bonds only.",
+        "sourceName": "synthetic fixture",
+        "tags": ["hydrocarbons"],
+        "createdAt": "2026-09-20T11:01:00.000Z",
+        "updatedAt": "2026-09-20T11:01:00.000Z"
       }
     ],
     "quizzes": [
@@ -40,6 +56,23 @@
         "difficulty": "Easy",
         "createdAt": "2026-09-20T10:02:00.000Z",
         "updatedAt": "2026-09-20T10:02:00.000Z"
+      },
+      {
+        "id": "fixture-quiz-en-2",
+        "subjectId": "fixture-subject-en-2",
+        "name": "Alkane recall",
+        "flashcards": [
+          {
+            "id": "fixture-card-en-2",
+            "question": "What is the general formula of alkanes?",
+            "answer": "CnH2n+2.",
+            "difficulty": "Easy"
+          }
+        ],
+        "quizLengthUsed": 1,
+        "difficulty": "Easy",
+        "createdAt": "2026-09-20T11:02:00.000Z",
+        "updatedAt": "2026-09-20T11:02:00.000Z"
       }
     ],
     "attempts": [

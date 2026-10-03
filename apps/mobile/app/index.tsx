@@ -29,6 +29,14 @@ export default function HelloScreen() {
         >
           <Text style={styles.buttonText}>Open reader asset spike</Text>
         </Pressable>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Open import"
+          onPress={() => router.push('/import')}
+          style={({ pressed }) => [styles.button, pressed && styles.buttonPressed]}
+        >
+          <Text style={styles.buttonText}>Import library data</Text>
+        </Pressable>
       </View>
     </SafeAreaView>
   );

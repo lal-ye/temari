@@ -9,7 +9,9 @@ dist/
 *.tsbuildinfo
 
 # --- Expo / native generated state ---
-apps/mobile/.expo/
+# Bare pattern: an expo command run from the repo root by accident creates
+# .expo/ there as well (Expo CLI also auto-edits that dir's tsconfig).
+.expo/
 apps/mobile/android/
 apps/mobile/ios/
 apps/mobile/.metro-health-check*
