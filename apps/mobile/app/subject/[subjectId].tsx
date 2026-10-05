@@ -1,19 +1,25 @@
 /**
- * Active Subject screen (M3 plan §9, D10): the opened Subject scopes
- * everything shown — its Notes and its Quizzes, nothing else. History lands
- * here in Phase 6; the Drill route lands with it. Wiring only — the phone
- * checklist is the screen test (the M2 rule).
+ * Active Subject screen (M3 plan §9–§10, D10): the opened Subject scopes
+ * everything shown — its Notes, its Quizzes and its Attempt history, nothing
+ * else. Quiz rows open the Drill route; history is newest first. Wiring
+ * only — the phone checklist is the screen test (the M2 rule).
  */
 import { useCallback, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { getStudyRepository } from '@/src/db/repository';
-import type { StoredNote, StoredQuiz, Subject } from '@temari/core';
+import type { StoredAttempt, StoredNote, StoredQuiz, Subject } from '@temari/core';
 
 type Loaded =
   | { kind: 'loading' }
-  | { kind: 'ready'; subject: Subject; notes: StoredNote[]; quizzes: StoredQuiz[] }
+  | {
+      kind: 'ready';
+      subject: Subject;
+      notes: StoredNote[];
+      quizzes: StoredQuiz[];
+      attempts: StoredAttempt[];
+    }
   | { kind: 'missing' }
   | { kind: 'failed'; message: string };
 
@@ -46,6 +52,7 @@ export default function SubjectScreen() {
             subject,
             notes: repo.listNotes(subject.id),
             quizzes: repo.listQuizzes(subject.id),
+            attempts: repo.listAttempts(subject.id),
           });
         },
         (error: unknown) => {
@@ -112,7 +119,18 @@ export default function SubjectScreen() {
                 <Text style={styles.body}>No Quizzes in this Subject yet.</Text>
               ) : (
                 loaded.quizzes.map((quiz) => (
-                  <View key={quiz.id} style={styles.row}>
+                  <Pressable
+                    key={quiz.id}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Drill quiz ${quiz.name}`}
+                    onPress={() =>
+                      router.push({
+                        pathname: '/drill/[quizId]',
+                        params: { quizId: quiz.id, subjectId: loaded.subject.id },
+                      })
+                    }
+                    style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}
+                  >
                     <Text style={styles.rowTitle}>{quiz.name}</Text>
                     <Text style={styles.rowMeta}>
                       {quiz.flashcards.length} Flashcards
@@ -120,6 +138,22 @@ export default function SubjectScreen() {
                       {quiz.timesPracticed !== undefined && quiz.timesPracticed > 0
                         ? ` · Practiced ${quiz.timesPracticed}×`
                         : ''}
+                    </Text>
+                  </Pressable>
+                ))
+              )}
+            </View>
+            <View style={styles.section}>
+              <Text style={styles.eyebrow}>HISTORY</Text>
+              {loaded.attempts.length === 0 ? (
+                <Text style={styles.body}>No Attempts in this Subject yet. Finish a Drill to record one.</Text>
+              ) : (
+                loaded.attempts.map((attempt) => (
+                  <View key={attempt.id} style={styles.row}>
+                    <Text style={styles.rowTitle}>{attempt.name}</Text>
+                    <Text style={styles.rowMeta}>
+                      {attempt.overallScore}% · {attempt.correctQuestions}/{attempt.totalQuestions} ·{' '}
+                      {attempt.date.slice(0, 10)}
                     </Text>
                   </View>
                 ))
