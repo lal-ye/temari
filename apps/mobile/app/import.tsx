@@ -12,11 +12,11 @@
  * screen test (the M2 rule).
  */
 import { useCallback, useRef, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { getDocumentAsync } from 'expo-document-picker';
-import { File } from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import type { PortableCounts, SubjectSummary } from '@temari/core';
 import { getStudyRepository } from '../src/db/repository';
 import { buildImportPreview, type ImportPreview } from '../src/importFlow';
@@ -52,8 +52,10 @@ export default function ImportScreen() {
 
   // ONE lifecycle mechanism (the M2 rule): useFocusEffect covers both mount
   // and refocus, so relaunch and back-navigation both reload the library.
+  // Web has no library storage in M3, so there is nothing to reload there.
   const aliveRef = useRef(true);
   const refreshLibrary = useCallback(() => {
+    if (Platform.OS === 'web') return;
     getStudyRepository().then(
       (repo) => {
         if (!aliveRef.current) return;
@@ -77,16 +79,21 @@ export default function ImportScreen() {
   );
 
   const pickExportFile = useCallback(async () => {
-    // The picker's cache copy (copyToCacheDirectory, default true) hands us
-    // a file:// URI; the §15 SAF-vs-cache-copy decision resolves to the
-    // picker's own copy — bounded by the portable 4 MiB ceiling.
+    // The picker's cache copy is NOT guaranteed: Samsung My Files hands the
+    // MediaProvider's content:// URI straight back and the new expo-file-system
+    // File class (java.io.File based) cannot open content URIs — the read dies
+    // with a SecurityException. The legacy readAsStringAsync goes through the
+    // ContentResolver instead, so it reads both file:// and content:// URIs.
+    // The §15 SAF-vs-cache-copy decision: read whatever the picker returns.
     const result = await getDocumentAsync();
     if (result.canceled) return; // cancel at pick: zero writes
     const asset = result.assets?.[0];
     if (!asset) return;
     setPhase({ kind: 'reading' });
     try {
-      const bytes = await new File(asset.uri).text();
+      const bytes = await FileSystem.readAsStringAsync(asset.uri, {
+        encoding: FileSystem.EncodingType.UTF8,
+      });
       setPhase({
         kind: 'preview',
         preview: buildImportPreview(bytes),
@@ -134,22 +141,33 @@ export default function ImportScreen() {
         </Pressable>
         <Text style={styles.title}>Import</Text>
       </View>
-      <ScrollView contentContainerStyle={styles.content}>
-        <View style={styles.section}>
-          <Text style={styles.eyebrow}>CURRENT LIBRARY</Text>
-          {libraryError !== null ? (
-            <Text style={styles.danger}>The library could not be read: {libraryError}</Text>
-          ) : library.length === 0 ? (
-            <Text style={styles.body}>No Subjects on this device yet.</Text>
-          ) : (
-            library.map((subject) => (
-              <Text key={subject.id} style={styles.libraryRow}>
-                {subject.name}
-                <Text style={styles.libraryMeta}> · {subject.noteCount} Notes · {subject.quizCount} Quizzes</Text>
-              </Text>
-            ))
-          )}
+      {Platform.OS === 'web' ? (
+        <View style={styles.content}>
+          <View style={styles.section}>
+            <Text style={styles.eyebrow}>ANDROID APP ONLY</Text>
+            <Text style={styles.body}>
+              Importing a library runs on the Android app — the web build has no on-device library
+              storage in this milestone.
+            </Text>
+          </View>
         </View>
+      ) : (
+        <ScrollView contentContainerStyle={styles.content}>
+          <View style={styles.section}>
+            <Text style={styles.eyebrow}>CURRENT LIBRARY</Text>
+            {libraryError !== null ? (
+              <Text style={styles.danger}>The library could not be read: {libraryError}</Text>
+            ) : library.length === 0 ? (
+              <Text style={styles.body}>No Subjects on this device yet.</Text>
+            ) : (
+              library.map((subject) => (
+                <Text key={subject.id} style={styles.libraryRow}>
+                  {subject.name}
+                  <Text style={styles.libraryMeta}> · {subject.noteCount} Notes · {subject.quizCount} Quizzes</Text>
+                </Text>
+              ))
+            )}
+          </View>
 
         {phase.kind === 'idle' && (
           <View style={styles.section}>
@@ -262,7 +280,8 @@ export default function ImportScreen() {
             </Pressable>
           </View>
         )}
-      </ScrollView>
+        </ScrollView>
+      )}
     </SafeAreaView>
   );
 }
