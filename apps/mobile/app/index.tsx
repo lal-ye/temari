@@ -87,14 +87,6 @@ export default function LibraryScreen() {
           >
             <Text style={styles.linkText}>Device check</Text>
           </Pressable>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Open reader asset spike"
-            onPress={() => router.push('/reader-spike')}
-            style={styles.link}
-          >
-            <Text style={styles.linkText}>Reader spike</Text>
-          </Pressable>
         </View>
       </ScrollView>
     </SafeAreaView>
