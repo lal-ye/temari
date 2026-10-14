@@ -1,5 +1,12 @@
 # Temari Android feasibility prototype
 
+> 2026-10-14: implementation status and verification now live in
+> [the completion record](mobile/PORT-COMPLETION.md). M3 re-export, M4 BYOK/PDF/diagnostics and
+> Expo web parity are implemented. Physical-device acceptance is still pending.
+> ADR-0015 replaces the retired Render transport/PDF assumptions below; older
+> restrictions on milestone ordering describe earlier checkpoints, not this task.
+
+
 Status update (2026-10-01): M0 startup/navigation passed on the user's phone;
 M1 portable export/validation is implemented. M2 checkpoints A and B passed on
 the user's phone; B completed 2026-09-30 and the standalone web app is retired

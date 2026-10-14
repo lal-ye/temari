@@ -138,7 +138,7 @@ describe('createExplainSessionHandler (single-active, plan §8.3)', () => {
     await flush();
     reject(new Error('boom'));
     await first.catch(() => {});
-    expect(events.at(-1)).toEqual({ kind: 'error', reason: 'mock-failed' });
+    expect(events.at(-1)).toEqual({ kind: 'error', reason: 'request-failed' });
 
     const second = session.submit(makeRequest());
     await flush();
@@ -200,5 +200,43 @@ describe('createExplainSessionHandler (single-active, plan §8.3)', () => {
       request: { requestId: 'r-new' },
       result: 'new result',
     });
+  });
+});
+
+describe('paid Explain confirmation and cancellation', () => {
+  it('never generates when confirmation is declined', async () => {
+    const run = vi.fn(async () => 'paid');
+    const { session, events } = setup({ run, confirm: async () => false });
+    await session.submit(makeRequest());
+    expect(run).not.toHaveBeenCalled();
+    expect(events.map(event => event.kind)).toEqual(['confirming', 'idle']);
+  });
+  it('ignores late approval after navigation and aborts the confirmation signal', async () => {
+    let approve!: (value: boolean) => void;
+    let signal!: AbortSignal;
+    const run = vi.fn(async () => 'paid');
+    const { session } = setup({ run, confirm: async (_, value) => { signal = value; return new Promise(resolve => { approve = resolve; }); } });
+    const pending = session.submit(makeRequest());
+    session.invalidate(); approve(true); await pending;
+    expect(signal.aborted).toBe(true); expect(run).not.toHaveBeenCalled();
+  });
+  it('aborts generation on close and suppresses a late result', async () => {
+    let finish!: (value: string) => void;
+    let signal!: AbortSignal;
+    const { session, events } = setup({ run: async (_, value) => { signal = value; return new Promise(resolve => { finish = resolve; }); } });
+    const pending = session.submit(makeRequest());
+    session.invalidate(); finish('late result'); await pending;
+    expect(signal.aborted).toBe(true); expect(events.at(-1)).toEqual({ kind: 'idle' });
+  });
+  it('does not release a new same-id request when an invalidated predecessor settles', async () => {
+    const deferred = deferredRun();
+    const { session } = setup({ run: deferred.run });
+    const request = makeRequest();
+    const first = session.submit(request); session.invalidate();
+    const second = session.submit(request);
+    deferred.resolve('old'); await first;
+    await session.submit(makeRequest());
+    expect(deferred.run).toHaveBeenCalledTimes(2);
+    deferred.resolve('new'); await second;
   });
 });

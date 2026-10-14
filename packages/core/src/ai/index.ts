@@ -87,7 +87,8 @@ export function createAiGenerator(deps: { getSettings: SettingsSource }): AiGene
     } catch (err) {
       if (isAbort(err)) throw err;
       const reason = explainFailure(err);
-      console.warn(`[ai] ${label} unavailable via Provider (${reason.kind}), serving offline draft:`, err);
+      // Raw provider errors may reflect credentials or material.
+      void label;
       return { source: 'offline', value: await fallback(), fallback: reason };
     }
   }

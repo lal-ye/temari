@@ -1,0 +1,22 @@
+# DESTRUCTIVE: run only on a disposable test install; clears the local library.
+appId: com.lalye.temari.prototype
+---
+- launchApp:
+    clearState: true
+- assertVisible: "Study library"
+- tapOn: "Import library data"
+- tapOn: "Try the sample library"
+- tapOn: "Replace and import"
+- assertVisible: "IMPORTED"
+- tapOn: "← Back"
+- tapOn: "Cellular Biology"
+- tapOn: "Respiration recall"
+- tapOn: "Tap to reveal the answer"
+- assertVisible: "In the cytosol."
+- tapOn: "Mastered"
+- assertVisible: "100% · 1/1 mastered"
+- assertVisible: "Saved to this Subject's history."
+- stopApp
+- launchApp
+- tapOn: "Cellular Biology"
+- assertVisible: "HISTORY"

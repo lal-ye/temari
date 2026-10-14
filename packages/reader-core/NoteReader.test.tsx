@@ -7,7 +7,7 @@ import { NoteReader, SELECTION_SETTLE_MS } from './NoteReader';
 /**
  * Selection wiring (plan §8.1), client-side: the debounced selectionchange
  * funnel, container/bounds/multi-block rejection, capture-at-settle, the
- * fixed-bottom mock-labeled chip, and the diagram-tap funnel. The single-active
+ * fixed-bottom confirmation-labeled chip, and the diagram-tap funnel. The single-active
  * semantics behind `onExplain` are covered separately against the pure session
  * factory (createExplainSessionHandler.test.ts).
  */
@@ -86,7 +86,7 @@ describe('NoteReader selection funnel (plan §8.1)', () => {
     vi.useRealTimers();
   });
 
-  it('derives nothing before the debounce settles, then shows the mock-labeled chip', async () => {
+  it('derives nothing before the debounce settles, then shows the confirmation-labeled chip', async () => {
     const onExplain = vi.fn(async () => {});
     const { container } = render(<NoteReader {...PROPS} onExplain={onExplain} />);
 
@@ -97,7 +97,7 @@ describe('NoteReader selection funnel (plan §8.1)', () => {
     const bar = container.querySelector('.reader-chip-bar');
     expect(bar).not.toBeNull();
     expect(bar!.textContent).toContain('First');
-    expect(bar!.textContent).toContain('mock'); // D3: the action itself is labeled
+    expect(bar!.textContent).toContain('confirm before any text is sent');
   });
 
   it('runs the chip through buildExplainRequest (bounded payload, fresh id) and hides', async () => {

@@ -10,7 +10,13 @@
     "plugins": [
       "expo-router",
       "expo-sqlite",
-      "expo-sharing"
+      "expo-sharing",
+      [
+        "expo-secure-store",
+        {
+          "configureAndroidBackup": true
+        }
+      ]
     ],
     "android": {
       "package": "com.lalye.temari.prototype",
@@ -21,6 +27,13 @@
       "eas": {
         "projectId": "d714fc77-cb03-4a67-8899-2620e52b5b63"
       }
+    },
+    "updates": {
+      "enabled": false
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "single"
     }
   }
 }

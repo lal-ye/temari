@@ -39,6 +39,7 @@ export const AI_PROVIDERS: readonly AIProviderInfo[] = [
     id: 'gemini',
     name: 'Google Gemini',
     defaultModel: 'gemini-2.5-flash',
+    defaultBaseUrl: 'https://generativelanguage.googleapis.com/v1beta',
     requiresKey: false,
     envKeyName: 'GEMINI_API_KEY',
   },

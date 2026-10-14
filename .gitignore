@@ -65,3 +65,8 @@ packages/reader-core/assets.generated.css
 
 # CodeGraph local index (built per-machine by `codegraph init`)
 .codegraph/
+
+# Generated isolated browser reader and browser test artifacts
+apps/mobile/public/reader/
+playwright-report/
+test-results/

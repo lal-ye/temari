@@ -71,7 +71,7 @@ export default function SubjectScreen() {
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Back to library"
-          onPress={() => router.back()}
+          onPress={() => router.canGoBack() ? router.back() : router.replace('/')}
           style={styles.back}
         >
           <Text style={styles.backText}>← Back</Text>

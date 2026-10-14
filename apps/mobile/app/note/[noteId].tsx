@@ -59,7 +59,7 @@ export default function NoteScreen() {
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Back to subject"
-          onPress={() => router.back()}
+          onPress={() => router.canGoBack() ? router.back() : router.replace(typeof subjectId === 'string' ? { pathname: '/subject/[subjectId]', params: { subjectId } } : '/')}
           style={styles.back}
         >
           <Text style={styles.backText}>← Back</Text>
@@ -67,7 +67,7 @@ export default function NoteScreen() {
         <Text style={styles.title}>{loaded.kind === 'ready' ? loaded.note.title : 'Note'}</Text>
       </View>
       {loaded.kind === 'ready' ? (
-        <NoteReaderHost title={loaded.note.title} content={loaded.note.content} noteId={loaded.note.id} />
+        <NoteReaderHost key={loaded.note.id} title={loaded.note.title} content={loaded.note.content} noteId={loaded.note.id} />
       ) : (
         <View style={styles.content}>
           {loaded.kind === 'loading' && <Text style={styles.body}>Loading…</Text>}

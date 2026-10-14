@@ -12,11 +12,11 @@
  * screen test (the M2 rule).
  */
 import { useCallback, useRef, useState } from 'react';
-import { Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { getDocumentAsync } from 'expo-document-picker';
-import * as FileSystem from 'expo-file-system/legacy';
+import { pickStudyFile } from '@/src/platform/files';
+import sampleLibrary from '../../../fixtures/mobile/portable-valid-en.json';
 import type { PortableCounts, SubjectSummary } from '@temari/core';
 import { getStudyRepository } from '../src/db/repository';
 import { buildImportPreview, type ImportPreview } from '../src/importFlow';
@@ -54,8 +54,8 @@ export default function ImportScreen() {
   // and refocus, so relaunch and back-navigation both reload the library.
   // Web has no library storage in M3, so there is nothing to reload there.
   const aliveRef = useRef(true);
+  const busy = useRef(false);
   const refreshLibrary = useCallback(() => {
-    if (Platform.OS === 'web') return;
     getStudyRepository().then(
       (repo) => {
         if (!aliveRef.current) return;
@@ -79,48 +79,39 @@ export default function ImportScreen() {
   );
 
   const pickExportFile = useCallback(async () => {
-    // The picker's cache copy is NOT guaranteed: Samsung My Files hands the
-    // MediaProvider's content:// URI straight back and the new expo-file-system
-    // File class (java.io.File based) cannot open content URIs — the read dies
-    // with a SecurityException. The legacy readAsStringAsync goes through the
-    // ContentResolver instead, so it reads both file:// and content:// URIs.
-    // The §15 SAF-vs-cache-copy decision: read whatever the picker returns.
-    const result = await getDocumentAsync();
-    if (result.canceled) return; // cancel at pick: zero writes
-    const asset = result.assets?.[0];
-    if (!asset) return;
-    setPhase({ kind: 'reading' });
+    if (busy.current) return;
+    busy.current = true;
     try {
-      const bytes = await FileSystem.readAsStringAsync(asset.uri, {
-        encoding: FileSystem.EncodingType.UTF8,
-      });
-      setPhase({
-        kind: 'preview',
-        preview: buildImportPreview(bytes),
-        fileName: asset.name || 'export',
-      });
-    } catch (error) {
-      setPhase({ kind: 'failed', message: `Could not read the file: ${errorText(error)}` });
-    }
+      // Start the browser picker synchronously from the gesture.
+      const pending = pickStudyFile('json');
+      setPhase({ kind: 'reading' });
+      const file = await pending;
+      if (!aliveRef.current) return;
+      setPhase(file ? { kind: 'preview', preview: buildImportPreview(file.content), fileName: file.name } : { kind: 'idle' });
+    } catch {
+      if (aliveRef.current) setPhase({ kind: 'failed', message: 'Could not read the file. Choose a JSON backup smaller than 4 MiB and try again.' });
+    } finally { busy.current = false; }
   }, []);
 
   const confirmImport = useCallback(
     async (preview: ImportPreview) => {
-      if (preview.kind !== 'ready') return;
+      if (preview.kind !== 'ready' || busy.current) return;
+      busy.current = true;
       setPhase((current) =>
         current.kind === 'preview' ? { kind: 'importing', preview, fileName: current.fileName } : current,
       );
       try {
         const repo = await getStudyRepository();
         const counts = await repo.importPortable(preview.value);
-        setPhase({ kind: 'done', counts });
+        if (aliveRef.current) setPhase({ kind: 'done', counts });
       } catch (error) {
         // The repository never partially writes: the old library is intact.
-        setPhase({
+        if (aliveRef.current) setPhase({
           kind: 'failed',
           message: `The import failed and nothing was changed: ${errorText(error)}`,
         });
       }
+      busy.current = false;
       refreshLibrary();
     },
     [refreshLibrary],
@@ -134,24 +125,13 @@ export default function ImportScreen() {
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Back to home"
-          onPress={() => router.back()}
+          onPress={() => router.canGoBack() ? router.back() : router.replace('/')}
           style={styles.back}
         >
           <Text style={styles.backText}>← Back</Text>
         </Pressable>
         <Text style={styles.title}>Import</Text>
       </View>
-      {Platform.OS === 'web' ? (
-        <View style={styles.content}>
-          <View style={styles.section}>
-            <Text style={styles.eyebrow}>ANDROID APP ONLY</Text>
-            <Text style={styles.body}>
-              Importing a library runs on the Android app — the web build has no on-device library
-              storage in this milestone.
-            </Text>
-          </View>
-        </View>
-      ) : (
         <ScrollView contentContainerStyle={styles.content}>
           <View style={styles.section}>
             <Text style={styles.eyebrow}>CURRENT LIBRARY</Text>
@@ -175,6 +155,9 @@ export default function ImportScreen() {
               Pick a temari-portable export or a legacy v1 browser backup. You will see a preview before anything
               changes.
             </Text>
+            <Pressable accessibilityRole="button" onPress={() => setPhase({ kind: 'preview', fileName: 'Sample library', preview: buildImportPreview(JSON.stringify(sampleLibrary)) })} style={styles.actionButton}>
+              <Text style={styles.actionButtonText}>Try the sample library</Text>
+            </Pressable>
             <Pressable
               accessibilityRole="button"
               accessibilityLabel="Pick an export file"
@@ -204,8 +187,7 @@ export default function ImportScreen() {
                   </View>
                 ))}
                 <Text style={styles.danger}>
-                  Importing replaces your entire library on this device — everything currently here is deleted
-                  first.
+                  Importing replaces your entire library on this device — the replacement is atomic. Export a backup before continuing.
                 </Text>
                 {phase.kind === 'preview' ? (
                   <View style={styles.actions}>
@@ -281,7 +263,6 @@ export default function ImportScreen() {
           </View>
         )}
         </ScrollView>
-      )}
     </SafeAreaView>
   );
 }

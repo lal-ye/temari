@@ -47,6 +47,8 @@ them in order.
 | [0013](./adr/0013-render-single-service.md) | one Render service, branch validated before merging (Superseded by ADR-0014) |
 | [0014](./adr/0014-expo-web-and-android.md) | one Expo app for web and Android; the standalone web app retires |
 
+| [0015](./adr/0015-local-first-byok-and-web-parity.md) | direct Gemini BYOK, SQLite/IndexedDB parity and sandboxed web reader |
+
 ## In-flight plans
 
 A plan or audit is scaffolding. It may restate the code and argue freely while
@@ -55,7 +57,7 @@ amendment to one) and the document moves to [`archive/`](./archive/).
 
 | Document | Status | Leaves this table when |
 |---|---|---|
-| [`mobile/M3-LIBRARY-DRILL-PLAN.md`](./mobile/M3-LIBRARY-DRILL-PLAN.md) | M3 (native Library + one complete Drill) — plan drafted for review 2026-10-01; implementation not started | M3 gate recorded; durable parts absorbed into ADRs; the plan moves to `archive/` with a dated banner |
+| [`mobile/M3-LIBRARY-DRILL-PLAN.md`](./mobile/M3-LIBRARY-DRILL-PLAN.md) | M3 implementation including re-export complete; physical gate pending (see completion record) | M3 gate recorded; durable parts absorbed into ADRs; the plan moves to `archive/` with a dated banner |
 
 ## Archived
 
@@ -93,4 +95,6 @@ describe code that has since moved on. Each carries a dated banner at the top.
 
 ## Mobile prototype planning
 
-- [Android feasibility prototype](./ANDROID-PROTOTYPE-PLAN.md) — M0 device startup/navigation passed; M1 export implemented; [M2 checkpoint B](./mobile/M2-READER-SPIKE.md) complete (2026-09-30): asset checkpoint passed its installed offline device test (2026-09-24), the reader-spike checklist passed on-device with one bug found, fixed in PR #31 and re-verified. Section 0 is historical. The [M3 plan](./mobile/M3-LIBRARY-DRILL-PLAN.md) (native Library + one complete Drill) was drafted 2026-10-01; implementation has not started.
+- [Android feasibility prototype](./ANDROID-PROTOTYPE-PLAN.md) — M0 device startup/navigation passed; M1 export implemented; [M2 checkpoint B](./mobile/M2-READER-SPIKE.md) complete (2026-09-30): asset checkpoint passed its installed offline device test (2026-09-24), the reader-spike checklist passed on-device with one bug found, fixed in PR #31 and re-verified. Section 0 is historical. M3 and M4 implementation plus web parity now have [a completion record](./mobile/PORT-COMPLETION.md); physical acceptance and the M5 decision remain pending.
+- [Expo web](./mobile/WEB.md) — run/deploy/offline and storage/security expectations.
+- [APK builds](./mobile/EAS-BUILD.md) — profiles, gated workflow and install instructions.

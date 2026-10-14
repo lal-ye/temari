@@ -96,7 +96,9 @@ export function createSqliteBackend(dbName: string = DEFAULT_DB_NAME): StudyBack
         `sqliteBackend: unsupported schema version "${versionRow.value}" (expected "${SCHEMA_VERSION}")`,
       );
     }
+    const preferences = await db.getFirstAsync<{ value: string }>('SELECT value FROM kv WHERE key = ?', 'preferences');
     return {
+      preferences: preferences ? JSON.parse(preferences.value) : { theme: 'system' },
       subjects: await readCollection<Subject>(db, 'subjects'),
       notes: await readCollection<StoredNote>(db, 'notes'),
       quizzes: await readCollection<StoredQuiz>(db, 'quizzes'),
@@ -107,8 +109,9 @@ export function createSqliteBackend(dbName: string = DEFAULT_DB_NAME): StudyBack
 
   async function persist(snapshot: StudySnapshot): Promise<void> {
     const db = await getDb();
-    const entries: Array<[CollectionKey | typeof VERSION_KEY, string]> = [
+    const entries: Array<[CollectionKey | typeof VERSION_KEY | 'preferences', string]> = [
       [VERSION_KEY, String(SCHEMA_VERSION)],
+      ['preferences', JSON.stringify(snapshot.preferences ?? { theme: 'system' })],
       ['subjects', JSON.stringify(snapshot.subjects)],
       ['notes', JSON.stringify(snapshot.notes)],
       ['quizzes', JSON.stringify(snapshot.quizzes)],

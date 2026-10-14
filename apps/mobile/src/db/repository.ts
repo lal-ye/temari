@@ -13,7 +13,10 @@ let repositoryPromise: Promise<StudyRepository> | null = null;
 
 export function getStudyRepository(): Promise<StudyRepository> {
   if (!repositoryPromise) {
-    repositoryPromise = createStudyRepository(createSqliteBackend());
+    repositoryPromise = createStudyRepository(createSqliteBackend()).catch((error: unknown) => {
+      repositoryPromise = null; // retry a transient open failure on next focus
+      throw error;
+    });
   }
   return repositoryPromise;
 }

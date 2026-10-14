@@ -6,7 +6,7 @@ import type {
   Subject,
 } from '../types';
 import type { PortableCounts, PortableExport } from '../portable';
-import { portableCounts } from '../portable';
+import { portableCounts, createPortableExport, serializePortableExport, type PortablePreferences } from '../portable';
 import { portableToLibrary } from './portableToLibrary';
 
 /**
@@ -17,6 +17,7 @@ import { portableToLibrary } from './portableToLibrary';
  * Portable v1 field names are frozen contract.
  */
 export interface StudySnapshot {
+  preferences?: PortablePreferences;
   subjects: Subject[];
   notes: StoredNote[];
   quizzes: StoredQuiz[];
@@ -55,6 +56,7 @@ export interface StudyRepository {
   snapshot(): StudySnapshot;
   /** Replace-all import. Either the whole library swaps or nothing changes (M3 plan §6). */
   importPortable(value: PortableExport): Promise<PortableCounts>;
+  exportPortable(): string;
   /**
    * One operation (D8): prepend the Attempt and bump the Quiz's
    * `lastScore`/`timesPracticed`. Persists as a single snapshot write, so a
@@ -73,6 +75,8 @@ const EMPTY_SNAPSHOT: StudySnapshot = {
 
 export async function createStudyRepository(backend: StudyBackend): Promise<StudyRepository> {
   const loaded = await backend.load();
+  // Validate disk data too: a corrupt store must never masquerade as empty.
+  if (loaded) createPortableExport({ data: loaded, preferences: loaded.preferences ?? { theme: 'system' } });
   let current: StudySnapshot = loaded ?? EMPTY_SNAPSHOT;
 
   // Writes serialize through a tail promise: one persist in flight at a time,
@@ -121,9 +125,13 @@ export async function createStudyRepository(backend: StudyBackend): Promise<Stud
     snapshot() {
       return current;
     },
+    exportPortable() {
+      return serializePortableExport({ data: current, preferences: current.preferences ?? { theme: 'system' } });
+    },
     importPortable(value) {
       return enqueue(async () => {
-        const next = portableToLibrary(value);
+        serializePortableExport(value);
+        const next = portableToLibrary(createPortableExport(value));
         await backend.persist(next);
         current = next;
         return portableCounts(value);
@@ -134,6 +142,14 @@ export async function createStudyRepository(backend: StudyBackend): Promise<Stud
         const quiz = current.quizzes.find((candidate) => candidate.id === quizId);
         if (!quiz) {
           throw new Error(`recordDrillFinish: quiz ${quizId} not found`);
+        }
+        if (attempt.subjectId !== quiz.subjectId || attempt.type !== 'Quiz') {
+          throw new Error('Drill Attempt must belong to the Quiz Subject');
+        }
+        const existing = current.attempts.find((item) => item.id === attempt.id);
+        if (existing) {
+          if (JSON.stringify(existing) === JSON.stringify(attempt)) return;
+          throw new Error('Attempt ID already exists');
         }
         const next: StudySnapshot = {
           ...current,
@@ -148,6 +164,8 @@ export async function createStudyRepository(backend: StudyBackend): Promise<Stud
               : candidate,
           ),
         };
+        // Keep every committed library re-exportable, including after many Drills.
+        serializePortableExport({ data: next, preferences: next.preferences ?? { theme: 'system' } });
         await backend.persist(next);
         current = next;
       });
