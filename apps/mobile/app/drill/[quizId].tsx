@@ -264,7 +264,7 @@ function DrillRunner({ quiz, subject }: { quiz: StoredQuiz; subject: Subject }) 
           )}
           {saveState.kind === 'failed' && (
             <View style={styles.errorBox}>
-              <Text style={styles.danger}>Could not save: {saveState.message}</Text>
+              <Text style={styles.danger}>Could not save: {saveState.message}. Retry before leaving; this Attempt is not saved.</Text>
               <Pressable
                 accessibilityRole="button"
                 accessibilityLabel="Retry saving attempt"
@@ -279,6 +279,8 @@ function DrillRunner({ quiz, subject }: { quiz: StoredQuiz; subject: Subject }) 
             <Pressable
               accessibilityRole="button"
               accessibilityLabel="Restart drill"
+              disabled={saveState.kind !== 'saved'}
+              accessibilityState={{ disabled: saveState.kind !== 'saved' }}
               onPress={restart}
               style={({ pressed }) => [styles.button, pressed && styles.buttonPressed]}
             >

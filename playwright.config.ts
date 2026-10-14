@@ -4,6 +4,9 @@ export default defineConfig({
   use: { baseURL: 'http://127.0.0.1:4173', trace: 'retain-on-failure',
     launchOptions: process.env.CHROMIUM_EXECUTABLE ? { executablePath: process.env.CHROMIUM_EXECUTABLE, args: ['--no-sandbox', '--disable-dev-shm-usage'] } : {},
   },
-  projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
+  projects: [
+    { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
+    { name: 'mobile-chromium', use: { ...devices['Pixel 7'] } },
+  ],
   webServer: { command: 'node scripts/serve-web.mjs', url: 'http://127.0.0.1:4173', reuseExistingServer: !process.env.CI },
 });

@@ -6,6 +6,11 @@ user's phone;
 see [M0 device record](./M0-SETUP.md). Authentication is local to each computer —
 this document does not imply the current sandbox is signed into Expo.
 
+> Branch publication note (2026-10-14): workflow updates described here are
+> saved locally but not yet pushed: the GitHub App lacks Workflows permission.
+> Dispatch also returned HTTP 403. PR #48 contains the app code; a new APK is
+> still required. See the completion record before assuming the new gates ran.
+
 ## Project identity (verify before every build)
 
 Run every EAS/Expo command from **`apps/mobile`**, not the web repository root

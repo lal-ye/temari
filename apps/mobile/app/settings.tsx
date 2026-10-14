@@ -1,7 +1,7 @@
 import { useCallback, useRef, useState } from 'react';
 import { Platform, Text, TextInput, View } from 'react-native';
 import { useFocusEffect } from 'expo-router';
-import { aiErrorMessage, getProviderInfo } from '@temari/core';
+import { AiRequestError, aiErrorMessage, getProviderInfo } from '@temari/core';
 import { Screen, Button, ui } from '@/components/Screen';
 import { readKey, saveKey, deleteKey } from '@/src/settings/credentials';
 import { readModel, saveModel } from '@/src/settings/preferences';
@@ -35,7 +35,7 @@ export default function SettingsScreen() {
       if (alive.current) { setHasKey(Boolean(stored)); setKey(''); setStatus(message); }
     } catch (error) {
       recordDiagnostic('settings', 'storage');
-      if (alive.current) setStatus(aiErrorMessage(error));
+      if (alive.current) setStatus(error instanceof AiRequestError ? aiErrorMessage(error) : 'Settings storage failed. Nothing was sent. Reopen Settings and retry.');
     } finally { busy.current = false; if (alive.current) setSaving(false); }
   }
   return <Screen title="Settings">

@@ -107,9 +107,11 @@ dependencies land rarely and in one slice, to minimise development builds.
 
 ## Completion-era seams (2026-10-14)
 
-- `apps/mobile/src/platform/*`: native FileSystem/Sharing/confirmation vs browser
-  picker/download/confirmation; only the ContentResolver copy uses legacy FS for
-  Samsung content URIs. App-owned temporary copies are deleted in `finally`.
+- `apps/mobile/src/platform/*`: native FileSystem/Sharing vs browser
+  picker/download; only the ContentResolver copy uses legacy FS for
+  Samsung content URIs. App-owned import copies are deleted in `finally`. Export copies are unique
+  and retained for 24 hours before pruning on the next share, because Android
+  receiving apps can read after the share-sheet promise resolves.
 - `src/settings/credentials*`: SecureStore vs memory-only browser credentials;
   `preferences*` stores only non-secret model IDs.
 - `src/db/sqliteBackend.web.ts`: transactional IndexedDB; stale-tab writes fail.

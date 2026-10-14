@@ -16,7 +16,7 @@ import {
 import { aiErrorMessage, aiFailure, type AiPhase } from '@temari/core';
 import { aiClient } from '@/src/ai/client';
 import { phaseText } from '@/src/ai/useAiOperation';
-import { confirmAction } from '@/src/platform/confirm';
+import { useConfirmation } from './useConfirmation';
 import { recordDiagnostic } from '@/src/diagnostics';
 
 /**
@@ -34,15 +34,6 @@ function linkHost(url: string): string {
   return match ? match[0].slice('https://'.length) : url;
 }
 
-/**
- * The ONE confirmation, native (the checkpoint-B rule): `Alert.alert` —
- * native, accessible, modal, free. Confirming hands the URL to the operating
- * system outside the reader. Never `canOpenURL`: on Android 11+ it returns
- * false negatives without package-visibility entries.
- */
-function confirmOpenLink(url: string): Promise<boolean> {
-  return confirmAction('Open this link outside Temari?', `${linkHost(url)}\n${url.slice(0, 160)}\n\nTemari hands the link to another app.`);
-}
 
 export default function NoteReaderHost({
   title,
@@ -54,6 +45,7 @@ export default function NoteReaderHost({
   noteId: string;
 }) {
   const insets = useSafeAreaInsets();
+  const { confirm, dismiss, dialog } = useConfirmation();
   const [panel, setPanel] = useState<ExplainSessionState>({ kind: 'idle' });
   const [aiPhase, setAiPhase] = useState<AiPhase>('connecting');
   const [linkPanel, setLinkPanel] = useState<OpenLinkEvent>({ kind: 'idle' });
@@ -74,7 +66,7 @@ export default function NoteReaderHost({
       isAlive: () => aliveRef.current,
       isFocused: () => focusedRef.current,
       dispatch: setPanel,
-      confirm: (request, signal) => confirmAction('Explain with Gemini?', `Send “${request.term}” and up to ${request.context.length} characters of surrounding text to Google using your saved key? Provider charges may apply. Cancelling after sending does not guarantee the provider stops or avoids charging.`, signal),
+      confirm: (request, signal) => confirm('Explain with Gemini?', `Send “${request.term}” and up to ${request.context.length} characters of surrounding text to Google using your saved key? Provider charges may apply. Cancelling after sending does not guarantee the provider stops or avoids charging.`, signal, 'Send to Gemini'),
       run: async (request, signal) => {
         const result = await aiClient.explainTerm(request.term, request.context, { signal, onPhase: (phase) => { if (!signal.aborted) setAiPhase(phase); } });
         recordDiagnostic('explain', 'success');
@@ -86,7 +78,7 @@ export default function NoteReaderHost({
   const linkRef = useRef<OpenLinkHandler | null>(null);
   if (linkRef.current === null) {
     linkRef.current = createOpenLinkHandler({
-      confirm: confirmOpenLink,
+      confirm: (url) => confirm('Open this link outside Temari?', `${linkHost(url)}\n${url.slice(0, 160)}\n\nTemari hands the link to another app.`, undefined, 'Open link'),
       open: (url) => Linking.openURL(url),
       dispatch: setLinkPanel,
     });
@@ -100,12 +92,13 @@ export default function NoteReaderHost({
         // Blur and unmount both land here: pending work is invalidated (a
         // late completion must not reopen anything) and the guards clear, so
         // a fresh submission always works afterwards.
+        dismiss();
         aliveRef.current = false;
         focusedRef.current = false;
         explainRef.current?.invalidate();
         linkRef.current?.invalidate();
       };
-    }, []),
+    }, [dismiss]),
   );
 
   // Stable bridge actions: empty deps, reading refs only.
@@ -128,6 +121,7 @@ export default function NoteReaderHost({
 
   return (
     <View style={styles.host}>
+      {dialog}
       <ReaderAssetSpikeDOM
         title={title}
         content={content}

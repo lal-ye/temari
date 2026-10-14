@@ -48,26 +48,42 @@ export function createGeminiClient(deps: {
     if (options.signal?.aborted) abort();
     const timeout = setTimeout(() => { timedOut = true; abort(); }, deps.timeoutMs ?? 90_000);
     const slow = setTimeout(() => options.onPhase?.('slow'), deps.slowMs ?? 5_000);
+    // Some native I/O (including key stores) cannot actually be interrupted.
+    // Bound local waiting even if an adapter ignores AbortSignal; late work
+    // cannot advance to the next request after this race has rejected.
+    async function bounded<V>(pending: Promise<V>): Promise<V> {
+      let onAbort!: () => void;
+      const cancelled = new Promise<never>((_, reject) => {
+        onAbort = () => reject(new AiRequestError(timedOut ? 'timeout' : 'cancelled'));
+        controller.signal.addEventListener('abort', onAbort, { once: true });
+        if (controller.signal.aborted) onAbort();
+      });
+      try { return await Promise.race([pending, cancelled]); }
+      finally { controller.signal.removeEventListener('abort', onAbort); }
+    }
     try {
       if (controller.signal.aborted) throw new AiRequestError('cancelled');
       let credentials: GeminiCredentials;
-      try { credentials = await deps.credentials(); } catch { throw new AiRequestError('storage'); }
+      try { credentials = await bounded(deps.credentials()); } catch (error) {
+        if (error instanceof AiRequestError) throw error;
+        throw new AiRequestError('storage');
+      }
       if (!credentials.apiKey?.trim()) throw new AiRequestError('missing-key');
       if (!/^[a-zA-Z0-9._-]{1,120}$/.test(credentials.model)) throw new AiRequestError('unknown-model');
       options.onPhase?.('connecting');
       const request = async (method: 'GET' | 'POST', body?: unknown): Promise<unknown> => {
         if (controller.signal.aborted) throw new AiRequestError(timedOut ? 'timeout' : 'cancelled');
-        const response = await requestFetch(`${endpoint}/models/${encodeURIComponent(credentials.model)}${method === 'POST' ? ':generateContent' : ''}`, {
+        const response = await bounded(requestFetch(`${endpoint}/models/${encodeURIComponent(credentials.model)}${method === 'POST' ? ':generateContent' : ''}`, {
           method, signal: controller.signal, redirect: 'error',
           headers: { 'Content-Type': 'application/json', 'x-goog-api-key': credentials.apiKey! },
           ...(body === undefined ? {} : { body: JSON.stringify(body) }),
-        });
+        }));
         if (!response.ok) {
           // Never consume/echo provider error bodies, which can reflect secrets.
           throw new AiRequestError(response.status === 400 || response.status === 401 || response.status === 403 ? 'bad-key'
             : response.status === 404 ? 'unknown-model' : response.status === 429 ? 'rate-limited' : 'provider');
         }
-        try { return await response.json(); } catch { throw new AiRequestError('invalid-response'); }
+        try { return await bounded(response.json()); } catch { throw new AiRequestError('invalid-response'); }
       };
       const result = await operation({ signal: controller.signal, request });
       if (controller.signal.aborted) throw new AiRequestError(timedOut ? 'timeout' : 'cancelled');

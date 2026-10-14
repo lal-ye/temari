@@ -76,6 +76,26 @@ describe('direct Gemini BYOK', () => {
     await vi.advanceTimersByTimeAsync(11); expect(onPhase).toHaveBeenCalledWith('slow');
     await vi.advanceTimersByTimeAsync(100); await rejected;
   });
+  it('bounds local waiting even when credential storage cannot be interrupted', async () => {
+    vi.useFakeTimers();
+    const fetch = vi.fn<typeof globalThis.fetch>();
+    let resolveKey!: (value: Awaited<ReturnType<typeof credentials>>) => void;
+    const client = createGeminiClient({ credentials: () => new Promise(resolve => { resolveKey = resolve; }), fetch, timeoutMs: 100 });
+    const pending = client.checkConnection();
+    const rejected = expect(pending).rejects.toMatchObject({ code: 'timeout' });
+    await vi.advanceTimersByTimeAsync(101); await rejected;
+    resolveKey(await credentials()); await Promise.resolve();
+    expect(fetch).not.toHaveBeenCalled();
+  });
+  it('times out a fetch adapter that ignores abort without silently retrying', async () => {
+    vi.useFakeTimers();
+    const fetch = vi.fn<typeof globalThis.fetch>().mockImplementation(async () => new Promise(() => {}));
+    const client = createGeminiClient({ credentials, fetch, timeoutMs: 100 });
+    const pending = client.checkConnection();
+    const rejected = expect(pending).rejects.toMatchObject({ code: 'timeout' });
+    await vi.advanceTimersByTimeAsync(101); await rejected;
+    expect(fetch).toHaveBeenCalledTimes(1);
+  });
   it('validates PDF magic and bounds before sending any data', () => {
     expect(() => validatePdf('JVBERi0xLjQK', 9)).not.toThrow();
     for (const [data, size] of [['JVBERi0xLjQK', PDF_MAX_BYTES + 1], ['not-a-pdf', 9], ['JVBERi0xLjQK', 10]] as const) {

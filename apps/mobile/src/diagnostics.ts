@@ -1,3 +1,4 @@
+import * as Application from 'expo-application';
 import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 import type { AiFailure } from '@temari/core';
@@ -10,6 +11,6 @@ export function recordDiagnostic(operation: Operation, category: typeof events[n
 }
 export function diagnosticReport(): string {
   return JSON.stringify({ format: 'temari-diagnostics-v1', createdAt: new Date().toISOString(),
-    platform: Platform.OS, osVersion: Platform.Version, appVersion: Constants.expoConfig?.version,
-    build: Constants.expoConfig?.android?.versionCode, commit: Constants.expoConfig?.extra?.buildCommit ?? 'local', events }, null, 2);
+    platform: Platform.OS, osVersion: Platform.Version, appVersion: Application.nativeApplicationVersion ?? Constants.expoConfig?.version,
+    build: Application.nativeBuildVersion, commit: Constants.expoConfig?.extra?.buildCommit ?? 'local', events }, null, 2);
 }

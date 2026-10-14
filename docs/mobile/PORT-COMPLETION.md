@@ -1,6 +1,14 @@
 # Android + Expo web completion record
 
-Updated 2026-10-14. This records **implementation and automated evidence**, not a
+Updated 2026-10-14. GitHub publication note: application changes are in PR #48.
+The improved `.github/workflows` commit remains local because the Arena GitHub
+App lacks Workflows permission; workflow dispatch also returned HTTP 403.
+No new signed APK has been produced in this session. Existing PR CI passes,
+but it does not yet run the added browser/adapter gates. Reconnect/update GitHub
+permissions to push the workflow commit and dispatch the build, or have an
+owner apply it. Never share access tokens in chat.
+
+This records **implementation and automated evidence**, not a
 physical-device sign-off. Scope is the included features in Android plan §4,
 not its explicitly excluded full Exam/Planner/analytics/editor products.
 
@@ -42,12 +50,14 @@ bunx playwright install --with-deps chromium
 bun run test:web
 ```
 
-Recorded locally: 200 package tests, 14 app adapter tests, four Chromium end-to-end
-flows; typechecks, boundary checks, Android Hermes/DOM export and web export pass.
+Recorded locally: 202 package tests, 19 app adapter tests, five Chromium end-to-end
+flows in both desktop and mobile viewports (10 browser tests); typechecks, boundary checks, Android Hermes/DOM export and web export pass.
 Browser tests exercise offline reload + reader + Drill, restart, credential-free
 export, invalid/cancelled imports, memory-only keys, actual iframe Explain bridge
 with a mocked Provider, explicit PDF send and redacted diagnostics. They do not
-contact paid AI. Android export verifies all 24 embedded font faces.
+contact paid AI. Android export verifies all 24 embedded font faces. CNG Android prebuild also
+passed; its manifest points to SecureStore backup/cloud-transfer exclusion
+rules and disables expo-updates. This is config evidence, not an APK install.
 
 In a network-restricted sandbox Chromium was supplied via an npm-distributed binary
 and its bundled shared libraries; CI uses Playwright's supported browser installer.

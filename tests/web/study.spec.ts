@@ -81,8 +81,8 @@ test('browser key is memory-only; readiness and real Explain bridge work outside
     const selection = document.getSelection()!; selection.removeAllRanges(); selection.addRange(range);
     document.dispatchEvent(new Event('selectionchange'));
   });
-  page.once('dialog', dialog => dialog.accept());
   await frame.getByRole('button', { name: 'Explain term', exact: true }).click();
+  await page.getByRole('button', { name: 'Send to Gemini', exact: true }).click();
   await expect(page.getByText('ATP carries energy in cells.', { exact: true })).toBeVisible();
   expect(requests.filter(request => request.method === 'POST')).toHaveLength(1);
   expect(requests.every(request => !request.body?.includes('fake-test-key'))).toBe(true);
@@ -145,8 +145,25 @@ test('invalid imports and a denied Explain leave local data and keys untouched',
     document.getSelection()!.removeAllRanges(); document.getSelection()!.addRange(range);
     document.dispatchEvent(new Event('selectionchange'));
   });
-  page.once('dialog', dialog => dialog.dismiss());
   await reader.getByRole('button', { name: 'Explain term', exact: true }).click();
+  await page.getByRole('button', { name: 'Cancel', exact: true }).click();
   await expect(page.getByText('GEMINI · WORKING', { exact: true })).toHaveCount(0);
   expect(network).toBe(0);
+});
+
+test('reader sandbox cannot access app storage or send network requests', async ({ page }) => {
+  await importSample(page);
+  await page.getByRole('button', { name: 'Open subject Cellular Biology' }).click();
+  await page.getByRole('button', { name: /Cellular respiration/ }).click();
+  const reader = page.frameLocator('iframe[title="Note reader"]');
+  const text = reader.getByText(/ATP is produced/);
+  await expect(text).toBeVisible();
+  const access = await text.evaluate(async () => {
+    let storage = 'allowed';
+    try { void parent.localStorage.length; } catch { storage = 'blocked'; }
+    let network = 'allowed';
+    try { await fetch('https://example.com/reader-must-not-connect'); } catch { network = 'blocked'; }
+    return { storage, network };
+  });
+  expect(access).toEqual({ storage: 'blocked', network: 'blocked' });
 });
