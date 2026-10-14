@@ -4,10 +4,11 @@
   "version": "0.0.0",
   "type": "module",
   "exports": {
-    "./*": {
-      "types": ["./*.ts", "./*.tsx"],
-      "default": "./*"
-    }
+    "./NoteContent": "./NoteContent.tsx",
+    "./NoteReader": "./NoteReader.tsx",
+    "./bridge": "./bridge.ts",
+    "./session/*": "./session/*.ts",
+    "./*.css": "./*.css"
   },
   "dependencies": {
     "lucide-react": "^0.546.0",

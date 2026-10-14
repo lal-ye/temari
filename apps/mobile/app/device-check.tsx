@@ -8,19 +8,19 @@ export default function DeviceCheckScreen() {
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>
-        <Text style={styles.eyebrow}>M0 · DEVICE CHECK</Text>
+        <Text style={styles.eyebrow}>TEMARI · DEVICE CHECK</Text>
         <Text style={styles.title}>Back navigation works.</Text>
         <Text style={styles.body}>
-          Use the Android system Back button or this control to return to the hello screen. This route is only a
+          Use the Android system Back button or this control to return to the Library. This route is only a
           native navigation and safe-area smoke test.
         </Text>
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="Go back to hello screen"
-          onPress={() => router.back()}
+          accessibilityLabel="Go back to Library"
+          onPress={() => router.canGoBack() ? router.back() : router.replace('/')}
           style={({ pressed }) => [styles.button, pressed && styles.buttonPressed]}
         >
-          <Text style={styles.buttonText}>Back to hello</Text>
+          <Text style={styles.buttonText}>Back to Library</Text>
         </Pressable>
       </View>
     </SafeAreaView>

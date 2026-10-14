@@ -104,3 +104,23 @@ bun run check:mobile           # typecheck:mobile + CI=1 expo export + reader ex
 Run `expo`/`eas` from `apps/mobile` (see
 [`docs/mobile/EAS-BUILD.md`](./docs/mobile/EAS-BUILD.md)). Native
 dependencies land rarely and in one slice, to minimise development builds.
+
+## Completion-era seams (2026-10-14)
+
+- `apps/mobile/src/platform/*`: native FileSystem/Sharing vs browser
+  picker/download; only the ContentResolver copy uses legacy FS for
+  Samsung content URIs. App-owned import copies are deleted in `finally`. Export copies are unique
+  and retained for 24 hours before pruning on the next share, because Android
+  receiving apps can read after the share-sheet promise resolves.
+- `src/settings/credentials*`: SecureStore vs memory-only browser credentials;
+  `preferences*` stores only non-secret model IDs.
+- `src/db/sqliteBackend.web.ts`: transactional IndexedDB; stale-tab writes fail.
+- `packages/core/src/ai/geminiClient.ts`: direct Gemini readiness/Explain/PDF,
+  injected credentials/fetch; never raw errors or automatic POST retries.
+- `apps/mobile/reader-web/entry.tsx`: same sealed reader in an opaque-origin frame.
+  Root postinstall generates its ignored HTML asset.
+- `vitest.adapters.config.ts`: explicitly scoped app adapter tests (no RN runtime);
+  `tests/web`: Playwright against the production export; `tests/android`: manual
+  Maestro smoke flow for a disposable install. Run all before release.
+
+See ADR-0015 and `docs/mobile/PORT-COMPLETION.md` for scope and acceptance.

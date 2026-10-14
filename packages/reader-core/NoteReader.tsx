@@ -87,7 +87,7 @@ function deriveCandidate(container: HTMLElement | null): SelectionCandidate | nu
  * exact production pipeline.
  *
  * Phase 4.2: selection (debounced, container-scoped, single-block, 2..60
- * chars) proposes a candidate; the fixed-bottom mock-labeled chip runs it
+ * chars) proposes a candidate; the fixed-bottom chip runs it
  * through `buildExplainRequest` into the host's `onExplain` action. Diagram
  * node taps join the same funnel. `onOpenLink` is the native-action link
  * path (one native confirmation, §7.3).
@@ -196,7 +196,7 @@ export function NoteReader({ title, content, development, linkMode = 'disabled',
    * here — the press collapses the selection); the builder owns bounds and
    * the 302→300 context clamp. Failures surface on the host side.
    */
-  const runMockExplain = () => {
+  const runExplain = () => {
     const current = candidate;
     setCandidate(null);
     if (!current || !noteId || !onExplain) return;
@@ -217,19 +217,19 @@ export function NoteReader({ title, content, development, linkMode = 'disabled',
   const failed = violations.length > 0 || Object.values(fonts).some(value => value.startsWith('FAILED'));
   return <main className="reader-lab">
     <header>
-      <span className="reader-eyebrow">M2 · Reader / kitchen-sink fixture</span>
+      <span className="reader-eyebrow">ተማሪ · NOTE</span>
       <h1>{title}</h1>
-      <p className="reader-intro">One Note, two hosts. Local fonts, math and editorial SVG. No storage, API calls or real credentials. Select a phrase for the mock Explain action; approved HTTPS links hand off through the host action.</p>
+      <p className="reader-intro">Select a phrase or tap a diagram term to request an explanation. Temari asks before sending text to a Provider.</p>
     </header>
-    <aside className="reader-status" data-failed={failed} role="status" aria-live="polite">
+    {(development || failed) && <aside className="reader-status" data-failed={failed} role="status" aria-live="polite">
       <strong>{failed ? 'Asset/security check needs attention' : 'Bundled font checks'}</strong>
       <ul>{fontChecks.map(check => <li key={check.label}>{check.label}: {fonts[check.label] ?? 'checking…'}</li>)}</ul>
       <p>CSP: {ready ? 'installed before Note mount' : 'installing…'} · {development ? 'development / local server permitted' : 'release / network connections blocked'}</p>
       {violations.length > 0 && <p>Blocked resource directives: {violations.join(', ')}. Inspect locally; do not paste sensitive URLs.</p>}
       <p>Loaded fonts are not proof of offline operation. Verify this screen in an installed preview APK, after force-stop, with airplane mode on and Wi-Fi off.</p>
-    </aside>
+    </aside>}
     {ready ? (
-      <article aria-label="Kitchen-sink Note" ref={contentRef}>
+      <article aria-label="Study Note" ref={contentRef}>
         <NoteContent
           content={content}
           noteTitle={title}
@@ -242,14 +242,14 @@ export function NoteReader({ title, content, development, linkMode = 'disabled',
     ) : <p>Preparing protected reader…</p>}
     {/* Selection chip (plan §8.1): a FIXED bottom bar inside the DOM, never a
         positioned popover — Android's floating ActionMode toolbar owns the
-        space above a selection in a WebView. The action is labeled mock (D3). */}
+        space above a selection in a WebView. The host owns confirmation and generation. */}
     {candidate && noteId && onExplain && (
       <div className="reader-chip-bar" role="status">
         <span className="reader-chip-term">“{candidate.term}”</span>
-        <span className="reader-chip-hint">Run a <strong>mock</strong> explanation (checkpoint B — no network, no AI)?</span>
+        <span className="reader-chip-hint">Ask Temari to explain this term? You will confirm before any text is sent.</span>
         <span className="reader-chip-spacer" />
         <button type="button" className="reader-chip-dismiss" onClick={() => setCandidate(null)}>Not now</button>
-        <button type="button" className="reader-chip-run" onClick={runMockExplain}>Run mock explanation</button>
+        <button type="button" className="reader-chip-run" onClick={runExplain}>Explain term</button>
       </div>
     )}
   </main>;

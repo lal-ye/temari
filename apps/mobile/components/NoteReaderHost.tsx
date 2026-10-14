@@ -1,5 +1,5 @@
 import { useCallback, useRef, useState } from 'react';
-import { Alert, Linking, Pressable, StyleSheet, Text, View } from 'react-native';
+import { BackHandler, Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect } from 'expo-router';
 import ReaderAssetSpikeDOM from './ReaderAssetSpikeDOM';
@@ -13,7 +13,11 @@ import {
   type OpenLinkEvent,
   type OpenLinkHandler,
 } from '@temari/reader-core/session/createOpenLinkHandler';
-import type { ExplainRequest } from '@temari/reader-core/bridge';
+import { aiErrorMessage, aiFailure, type AiPhase } from '@temari/core';
+import { aiClient } from '@/src/ai/client';
+import { phaseText } from '@/src/ai/useAiOperation';
+import { useConfirmation } from './useConfirmation';
+import { recordDiagnostic } from '@/src/diagnostics';
 
 /**
  * Library-backed reader host (M3 plan §9): the same 'use dom' seam
@@ -24,38 +28,12 @@ import type { ExplainRequest } from '@temari/reader-core/bridge';
  * portable-legacy-diagram fixture proves it on device.
  */
 
-/** Mock until M4: latency plus canned text, no credentials/network/AI. */
-async function mockExplain(request: ExplainRequest): Promise<string> {
-  await new Promise((resolve) => setTimeout(resolve, 800));
-  return `MOCK · no AI in this milestone — “${request.term}”: ${request.context.slice(0, 120)}`;
-}
-
 /** The parsed host, shown prominently; the full URL truncated below. */
 function linkHost(url: string): string {
   const match = /^https:\/\/[^/?#]+/i.exec(url);
   return match ? match[0].slice('https://'.length) : url;
 }
 
-/**
- * The ONE confirmation, native (the checkpoint-B rule): `Alert.alert` —
- * native, accessible, modal, free. Confirming hands the URL to the operating
- * system outside the reader. Never `canOpenURL`: on Android 11+ it returns
- * false negatives without package-visibility entries.
- */
-function confirmOpenLink(url: string): Promise<boolean> {
-  return new Promise((resolve) => {
-    const truncated = url.length > 96 ? `${url.slice(0, 96)}…` : url;
-    Alert.alert(
-      'Open this link outside Temari?',
-      `${linkHost(url)}\n${truncated}\n\nTemari hands the link to another app on your device.`,
-      [
-        { text: 'Cancel', style: 'cancel', onPress: () => resolve(false) },
-        { text: 'Open', onPress: () => resolve(true) },
-      ],
-      { cancelable: true, onDismiss: () => resolve(false) },
-    );
-  });
-}
 
 export default function NoteReaderHost({
   title,
@@ -67,7 +45,9 @@ export default function NoteReaderHost({
   noteId: string;
 }) {
   const insets = useSafeAreaInsets();
+  const { confirm, dismiss, dialog } = useConfirmation();
   const [panel, setPanel] = useState<ExplainSessionState>({ kind: 'idle' });
+  const [aiPhase, setAiPhase] = useState<AiPhase>('connecting');
   const [linkPanel, setLinkPanel] = useState<OpenLinkEvent>({ kind: 'idle' });
 
   // ONE lifecycle mechanism (the M2 rule): useFocusEffect covers focus/blur
@@ -86,13 +66,19 @@ export default function NoteReaderHost({
       isAlive: () => aliveRef.current,
       isFocused: () => focusedRef.current,
       dispatch: setPanel,
-      run: mockExplain,
+      confirm: (request, signal) => confirm('Explain with Gemini?', `Send “${request.term}” and up to ${request.context.length} characters of surrounding text to Google using your saved key? Provider charges may apply. Cancelling after sending does not guarantee the provider stops or avoids charging.`, signal, 'Send to Gemini'),
+      run: async (request, signal) => {
+        const result = await aiClient.explainTerm(request.term, request.context, { signal, onPhase: (phase) => { if (!signal.aborted) setAiPhase(phase); } });
+        recordDiagnostic('explain', 'success');
+        return result;
+      },
+      failureMessage: (error) => { recordDiagnostic('explain', aiFailure(error)); return aiErrorMessage(error); },
     });
   }
   const linkRef = useRef<OpenLinkHandler | null>(null);
   if (linkRef.current === null) {
     linkRef.current = createOpenLinkHandler({
-      confirm: confirmOpenLink,
+      confirm: (url) => confirm('Open this link outside Temari?', `${linkHost(url)}\n${url.slice(0, 160)}\n\nTemari hands the link to another app.`, undefined, 'Open link'),
       open: (url) => Linking.openURL(url),
       dispatch: setLinkPanel,
     });
@@ -106,12 +92,13 @@ export default function NoteReaderHost({
         // Blur and unmount both land here: pending work is invalidated (a
         // late completion must not reopen anything) and the guards clear, so
         // a fresh submission always works afterwards.
+        dismiss();
         aliveRef.current = false;
         focusedRef.current = false;
         explainRef.current?.invalidate();
         linkRef.current?.invalidate();
       };
-    }, []),
+    }, [dismiss]),
   );
 
   // Stable bridge actions: empty deps, reading refs only.
@@ -126,8 +113,15 @@ export default function NoteReaderHost({
     linkRef.current?.invalidate();
   }, []);
 
+  useFocusEffect(useCallback(() => {
+    if (panel.kind === 'idle' && linkPanel.kind === 'idle') return;
+    const subscription = BackHandler.addEventListener('hardwareBackPress', () => { closePanel(); return true; });
+    return () => subscription.remove();
+  }, [panel.kind, linkPanel.kind, closePanel]));
+
   return (
     <View style={styles.host}>
+      {dialog}
       <ReaderAssetSpikeDOM
         title={title}
         content={content}
@@ -141,14 +135,14 @@ export default function NoteReaderHost({
         }}
       />
       {(panel.kind !== 'idle' || linkPanel.kind !== 'idle') && (
-        <View style={[styles.panel, { paddingBottom: Math.max(insets.bottom, 12) }]} accessibilityViewIsModal>
+        <ScrollView style={styles.panel} contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 14, paddingBottom: Math.max(insets.bottom, 12), gap: 6 }} accessibilityViewIsModal>
           {panel.kind !== 'idle' ? (
             <>
-              <Text style={styles.panelEyebrow}>{panel.kind === 'done' ? 'MOCK EXPLANATION' : panel.kind === 'pending' ? 'MOCK · RUNNING' : 'REQUEST REJECTED'}</Text>
+              <Text style={styles.panelEyebrow}>{panel.kind === 'done' ? 'GEMINI EXPLANATION' : panel.kind === 'confirming' ? 'AWAITING YOUR CONFIRMATION' : panel.kind === 'pending' ? 'GEMINI · WORKING' : 'REQUEST NOT COMPLETED'}</Text>
               {panel.kind === 'pending' && (
                 <>
                   <Text style={styles.panelTerm}>{panel.request.term}</Text>
-                  <Text style={styles.panelBody}>Running the mock explanation… (no network, no AI in this milestone)</Text>
+                  <Text style={styles.panelBody}>{phaseText[aiPhase]}</Text>
                 </>
               )}
               {panel.kind === 'done' && (
@@ -159,7 +153,7 @@ export default function NoteReaderHost({
                 </>
               )}
               {panel.kind === 'error' && (
-                <Text style={styles.panelBody}>The mock action did not start: {panel.reason}.</Text>
+                <Text style={styles.panelBody}>{panel.message ?? `The request was rejected: ${panel.reason}.`}</Text>
               )}
             </>
           ) : (
@@ -177,9 +171,9 @@ export default function NoteReaderHost({
             </>
           )}
           <Pressable accessibilityRole="button" accessibilityLabel="Close result panel" onPress={closePanel} style={styles.panelClose}>
-            <Text style={styles.panelCloseText}>Close</Text>
+            <Text style={styles.panelCloseText}>{panel.kind === 'pending' ? 'Cancel request' : 'Close'}</Text>
           </Pressable>
-        </View>
+        </ScrollView>
       )}
     </View>
   );
@@ -191,7 +185,7 @@ const styles = StyleSheet.create({
   panel: {
     position: 'absolute', left: 0, right: 0, bottom: 0,
     backgroundColor: '#1d2433', borderTopWidth: 2, borderTopColor: '#2457a5',
-    paddingHorizontal: 16, paddingTop: 14, gap: 6,
+    maxHeight: '65%',
   },
   panelEyebrow: { color: '#f0b429', fontSize: 11, fontWeight: '700', letterSpacing: 1.1 },
   panelTerm: { color: '#fffaf0', fontSize: 17, fontWeight: '700' },

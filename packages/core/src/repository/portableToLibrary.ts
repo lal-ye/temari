@@ -14,6 +14,7 @@ import type { StudySnapshot } from './studyRepository';
 export function portableToLibrary(value: PortableExport): StudySnapshot {
   const data = value.data;
   return {
+    preferences: deepCopy(value.preferences),
     subjects: deepCopy(data.subjects),
     notes: deepCopy(data.notes),
     quizzes: deepCopy(data.quizzes),

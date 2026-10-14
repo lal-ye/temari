@@ -209,20 +209,49 @@ describe('StudyRepository', () => {
     expect(repository.listAttempts('subject-1')).toHaveLength(1);
   });
 
-  it('keeps two finishes distinct and newest-first even with same-millisecond ids', async () => {
-    // The web bug class (§12): att-Date.now collided. Ids are injected (D6), but the
-    // repository must still keep both records and order them by insertion.
+  it('rejects a colliding Attempt id without corrupting re-export', async () => {
     const repository = await createStudyRepository(emptyBackend());
     await repository.importPortable(sampleExport());
-
     await repository.recordDrillFinish(drillAttempt('attempt-same', 100, 1), 'quiz-1');
-    await repository.recordDrillFinish(drillAttempt('attempt-same', 0, 0), 'quiz-1');
+    await expect(repository.recordDrillFinish(drillAttempt('attempt-same', 0, 0), 'quiz-1')).rejects.toThrow('already exists');
+    expect(repository.getQuiz('subject-1', 'quiz-1')?.timesPracticed).toBe(1);
+    expect(() => repository.exportPortable()).not.toThrow();
+  });
 
-    const attempts = repository.listAttempts('subject-1');
-    expect(attempts.map((attempt) => attempt.id)).toEqual(['attempt-same', 'attempt-same', 'attempt-1']);
-    expect(attempts[0].overallScore).toBe(0); // latest first
-    expect(repository.getQuiz('subject-1', 'quiz-1')?.timesPracticed).toBe(2);
-    expect(repository.getQuiz('subject-1', 'quiz-1')?.lastScore).toBe(0);
+  it('idempotently absorbs retries of the identical Attempt', async () => {
+    const backend = recordingBackend();
+    const repository = await createStudyRepository(backend);
+    await repository.importPortable(sampleExport());
+    const attempt = drillAttempt('once', 100, 1);
+    await Promise.all([repository.recordDrillFinish(attempt, 'quiz-1'), repository.recordDrillFinish(attempt, 'quiz-1')]);
+    expect(backend.snapshots).toHaveLength(2); // import + finish
+    expect(repository.getQuiz('subject-1', 'quiz-1')?.timesPracticed).toBe(1);
+  });
+
+  it('exports preferences and every collection after restart and a device-created Attempt', async () => {
+    const backend = createInMemoryBackend();
+    const repository = await createStudyRepository(backend);
+    await repository.importPortable(sampleExport());
+    await repository.recordDrillFinish(drillAttempt('new-attempt', 100, 1), 'quiz-1');
+    const restored = await createStudyRepository(backend);
+    const exported = JSON.parse(restored.exportPortable());
+    expect(exported.preferences).toEqual(sampleExport().preferences);
+    expect(exported.data.tasks).toEqual(sampleExport().data.tasks);
+    expect(exported.data.attempts[0].id).toBe('new-attempt');
+    const target = await createStudyRepository(createInMemoryBackend());
+    await target.importPortable(exported);
+    expect(target.snapshot()).toEqual(restored.snapshot());
+  });
+
+  it('rejects corrupt persisted data instead of displaying an empty Library', async () => {
+    await expect(createStudyRepository({ load: async () => ({ subjects: 'bad' } as unknown as StudySnapshot), persist: async () => {} })).rejects.toThrow();
+  });
+
+  it('rejects a cross-Subject Attempt before writing', async () => {
+    const repository = await createStudyRepository(emptyBackend());
+    await repository.importPortable(sampleExport());
+    await expect(repository.recordDrillFinish({ ...drillAttempt('cross', 100, 1), subjectId: 'other' }, 'quiz-1')).rejects.toThrow('Subject');
+    expect(repository.listAttempts('subject-1')).toHaveLength(1);
   });
 
   it('serializes concurrent finishes so neither write is lost', async () => {

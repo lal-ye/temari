@@ -1,10 +1,15 @@
 # EAS builds for the Android prototype
 
-Updated 2026-10-02: APK builds are dispatched by the `Android APK` workflow
+Updated 2026-10-14: APK builds are dispatched by the `Android APK` workflow
 (see [CI builds](#ci-builds)). A fresh development APK has built and run on the
 user's phone;
 see [M0 device record](./M0-SETUP.md). Authentication is local to each computer —
 this document does not imply the current sandbox is signed into Expo.
+
+> Branch publication note (2026-10-14): workflow updates described here are
+> saved locally but not yet pushed: the GitHub App lacks Workflows permission.
+> Dispatch also returned HTTP 403. PR #48 contains the app code; a new APK is
+> still required. See the completion record before assuming the new gates ran.
 
 ## Project identity (verify before every build)
 
@@ -28,13 +33,13 @@ bun run check:reader
 cd apps/mobile
 bunx expo install --check
 bunx expo-modules-autolinking resolve --platform android
-bunx eas-cli@latest whoami
-bunx eas-cli@latest project:info
+bunx eas-cli@24.13.0 whoami
+bunx eas-cli@24.13.0 project:info
 ```
 
-If not authenticated, use `bunx eas-cli@latest login --browser`. Verify the project
+If not authenticated, use `bunx eas-cli@24.13.0 login --browser`. Verify the project
 name and ID above, not a `react-example` project. Only when repairing a missing
-link, use `bunx eas-cli@latest init --id d714fc77-cb03-4a67-8899-2620e52b5b63`.
+link, use `bunx eas-cli@24.13.0 init --id d714fc77-cb03-4a67-8899-2620e52b5b63`.
 Review `git diff -- app.json eas.json package.json`. Never blindly force a new link.
 
 ## Profiles
@@ -47,10 +52,10 @@ Review `git diff -- app.json eas.json package.json`. Never blindly force a new l
 
 ```sh
 # Development binary, when native dependencies change:
-bunx eas-cli@latest build --platform android --profile development
+bunx eas-cli@24.13.0 build --platform android --profile development
 
 # Offline gate:
-bunx eas-cli@latest build --platform android --profile preview
+bunx eas-cli@24.13.0 build --platform android --profile preview
 ```
 
 Use `--clear-cache` for a suspected stale native build (as in the ExpoLinking repair),
@@ -67,11 +72,13 @@ SDK 57). Gradle success alone does not establish module inclusion or runtime suc
 
 The commands in [Profiles](#profiles) and [Install and launch](#install-and-launch)
 are the manual path. Routine builds go through GitHub Actions instead, and both
-paths use `--local`, so neither one touches the EAS build queue or EAS compute
+the workflow uses `--local`, so it does not touch the EAS build queue or EAS compute
 quota — EAS is contacted only for the project existence check and managed signing
 credentials. This repository is public, so GitHub-hosted runner minutes are free.
 
-Two workflows:
+The dispatcher first calls the reusable CI workflow (unit/adapter/browser tests, typechecks and Android/web exports). Failed gates block both APK profiles. Java 17, NDK 27.1.12297006 and EAS CLI 24.13.0 are pinned; preview version codes auto-increment, OTA is disabled. Artifacts include SHA-256 and commit/profile metadata, after signature verification.
+
+Two APK workflows:
 
 - `.github/workflows/_android-apk.yml` — reusable builder. Takes a `profile`
   (from `apps/mobile/eas.json`) and an `artifact` name; receives `EXPO_TOKEN` as
@@ -110,7 +117,7 @@ forked PR runs, so an APK build there would have no credentials.
 ## Install and launch
 
 Download from the correct build page and verify its profile/build ID/timestamp.
-Uninstall stale prototype binaries before testing. On a physical phone, use the
+Export a backup first. Prefer an in-place update signed by the existing key; uninstalling deletes the Library and SecureStore credentials. On a physical phone, use the
 APK download or `adb install /path/to/new.apk`; do not confuse emulator install
 commands with physical-device testing.
 
@@ -142,3 +149,19 @@ launch/airplane-mode test.
   do not assume only committed/tracked files are uploaded. Review the working tree.
 - Generated native directories, `.expo`, exports and APKs stay out of Git. Keep CNG
   configuration in source; do not use stale local native prebuilds for cloud builds.
+
+## Building a working branch without merging
+
+Select the branch in the Actions run dialog, or:
+
+```sh
+gh workflow run android-apk.yml --ref arena/6e4ae33c-temari -f profile=preview
+# Use profile=both after a native module/config change (such as SecureStore).
+```
+
+Concurrency is scoped by branch and profile. Native invalidation also includes
+root package/tool pins, app.config and config plugins. The Expo project and
+remote signing credentials remain the existing ones; no keystore enters Git.
+`EXPO_TOKEN` must be maintained in GitHub Actions secrets, not chat.
+The manual EAS commands without `--local` use cloud build quota; the workflow
+runs locally on GitHub runners. No Play release or hosting deployment is implied.

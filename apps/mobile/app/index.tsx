@@ -1,131 +1,66 @@
-/**
- * Library screen (M3 plan §9): the app's home. Subject list, import entry,
- * empty state. The hello hub retires here; device-check stays reachable as a
- * diagnostic. Wiring only — the phone checklist is the screen test (the M2
- * rule).
- */
 import { useCallback, useRef, useState } from 'react';
-import { Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Platform, Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect, useRouter } from 'expo-router';
 import type { SubjectSummary } from '@temari/core';
-import { getStudyRepository } from '../src/db/repository';
+import { getStudyRepository } from '@/src/db/repository';
+import { shareText } from '@/src/platform/files';
+import { recordDiagnostic } from '@/src/diagnostics';
+import { Button, ui } from '@/components/Screen';
 
 export default function LibraryScreen() {
   const router = useRouter();
   const [subjects, setSubjects] = useState<SubjectSummary[]>([]);
-
-  // ONE lifecycle mechanism (the M2 rule): reload on every focus, so an
-  // import confirmed on the import screen is visible on back-navigation, and
-  // a relaunch boots to persisted data. Web has no library storage in M3, so
-  // there is nothing to reload there.
-  const aliveRef = useRef(true);
-  useFocusEffect(
-    useCallback(() => {
-      aliveRef.current = true;
-      if (Platform.OS === 'web') return;
-      getStudyRepository().then(
-        (repo) => {
-          if (aliveRef.current) setSubjects(repo.listSubjects());
-        },
-        () => {
-          // A failed load reads as an empty library; the import screen's
-          // outcome states carry the actual errors.
-          if (aliveRef.current) setSubjects([]);
-        },
-      );
-      return () => {
-        aliveRef.current = false;
-      };
-    }, []),
-  );
-
-  return (
-    <SafeAreaView style={styles.screen}>
-      <ScrollView contentContainerStyle={styles.content}>
-        <Text style={styles.eyebrow}>ተማሪ · LIBRARY</Text>
-        <Text style={styles.title}>Study library</Text>
-        {Platform.OS === 'web' ? (
-          <Text style={styles.body}>
-            The on-device library lives in the Android app — this web build has no library storage in this
-            milestone.
-          </Text>
-        ) : subjects.length === 0 ? (
-          <Text style={styles.body}>No Subjects on this device yet. Import a library to begin.</Text>
-        ) : (
-          subjects.map((subject) => (
-            <Pressable
-              key={subject.id}
-              accessibilityRole="button"
-              accessibilityLabel={`Open subject ${subject.name}`}
-              onPress={() => router.push({ pathname: '/subject/[subjectId]', params: { subjectId: subject.id } })}
-              style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}
-            >
-              <Text style={styles.rowTitle}>{subject.name}</Text>
-              <Text style={styles.rowMeta}>
-                {subject.noteCount} Notes · {subject.quizCount} Quizzes
-              </Text>
-            </Pressable>
-          ))
-        )}
-        {Platform.OS !== 'web' && (
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Import library data"
-            onPress={() => router.push('/import')}
-            style={({ pressed }) => [styles.button, pressed && styles.buttonPressed]}
-          >
-            <Text style={styles.buttonText}>Import library data</Text>
-          </Pressable>
-        )}
-        <View style={styles.diagnostics}>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Open device check"
-            onPress={() => router.push('/device-check')}
-            style={styles.link}
-          >
-            <Text style={styles.linkText}>Device check</Text>
-          </Pressable>
-        </View>
-      </ScrollView>
-    </SafeAreaView>
-  );
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [status, setStatus] = useState('');
+  const [exporting, setExporting] = useState(false);
+  const exportBusy = useRef(false);
+  const [retry, setRetry] = useState(0);
+  useFocusEffect(useCallback(() => {
+    let alive = true;
+    setLoading(true); setError('');
+    getStudyRepository().then((repo) => { if (alive) { setSubjects(repo.listSubjects()); setLoading(false); } }, () => {
+      recordDiagnostic('library', 'storage');
+      if (alive) { setError('Your library could not be opened. It has not been replaced. Retry or reopen the app.'); setLoading(false); }
+    });
+    return () => { alive = false; };
+  }, [retry]));
+  async function exportLibrary() {
+    if (exportBusy.current) return;
+    exportBusy.current = true; setExporting(true); setStatus('');
+    try {
+      const data = (await getStudyRepository()).exportPortable();
+      await shareText('temari-portable.json', data);
+      setStatus(Platform.OS === 'web' ? 'Download requested. Keep your backup somewhere safe.' : 'Share sheet closed. If you saved the file, your backup is ready.');
+      recordDiagnostic('export', 'success');
+    } catch {
+      recordDiagnostic('export', 'storage');
+      setStatus('Could not export the library. Your study data is unchanged. Free storage or retry sharing.');
+    } finally { exportBusy.current = false; setExporting(false); }
+  }
+  return <SafeAreaView style={ui.screen}><ScrollView contentContainerStyle={ui.content}>
+    <Text style={ui.label}>ተማሪ · YOUR OFFLINE STUDY SPACE</Text>
+    <Text style={ui.title}>Study library</Text>
+    <Text style={ui.body}>Read your Notes. Practice a Quiz. Keep learning, even without a connection.</Text>
+    {Platform.OS === 'web' && <Text style={ui.body}>Saved in this browser, not synced. Export backups regularly; clearing browser data removes your library. Use one tab when editing.</Text>}
+    {loading ? <Text style={ui.body}>Opening local library…</Text> : error ? <>
+      <Text accessibilityRole="alert" style={ui.error}>{error}</Text><Button title="Retry opening library" onPress={() => setRetry((value) => value + 1)} />
+    </> : subjects.length === 0 ? <Text style={ui.body}>No Subjects yet. Import a library, or try the sample from the Import screen.</Text> : subjects.map((subject) => <Pressable key={subject.id} accessibilityRole="button" accessibilityLabel={`Open subject ${subject.name}`} style={[ui.input, { gap: 6 }]} onPress={() => router.push({ pathname: '/subject/[subjectId]', params: { subjectId: subject.id } })}>
+      <Text style={[ui.body, { fontWeight: '700' }]}>{subject.name}</Text>
+      {!!subject.amharicName && <Text style={ui.body}>{subject.amharicName}</Text>}
+      <Text style={ui.body}>{subject.noteCount} Notes · {subject.quizCount} Quizzes</Text>
+    </Pressable>)}
+    <View style={ui.row}>
+      <Button title="Import library data" onPress={() => router.push('/import')} />
+      <Button title={exporting ? 'Exporting…' : 'Export library'} disabled={loading || !!error || exporting} onPress={() => void exportLibrary()} />
+    </View>
+    <Text style={ui.body}>Portable backups include all Subjects, Notes, Quizzes, Attempts and Study Tasks — never your key.</Text>
+    {!!status && <Text accessibilityLiveRegion="polite" style={ui.body}>{status}</Text>}
+    <View style={ui.row}>
+      <Button title="Settings" onPress={() => router.push('/settings')} />
+      <Button title="Extract a PDF" onPress={() => router.push('/pdf')} />
+      <Button title="Device check" onPress={() => router.push('/device-check')} />
+    </View>
+  </ScrollView></SafeAreaView>;
 }
-
-const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: '#f7f4ed' },
-  content: { paddingHorizontal: 28, paddingVertical: 24, gap: 16 },
-  eyebrow: { color: '#9a5b13', fontSize: 12, fontWeight: '700', letterSpacing: 1.2 },
-  title: { color: '#161616', fontSize: 36, fontWeight: '800', letterSpacing: -1 },
-  body: { color: '#45413a', fontSize: 17, lineHeight: 25 },
-  row: {
-    backgroundColor: '#fffdf7',
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: '#d4d4c5',
-    paddingHorizontal: 16,
-    paddingVertical: 13,
-    minHeight: 48,
-    justifyContent: 'center',
-    gap: 2,
-  },
-  rowPressed: { opacity: 0.78 },
-  rowTitle: { color: '#161616', fontSize: 17, fontWeight: '700' },
-  rowMeta: { color: '#45413a', fontSize: 14 },
-  button: {
-    alignSelf: 'flex-start',
-    backgroundColor: '#161616',
-    borderRadius: 10,
-    paddingHorizontal: 18,
-    paddingVertical: 13,
-    minHeight: 48,
-    justifyContent: 'center',
-    marginTop: 8,
-  },
-  buttonPressed: { opacity: 0.78 },
-  buttonText: { color: '#fffaf0', fontSize: 15, fontWeight: '700' },
-  diagnostics: { flexDirection: 'row', gap: 8, marginTop: 8 },
-  link: { minHeight: 44, justifyContent: 'center', paddingHorizontal: 14 },
-  linkText: { color: '#2457a5', fontSize: 15, fontWeight: '600' },
-});

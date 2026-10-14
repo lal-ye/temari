@@ -6,15 +6,16 @@ import {
 import { createSingleFlightGuard } from './singleFlight';
 
 /**
- * View state for the mock Explain session (checkpoint B plan §8.3). The
+ * View state for the Explain session (checkpoint B plan §8.3). The
  * screen/host renders `idle/pending/done/error`; it is NOT the concurrency
  * guard — the guard and the control flow live here.
  */
 export type ExplainSessionState =
   | { kind: 'idle' }
+  | { kind: 'confirming'; request: ExplainRequest }
   | { kind: 'pending'; request: ExplainRequest }
   | { kind: 'done'; request: ExplainRequest; result: string }
-  | { kind: 'error'; reason: ExplainRejection | 'mock-failed' };
+  | { kind: 'error'; reason: ExplainRejection | 'request-failed'; message?: string };
 
 export interface ExplainSessionHandler {
   /** The DOM action prop funnels here. Resolves when the submission settles
@@ -34,9 +35,12 @@ export interface ExplainSessionDeps {
   isFocused(): boolean;
   /** View updates; must be side-effect free for a dead host. */
   dispatch(event: ExplainSessionState): void;
-  /** The one operation (mock at checkpoint B). Exactly one call per accepted
+  /** The one cancellable operation. Exactly one call per accepted
    * submission — tests assert call counts on this. */
-  run(request: ExplainRequest): Promise<string>;
+  run(request: ExplainRequest, signal: AbortSignal): Promise<string>;
+  confirm?(request: ExplainRequest, signal: AbortSignal): Promise<boolean>;
+  /** App-supplied safe, classified message; never a raw provider error. */
+  failureMessage?(error: unknown): string;
 }
 
 /**
@@ -55,6 +59,7 @@ export interface ExplainSessionDeps {
 export function createExplainSessionHandler(deps: ExplainSessionDeps): ExplainSessionHandler {
   const guard = createSingleFlightGuard();
   let epoch = 0;
+  let controller: AbortController | null = null;
   const fresh = (submitEpoch: number) =>
     epoch === submitEpoch && deps.isAlive() && deps.isFocused();
 
@@ -74,18 +79,29 @@ export function createExplainSessionHandler(deps: ExplainSessionDeps): ExplainSe
       if (!fresh(submitEpoch)) return; // stale before start: nothing rendered
       const request = checked.request; // fresh object, permitted fields only
       guard.checkAndSet(request.requestId);
-      deps.dispatch({ kind: 'pending', request });
+      const requestController = new AbortController();
+      controller = requestController;
       try {
-        const result = await deps.run(request); // exactly one op
+        if (deps.confirm) {
+          deps.dispatch({ kind: 'confirming', request });
+          const approved = await deps.confirm(request, requestController.signal);
+          if (!fresh(submitEpoch) || requestController.signal.aborted) return;
+          if (!approved) { deps.dispatch({ kind: 'idle' }); return; }
+        }
+        deps.dispatch({ kind: 'pending', request });
+        const result = await deps.run(request, requestController.signal);
         if (fresh(submitEpoch)) deps.dispatch({ kind: 'done', request, result });
-      } catch {
-        if (fresh(submitEpoch)) deps.dispatch({ kind: 'error', reason: 'mock-failed' });
+      } catch (error) {
+        if (fresh(submitEpoch)) deps.dispatch({ kind: 'error', reason: 'request-failed', ...(deps.failureMessage ? { message: deps.failureMessage(error) } : {}) });
       } finally {
-        guard.clear(request.requestId);
+        // An old completion with a reused requestId must not clear its successor.
+        if (epoch === submitEpoch) { guard.clear(request.requestId); controller = null; }
       }
     },
 
     invalidate(): void {
+      controller?.abort();
+      controller = null;
       epoch += 1; // in-flight completions become stale and are dropped
       guard.clearAll(); // the guard never sticks — a later submit always works
       deps.dispatch({ kind: 'idle' });
