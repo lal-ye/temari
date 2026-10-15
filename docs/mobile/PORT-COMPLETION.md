@@ -1,12 +1,10 @@
 # Android + Expo web completion record
 
-Updated 2026-10-14. GitHub publication note: application changes are in PR #48.
-The improved `.github/workflows` commit remains local because the Arena GitHub
-App lacks Workflows permission; workflow dispatch also returned HTTP 403.
-No new signed APK has been produced in this session. Existing PR CI passes,
-but it does not yet run the added browser/adapter gates. Reconnect/update GitHub
-permissions to push the workflow commit and dispatch the build, or have an
-owner apply it. Never share access tokens in chat.
+Updated 2026-10-15. Publication note: application changes are in PR #48, and the
+improved `.github/workflows` are now applied (they could not be pushed during that
+session because the Arena GitHub App lacked the Workflows permission). CI runs the
+adapter, web-export and browser-test gates, and gates both APK profiles. No new
+signed APK has been produced since PR #48.
 
 This records **implementation and automated evidence**, not a
 physical-device sign-off. Scope is the included features in Android plan §4,

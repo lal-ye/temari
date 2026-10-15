@@ -1,3 +1,10 @@
+# The single gate definition for the repository. The Android APK dispatcher calls
+# this workflow (workflow_call) so a failed gate blocks both APK profiles instead of
+# letting a broken commit reach a signed binary.
+#
+# `test:web` runs against the export that `check:web` produces, and its offline
+# assertions depend on the service worker `build-web-offline.mjs` writes, so the web
+# export must stay ordered ahead of the browser tests.
 name: CI
 
 on:
@@ -5,19 +12,25 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  workflow_call:
 
 permissions:
   contents: read
 
 concurrency:
-  group: ci-${{ github.ref }}
+  # Keyed by workflow name as well as ref. The Android APK dispatcher reuses this
+  # workflow as its gate, and a reusable call keeps the caller's ref — so a
+  # ref-only group would make the dispatched gate and the standalone push run
+  # cancel each other. In a called workflow `github.workflow` is the caller's name,
+  # which is exactly the distinction needed here.
+  group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
   gates:
-    name: Reader, tests, typechecks, mobile export
+    name: Reader, tests, typechecks, Android + web exports, browser tests
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 45
 
     steps:
       - uses: actions/checkout@v4
@@ -34,6 +47,17 @@ jobs:
 
       - run: bun run check:reader
       - run: NODE_ENV=test bun run test
+      - run: bun run test:adapters
       - run: bun run typecheck:all
       - run: bun run check:mobile:imports
       - run: bun run check:mobile
+      - run: bun run check:web
+
+      # Playwright's own installer is the supported source of the browser; the
+      # chromium build already checked into npm (and used in the offline sandbox)
+      # would not cover the browsers CI actually claims to test. The browser tests
+      # run against the export `check:web` just produced, so that ordering matters.
+      - name: Install Playwright chromium
+        run: bunx playwright install --with-deps chromium
+
+      - run: bun run test:web

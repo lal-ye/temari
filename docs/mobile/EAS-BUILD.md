@@ -6,10 +6,9 @@ user's phone;
 see [M0 device record](./M0-SETUP.md). Authentication is local to each computer —
 this document does not imply the current sandbox is signed into Expo.
 
-> Branch publication note (2026-10-14): workflow updates described here are
-> saved locally but not yet pushed: the GitHub App lacks Workflows permission.
-> Dispatch also returned HTTP 403. PR #48 contains the app code; a new APK is
-> still required. See the completion record before assuming the new gates ran.
+> Publication note (2026-10-15): the workflow updates described here are now
+> applied in `.github/workflows`. They were first written for PR #48 but could not
+> be pushed then, because the Arena GitHub App lacked the Workflows permission.
 
 ## Project identity (verify before every build)
 
@@ -76,7 +75,7 @@ the workflow uses `--local`, so it does not touch the EAS build queue or EAS com
 quota — EAS is contacted only for the project existence check and managed signing
 credentials. This repository is public, so GitHub-hosted runner minutes are free.
 
-The dispatcher first calls the reusable CI workflow (unit/adapter/browser tests, typechecks and Android/web exports). Failed gates block both APK profiles. Java 17, NDK 27.1.12297006 and EAS CLI 24.13.0 are pinned; preview version codes auto-increment, OTA is disabled. Artifacts include SHA-256 and commit/profile metadata, after signature verification.
+The dispatcher first calls the reusable CI workflow (unit/adapter/browser tests, typechecks and Android/web exports). Failed gates block both APK profiles. Java 17, build-tools 34.0.0, NDK 27.1.12297006 and EAS CLI 24.13.0 are pinned; preview version codes auto-increment, OTA is disabled. Artifacts include SHA-256 and commit/profile metadata, after signature verification.
 
 Two APK workflows:
 
@@ -91,7 +90,7 @@ What each merge builds:
 
 | Change on `main` | `temari-preview-apk` | `temari-dev-apk` |
 |---|---|---|
-| `bun.lock`, `apps/mobile/package.json`, `app.json`, `eas.json`, or either workflow file | build | build |
+| `bun.lock`, root `package.json`, `apps/mobile/package.json`, `app.json`, `app.config.ts`, `eas.json`, or either workflow file | build | build |
 | JS only (`apps/mobile/**`, `packages/**`) | build | skipped |
 | Docs only | build | skipped |
 

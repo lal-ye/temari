@@ -33,6 +33,14 @@ jobs:
         with:
           node-version-file: .nvmrc
 
+      # Gradle picks the JDK from JAVA_HOME, and ubuntu-latest's default JDK moves
+      # between image revisions. Pin 17 explicitly so a runner image refresh cannot
+      # turn into an AGP "Unsupported class file major version" build failure.
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version-file: .bun-version
@@ -40,6 +48,19 @@ jobs:
       # v3's default packages list includes the `tools` package, which Google removed from
       # the SDK repository, so sdkmanager exits 1. v4 defaults to platform-tools only.
       - uses: android-actions/setup-android@v4.0.4
+
+      # setup-android v4 defaults to platform-tools only, and apksigner (used below to
+      # verify the built APK before it is published) ships in build-tools, not
+      # platform-tools. Pin the same build-tools version the Gradle build resolves so
+      # the verification tool is present and deterministic instead of being scavenged
+      # from whatever the runner image happens to ship.
+      - name: Install pinned Android build-tools
+        run: |
+          set -euo pipefail
+          BUILD_TOOLS_VERSION=34.0.0
+          sdkmanager "build-tools;$BUILD_TOOLS_VERSION"
+          echo "BUILD_TOOLS_VERSION=$BUILD_TOOLS_VERSION" >> "$GITHUB_ENV"
+          echo "using build-tools $ANDROID_SDK_ROOT/build-tools/$BUILD_TOOLS_VERSION"
 
       # eas-cli-local-build-plugin throws if ANDROID_NDK_HOME points at a missing path, and
       # Gradle needs the NDK to compile the new-architecture codegen C++. Pin the version
@@ -63,6 +84,10 @@ jobs:
       # repo. It also keeps the EAS build queue and compute quota out of the picture; EAS
       # is contacted only for the project check and managed credentials. Profile and file
       # name arrive as env vars so caller input is never interpolated into the script.
+      #
+      # eas-cli is pinned to the same version as apps/mobile/eas.json's `cli.version`,
+      # which is the version the documented manual commands use. `@latest` would let a
+      # new CLI release change local-build flag handling with no repo change to review.
       - name: Build APK
         working-directory: apps/mobile
         env:
@@ -70,18 +95,50 @@ jobs:
           EAS_SKIP_AUTO_FINGERPRINT: '1'
           APK_PROFILE: ${{ inputs.profile }}
           APK_NAME: ${{ inputs.artifact }}
-        run: bunx eas-cli@latest build --platform android --profile "$APK_PROFILE" --local --non-interactive --output "$APK_NAME.apk"
+        run: bunx eas-cli@24.13.0 build --platform android --profile "$APK_PROFILE" --local --non-interactive --output "$APK_NAME.apk"
+
+      # Publishing bytes before checking them only moves the failure to the person who
+      # installs the APK. Verify the signature first, then attach provenance so the
+      # recorded SHA-256 can be re-derived from the artifact the owner actually
+      # downloaded.
+      - name: Verify APK signature
+        working-directory: apps/mobile
+        env:
+          APK_NAME: ${{ inputs.artifact }}
+        run: |
+          set -euo pipefail
+          "$ANDROID_SDK_ROOT/build-tools/${BUILD_TOOLS_VERSION}/apksigner" verify --verbose --print-certs "${APK_NAME}.apk"
+
+      - name: Record checksum and build metadata
+        working-directory: apps/mobile
+        env:
+          APK_NAME: ${{ inputs.artifact }}
+          APK_PROFILE: ${{ inputs.profile }}
+        run: |
+          set -euo pipefail
+          sha256sum "${APK_NAME}.apk" > "${APK_NAME}.apk.sha256"
+          {
+            echo "profile=${APK_PROFILE}"
+            echo "commit=${GITHUB_SHA}"
+            echo "built_at=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+            echo "size_bytes=$(stat -c %s "${APK_NAME}.apk")"
+          } > "${APK_NAME}.build-metadata.txt"
 
       - uses: actions/upload-artifact@v4
         id: upload
         with:
           name: ${{ inputs.artifact }}
-          path: apps/mobile/${{ inputs.artifact }}.apk
+          path: |
+            apps/mobile/${{ inputs.artifact }}.apk
+            apps/mobile/${{ inputs.artifact }}.apk.sha256
+            apps/mobile/${{ inputs.artifact }}.build-metadata.txt
           if-no-files-found: error
           retention-days: 14
 
       - name: Write build summary
+        working-directory: apps/mobile
         run: |
+          set -euo pipefail
           {
             echo "### ${APK_PROFILE} APK"
             echo
@@ -91,6 +148,8 @@ jobs:
             echo "| Commit | \`${GITHUB_SHA}\` |"
             echo "| Artifact | [${APK_NAME}](${{ steps.upload.outputs.artifact-url }}) |"
             echo "| Retained | 14 days |"
+            echo "| SHA-256 | \`$(cut -d' ' -f1 "${APK_NAME}.apk.sha256")\` |"
+            echo "| Verified | apksigner \`verify\` passed before upload |"
           } >> "$GITHUB_STEP_SUMMARY"
         env:
           APK_PROFILE: ${{ inputs.profile }}

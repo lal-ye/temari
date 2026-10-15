@@ -27,7 +27,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: android-apk-${{ inputs.profile || 'auto' }}
+  group: android-apk-${{ github.ref }}-${{ inputs.profile || 'auto' }}
   cancel-in-progress: true
 
 jobs:
@@ -43,8 +43,10 @@ jobs:
           fetch-depth: 0
 
       # The compiled binary embeds native module code, which lives in node_modules
-      # rather than in this repository. These five paths are the only in-repo signals
-      # that a native dependency, a config plugin, or the build recipe itself moved.
+      # rather than in this repository. These seven paths are the only in-repo signals
+      # that a native dependency, a config plugin, or the build recipe itself moved:
+      # the root and mobile manifests, the lockfile, the Expo config host that
+      # registers config plugins, the EAS profiles, and this dispatcher's own files.
       - name: Classify native binary invalidation
         id: classify
         shell: bash
@@ -71,7 +73,7 @@ jobs:
           files=""
           if [[ "$PUSH_BASE" =~ ^0+$ ]] || ! files=$(git diff --name-only "$PUSH_BASE" "$HEAD_SHA"); then
             echo "Could not diff against base '$PUSH_BASE' — treating as native."
-          elif grep -Eq '^(bun\.lock|apps/mobile/(package\.json|app\.json|eas\.json)|\.github/workflows/(_android-apk|android-apk)\.yml)$' <<< "$files"; then
+          elif grep -Eq '^(bun\.lock|package\.json|apps/mobile/(package\.json|app\.json|app\.config\.ts|eas\.json)|\.github/workflows/(_android-apk|android-apk)\.yml)$' <<< "$files"; then
             native=true
           else
             native=false
@@ -102,9 +104,16 @@ jobs:
 
           echo "native=$native" >> "$GITHUB_OUTPUT"
 
+  # Both profiles build from the same source tree, so both wait on the same gate.
+  # Publishing a signed binary from a commit whose tests fail only moves the failure
+  # to whoever installs it on a phone.
+  gates:
+    name: CI gates
+    uses: ./.github/workflows/ci.yml
+
   preview:
-    needs: changes
-    if: ${{ github.event_name == 'push' || inputs.profile == 'preview' || inputs.profile == 'both' }}
+    needs: [changes, gates]
+    if: ${{ always() && needs.changes.result == 'success' && needs.gates.result == 'success' && (github.event_name == 'push' || inputs.profile == 'preview' || inputs.profile == 'both') }}
     uses: ./.github/workflows/_android-apk.yml
     with:
       profile: preview
@@ -113,8 +122,8 @@ jobs:
       EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
 
   development:
-    needs: changes
-    if: ${{ (github.event_name == 'push' && needs.changes.outputs.native == 'true') || inputs.profile == 'development' || inputs.profile == 'both' }}
+    needs: [changes, gates]
+    if: ${{ always() && needs.changes.result == 'success' && needs.gates.result == 'success' && ((github.event_name == 'push' && needs.changes.outputs.native == 'true') || inputs.profile == 'development' || inputs.profile == 'both') }}
     uses: ./.github/workflows/_android-apk.yml
     with:
       profile: development

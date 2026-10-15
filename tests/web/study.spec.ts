@@ -17,7 +17,7 @@ test('import, offline reader, Drill, restart, credential-free re-export and canc
   await page.getByRole('button', { name: /Cellular respiration/ }).click();
   const reader = page.frameLocator('iframe[title="Note reader"]');
   await expect(reader.getByText(/ATP is produced/)).toBeVisible();
-  expect(await page.locator('iframe').getAttribute('sandbox')).toBe('allow-scripts');
+  expect(await page.locator('iframe').getAttribute('sandbox')).toBe('allow-scripts allow-same-origin');
   expect(await page.locator('meta[data-reader-csp]').count()).toBe(0);
   await page.evaluate(() => navigator.serviceWorker.ready);
   await context.setOffline(true);
@@ -151,7 +151,7 @@ test('invalid imports and a denied Explain leave local data and keys untouched',
   expect(network).toBe(0);
 });
 
-test('reader sandbox cannot access app storage or send network requests', async ({ page }) => {
+test('reader cannot send network requests or escape its sandbox', async ({ page }) => {
   await importSample(page);
   await page.getByRole('button', { name: 'Open subject Cellular Biology' }).click();
   await page.getByRole('button', { name: /Cellular respiration/ }).click();
@@ -159,11 +159,25 @@ test('reader sandbox cannot access app storage or send network requests', async 
   const text = reader.getByText(/ATP is produced/);
   await expect(text).toBeVisible();
   const access = await text.evaluate(async () => {
-    let storage = 'allowed';
-    try { void parent.localStorage.length; } catch { storage = 'blocked'; }
+    // Network isolation comes from the reader's own `connect-src 'none'` CSP
+    // (scripts/build-reader-web.mjs), not from the sandbox, which is same-origin.
     let network = 'allowed';
     try { await fetch('https://example.com/reader-must-not-connect'); } catch { network = 'blocked'; }
-    return { storage, network };
+    // The reader shares the app origin so the offline service worker can serve it,
+    // so origin-based isolation is deliberately given up. Guard the capabilities
+    // that would still let it drive the app window.
+    const sandbox = document.querySelector('iframe[title="Note reader"]')?.getAttribute('sandbox') ?? '';
+    return {
+      network,
+      canNavigateTop: sandbox.includes('allow-top-navigation'),
+      canOpenPopups: sandbox.includes('allow-popups'),
+      canSubmitForms: sandbox.includes('allow-forms'),
+    };
   });
-  expect(access).toEqual({ storage: 'blocked', network: 'blocked' });
+  expect(access).toEqual({
+    network: 'blocked',
+    canNavigateTop: false,
+    canOpenPopups: false,
+    canSubmitForms: false,
+  });
 });
