@@ -5,6 +5,10 @@
 # `test:web` runs against the export that `check:web` produces, and its offline
 # assertions depend on the service worker `build-web-offline.mjs` writes, so the web
 # export must stay ordered ahead of the browser tests.
+# The runner image is pinned to a release rather than tracking `ubuntu-latest`,
+# which migrates to Ubuntu 26 on 2026-10-19. This workflow's whole toolchain is
+# pinned (.nvmrc, .bun-version, and Playwright's own browser build), so an image
+# jump underneath it would reintroduce exactly the drift the pins exist to prevent.
 name: CI
 
 on:
@@ -29,13 +33,13 @@ concurrency:
 jobs:
   gates:
     name: Reader, tests, typechecks, Android + web exports, browser tests
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 45
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version-file: .nvmrc
 

@@ -6,6 +6,10 @@
 # Never gate this workflow with a workflow-level `paths` filter: a skipped workflow
 # leaves any required status check pending forever. This dispatcher always starts and
 # decides per job instead, so a skipped job reports as skipped.
+# The runner image is pinned to a release rather than tracking `ubuntu-latest`,
+# which migrates to Ubuntu 26 on 2026-10-19. The build recipe already pins JDK,
+# build-tools and the NDK, and an unpinned image would reintroduce drift under
+# those pins. Revisit deliberately, not on a runner migration notice.
 name: Android APK
 
 on:
@@ -32,13 +36,13 @@ concurrency:
 
 jobs:
   changes:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 5
     outputs:
       native: ${{ steps.classify.outputs.native }}
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
