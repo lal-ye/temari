@@ -33,7 +33,8 @@ The product is one Expo app (`apps/mobile`) over two packages
 ### Commands
 
 ```bash
-bun run test              # core + reader tests
+bun run test:all          # every non-browser automated test (start here)
+bun run test              # core + reader tests ONLY — excludes the adapters
 bun run test:adapters     # browser persistence/import/credential adapters
 bun run typecheck:all     # typechecks plus the core/reader boundary seals
 bun run check:mobile      # Android export + reader assets
@@ -42,6 +43,19 @@ bun run test:web          # browser end-to-end tests (install Playwright Chromiu
 bun run web               # Expo web development
 bun run preview:web       # preview the production export
 ```
+
+`bun run test` runs the default Vitest project only. That project does **not**
+include `apps/mobile/src/**/*.test.ts` — those are a separate project
+(`vitest.adapters.config.ts`) because they need a `node` environment and must not
+drag React Native imports into the core suite. So a green `bun run test` says
+nothing about the persistence, import or credential adapters; use `test:all` for
+the full non-browser picture.
+
+The browser end-to-end suite (`test:web`) and the production exports
+(`check:mobile`, `check:web`) are deliberately **not** in `test:all`: they need a
+built export and a Playwright browser, and `check:mobile` is too heavy to run
+locally. CI runs all of them — see `.github/workflows/ci.yml` for the
+authoritative list.
 
 ## Documentation
 
