@@ -30,6 +30,12 @@ test('import, offline reader, Drill, restart, credential-free re-export and canc
   await expect(page.getByText('In the cytosol.', { exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Rate mastered', exact: true }).click();
   await expect(page.getByText('100% · 1/1 mastered', { exact: true })).toBeVisible();
+  // Wait for the commit, not just the result. The score line renders from the
+  // machine's recorded result and is true the instant the last card is rated,
+  // so asserting on it says nothing about persistence — the save is a separate
+  // IndexedDB write that a navigation would cut off mid-transaction. This is
+  // the same hand-off point the device checklist uses before it kills the app.
+  await expect(page.getByText("Saved to this Subject's history.")).toBeVisible();
   await context.setOffline(false);
   await page.goto('/');
   await page.getByRole('button', { name: 'Open subject Cellular Biology' }).click();
@@ -40,8 +46,19 @@ test('import, offline reader, Drill, restart, credential-free re-export and canc
   const download = await downloadPromise;
   const exported = JSON.parse(await fs.readFile((await download.path())!, 'utf8'));
   expect(exported.format).toBe('temari-portable');
+  // The sample fixture already ships one Attempt scored 100 and exactly one
+  // Task, so asserting those *values* would pass even if the Drill did
+  // nothing. Identity and count are what actually distinguish the Drill's
+  // write from the fixture's: the repository prepends the Attempt, so
+  // attempts[0] must be the new one and the fixture's must still be there.
+  expect(exported.data.attempts).toHaveLength(2);
+  expect(exported.data.attempts[0].id).not.toBe('fixture-attempt-en');
   expect(exported.data.attempts[0].overallScore).toBe(100);
-  expect(exported.data.quizzes[0].timesPracticed).toBe(1);
+  expect(exported.data.attempts[1].id).toBe('fixture-attempt-en');
+  // The counter and the score bump are the other half of the same write (D8),
+  // and neither exists on the fixture Quiz.
+  const drilled = exported.data.quizzes.find((quiz: { id: string }) => quiz.id === 'fixture-quiz-en');
+  expect(drilled).toMatchObject({ timesPracticed: 1, lastScore: 100 });
   expect(exported.data.tasks).toHaveLength(1);
   expect(JSON.stringify(exported)).not.toMatch(/apiKey|providerKeys/);
   await page.getByRole('button', { name: 'Import library data', exact: true }).click();

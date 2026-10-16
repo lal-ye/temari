@@ -112,14 +112,18 @@ build and `scripts/smoke-deploy.mjs`. Use `bun run test`, not Bun's built-in run
 The smoke test starts/stops a bounded local process; it does not call paid AI.
 Do not regenerate package-lock.json or silently upgrade the whole dependency tree.
 
-No active GitHub Actions workflow exists. Arena's GitHub App was unable to push
-`.github/workflows/ci.yml` because it lacks Workflows permission; repeated push
-attempts did not solve it. The inactive template was at
-`docs/deployment/github-actions-ci.yml.example` (deleted in PR C; the real
-workflow now lives at `.github/workflows/ci.yml`). Render runs checks during its
-build; failed builds block deployment but not GitHub merges. Do not add a workflow
-file through the same connection without resolving that permission first. Never
-request a PAT/provider key/signing key in chat as a workaround.
+Active GitHub Actions workflows now exist at `.github/workflows/`. The Arena
+GitHub App that lacked Workflows permission could not push `ci.yml`; that connection
+has been replaced and the workflow files land normally. `ci.yml` gates pushes, and
+the APK dispatcher calls it as a `gates` job so both APK profiles depend on it.
+Render still runs checks during its build. Never request a PAT/provider key/signing
+key in chat as a workaround.
+
+> Historical note: throughout M0–M2 this document stated the opposite — that no
+> active workflow existed and that only Render's build gate and manual EAS builds
+> could be relied on. That was accurate when written and stopped being true on
+> 2026-10-15, when the workflow landed in PR #49. Treat the constraint above as
+> current and the older statements as history.
 
 ### Read before changing architecture
 
@@ -528,10 +532,12 @@ Use a small manual device checklist initially; add one Maestro import → Drill 
 result flow once stable, not a full test-infrastructure project before the reader
 spike. New tests must not accidentally be collected by the web Vitest job.
 
-The repository currently has no active GitHub Actions workflow because Arena's
-GitHub connection cannot write workflows. Keep that constraint: local checks,
-Render's own web build gate, and explicit EAS preview builds. The existing optional
-workflow template can be enabled manually later; do not silently rely on it now.
+**Superseded (2026-10-16):** the repository *does* now have active GitHub Actions
+workflows. The Arena GitHub App that could not write workflows has been replaced;
+`ci.yml` gates every push and is called as a `gates` job by the APK dispatcher, so a
+signed artifact cannot be produced from a commit whose checks did not pass. This
+paragraph is kept only as a record of the constraint that shaped M0–M2; see
+`docs/mobile/EAS-BUILD.md` for the current pipeline.
 
 Diagnostics: add error boundaries and a user-exportable redacted diagnostic report
 with app/build ID, operation and error category, not note contents or provider keys.

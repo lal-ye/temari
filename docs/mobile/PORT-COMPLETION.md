@@ -83,6 +83,11 @@ Do **not** uninstall as a routine upgrade: uninstall deletes data and keys.
       fonts/math/Amharic/figures, long Note scroll and Back/safe areas.
 - [ ] Samsung picker: JSON cancel, invalid/legacy file, successful replace;
       kill/relaunch; full Drill with final-card rating and 0/partial/100% scores.
+      Rate the final card and tap **Back to subject** immediately, while
+      "Saving your Attempt…" is still showing: the control must be disabled,
+      and if a press lands anyway the screen must wait for the write rather
+      than dropping the Attempt. Confirm the drill survives a force-stop
+      immediately afterwards.
 - [ ] Export/share to Files, replace-import that file, verify new Attempts/tasks.
 - [ ] Save key, force-stop/relaunch, test saved model, rotate invalid key, delete
       key; saved study remains usable. Confirm backup/uninstall expectations.

@@ -10,6 +10,14 @@
  * payload (no duplicate ids on retry). Empty Quiz renders the D4 blocked
  * empty state: no Drill, no Attempt. Wiring only — the phone checklist is
  * the screen test (the M2 rule).
+ *
+ * The one write a Drill makes is also the only thing standing between the
+ * learner and their finished work, so leaving is gated on it: the leave
+ * controls disable while saving and, if a press still lands, wait the write
+ * out rather than navigating through it (see `leaveToSubject`). Plan D8 makes
+ * this all-or-nothing — the Attempt insert and the Quiz metadata bump commit
+ * as one repository operation — which is exactly why a torn-down screen
+ * cannot keep half of it.
  */
 import { useCallback, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
@@ -129,6 +137,10 @@ function DrillRunner({ quiz, subject }: { quiz: StoredQuiz; subject: Subject }) 
   const [saveState, setSaveState] = useState<SaveState>({ kind: 'unsaved' });
   const completionRef = useRef<DrillCompletion<StoredAttempt> | null>(null);
   const attemptRef = useRef<StoredAttempt | null>(null);
+  // The in-flight save, or null when nothing is being written. The leave
+  // controls read this to decide between navigating and waiting.
+  const saveRef = useRef<{ saved: Promise<boolean> } | null>(null);
+  const leavingRef = useRef(false);
 
   const rerender = useCallback(() => {
     setTick((tick) => tick + 1);
@@ -143,6 +155,36 @@ function DrillRunner({ quiz, subject }: { quiz: StoredQuiz; subject: Subject }) 
     }
     return completionRef.current;
   }, [quiz.id]);
+
+  // The one write a Drill makes, started from either the automatic finish or
+  // a retry. `saved` settles to true/false rather than rejecting: the screen
+  // state and the leave guard both need the outcome, and a rejection nobody
+  // reads would surface as a page error. D9's guard is what keeps this to a
+  // single repository write however many taps arrive.
+  const beginSave = useCallback(
+    (attempt: StoredAttempt) => {
+      setSaveState({ kind: 'saving' });
+      rerender();
+      const saved = completionForRun().finish(attempt).then(
+        () => {
+          setSaveState({ kind: 'saved' });
+          return true;
+        },
+        (error: unknown) => {
+          setSaveState({ kind: 'failed', message: errorText(error) });
+          return false;
+        },
+      );
+      const inFlight = { saved };
+      saveRef.current = inFlight;
+      // Release the gate once the write is done, so a later leave press is
+      // not still waiting on a finished save (nor blocked by a failed one).
+      void saved.then(() => {
+        if (saveRef.current === inFlight) saveRef.current = null;
+      });
+    },
+    [completionForRun, rerender],
+  );
 
   // Persist the recorded result exactly once per finish: the guard absorbs
   // rapid double-taps into the in-flight promise (D9), and the machine
@@ -167,45 +209,47 @@ function DrillRunner({ quiz, subject }: { quiz: StoredQuiz; subject: Subject }) 
           newRecordId,
         );
       }
-      const attempt = attemptRef.current;
-      setSaveState({ kind: 'saving' });
-      rerender();
-      completionForRun().finish(attempt).then(
-        () => {
-          setSaveState({ kind: 'saved' });
-        },
-        (error: unknown) => {
-          setSaveState({ kind: 'failed', message: errorText(error) });
-        },
-      );
+      beginSave(attemptRef.current);
     },
-    [completionForRun, quiz.name, subject.id, subject.name, rerender],
+    [beginSave, quiz.name, subject.id, subject.name, rerender],
   );
 
   const retry = useCallback(() => {
     const attempt = attemptRef.current;
     if (attempt === null) return;
-    setSaveState({ kind: 'saving' });
-    completionForRun().finish(attempt).then(
-      () => {
-        setSaveState({ kind: 'saved' });
-      },
-      (error: unknown) => {
-        setSaveState({ kind: 'failed', message: errorText(error) });
-      },
-    );
-  }, [completionForRun]);
+    beginSave(attempt);
+  }, [beginSave]);
 
   const restart = useCallback(() => {
     completionRef.current = null;
     attemptRef.current = null;
+    saveRef.current = null;
+    leavingRef.current = false;
     setSaveState({ kind: 'unsaved' });
     setSession(createDrillSession(quiz.flashcards));
     setTick((tick) => tick + 1);
   }, [quiz.flashcards]);
 
-  const backToSubject = useCallback(() => {
-    router.replace({ pathname: '/subject/[subjectId]', params: { subjectId: subject.id } });
+  // Leaving is the only way a finished Drill is lost: the write is in flight,
+  // the screen goes away, and the Attempt goes with it. So the leave controls
+  // wait the write out instead of navigating through it, and a failed save
+  // leaves the learner on the retryable error state instead of a Subject that
+  // never recorded the work. (The platform back gesture is not ours to
+  // intercept; the visible controls are the contract this screen offers.)
+  const leaveToSubject = useCallback(() => {
+    const inFlight = saveRef.current;
+    if (inFlight === null) {
+      router.replace({ pathname: '/subject/[subjectId]', params: { subjectId: subject.id } });
+      return;
+    }
+    if (leavingRef.current) return;
+    leavingRef.current = true;
+    void inFlight.saved.then((saved) => {
+      leavingRef.current = false;
+      if (saved) {
+        router.replace({ pathname: '/subject/[subjectId]', params: { subjectId: subject.id } });
+      }
+    });
   }, [router, subject.id]);
 
   if (session === null) {
@@ -245,7 +289,12 @@ function DrillRunner({ quiz, subject }: { quiz: StoredQuiz; subject: Subject }) 
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="Back to subject"
-            onPress={backToSubject}
+            accessibilityHint={
+              saveState.kind === 'saving' ? 'Finishes saving your Attempt first' : undefined
+            }
+            disabled={saveState.kind === 'saving'}
+            accessibilityState={{ disabled: saveState.kind === 'saving' }}
+            onPress={leaveToSubject}
             style={styles.back}
           >
             <Text style={styles.backText}>← Subject</Text>
@@ -289,7 +338,12 @@ function DrillRunner({ quiz, subject }: { quiz: StoredQuiz; subject: Subject }) 
             <Pressable
               accessibilityRole="button"
               accessibilityLabel="Back to subject"
-              onPress={backToSubject}
+              accessibilityHint={
+                saveState.kind === 'saving' ? 'Finishes saving your Attempt first' : undefined
+              }
+              disabled={saveState.kind === 'saving'}
+              accessibilityState={{ disabled: saveState.kind === 'saving' }}
+              onPress={leaveToSubject}
               style={({ pressed }) => [styles.secondary, pressed && styles.buttonPressed]}
             >
               <Text style={styles.secondaryText}>Back to subject</Text>
