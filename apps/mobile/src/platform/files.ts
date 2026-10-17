@@ -12,14 +12,28 @@ export async function pickStudyFile(kind: 'json' | 'pdf') {
   // for downloads-provider URIs (e.g. Samsung Download folder); the copy then
   // throws "Location ... isn't readable" before the file is ever touched.
   // The picker returns the cache file's file:// URI in its place.
-  const result = await getDocumentAsync({ type: kind === 'pdf' ? 'application/pdf' : '*/*', copyToCacheDirectory: true, multiple: false });
+  // TEMP-DIAGNOSTIC: this file carries temporary instrumentation naming the
+  // failing phase; revert before any non-diagnostic merge.
+  let result;
+  try {
+    result = await getDocumentAsync({ type: kind === 'pdf' ? 'application/pdf' : '*/*', copyToCacheDirectory: true, multiple: false });
+  } catch (error) {
+    throw new Error(`pick failed — ${error}`);
+  }
   if (result.canceled) return null;
   const asset = result.assets[0];
+  if (!asset) throw new Error('pick resolved with no asset');
   const limit = kind === 'pdf' ? PDF_MAX_BYTES : PORTABLE_LIMITS.maxBytes;
   if (asset.size !== undefined && asset.size > limit) throw new Error(`File exceeds ${limit / 1024 / 1024} MiB.`);
-  const cache = new File(asset.uri);
-  if (cache.size > limit) throw new Error(`File exceeds ${limit / 1024 / 1024} MiB.`);
+  let cacheSize: number;
   try {
+    cacheSize = new File(asset.uri).size;
+  } catch (error) {
+    throw new Error(`stat of ${asset.uri} (name=${asset.name}, size=${asset.size ?? 'hidden'}) failed — ${error}`);
+  }
+  if (cacheSize > limit) throw new Error(`File exceeds ${limit / 1024 / 1024} MiB.`);
+  try {
+    const cache = new File(asset.uri);
     return { name: asset.name, size: cache.size, content: kind === 'pdf' ? await cache.base64() : await cache.text() };
   } catch (error) {
     throw new Error(`read from ${asset.uri} (name=${asset.name}, size=${asset.size ?? 'hidden'}) failed — ${error}`);
