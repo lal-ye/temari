@@ -88,8 +88,10 @@ export default function ImportScreen() {
       const file = await pending;
       if (!aliveRef.current) return;
       setPhase(file ? { kind: 'preview', preview: buildImportPreview(file.content), fileName: file.name } : { kind: 'idle' });
-    } catch {
-      if (aliveRef.current) setPhase({ kind: 'failed', message: 'Could not read the file. Choose a JSON backup smaller than 4 MiB and try again.' });
+    } catch (error) {
+      // TEMP-DEBUG via Metro only — surface the real failure; REVERT before commit.
+      console.warn('[import-debug] pickStudyFile failed:', errorText(error));
+      if (aliveRef.current) setPhase({ kind: 'failed', message: `Could not read the file. Choose a JSON backup smaller than 4 MiB and try again. [debug: ${errorText(error)}]` });
     } finally { busy.current = false; }
   }, []);
 

@@ -14,9 +14,23 @@ export async function pickStudyFile(kind: 'json' | 'pdf') {
   if (asset.size !== undefined && asset.size > limit) throw new Error(`File exceeds ${limit / 1024 / 1024} MiB.`);
   const temp = new File(Paths.cache, `temari-import-${randomUUID()}.${kind}`);
   try {
-    await copyAsync({ from: asset.uri, to: temp.uri });
-    if (temp.size > limit) throw new Error(`File exceeds ${limit / 1024 / 1024} MiB.`);
-    return { name: asset.name, size: temp.size, content: kind === 'pdf' ? await temp.base64() : await temp.text() };
+    try {
+      await copyAsync({ from: asset.uri, to: temp.uri });
+    } catch (error) {
+      // TEMP-DEBUG (device diagnosis) — annotate with the picker's URI; REVERT after.
+      throw new Error(
+        `copy from ${asset.uri} (size=${asset.size ?? '?'}, name=${asset.name}) failed — ${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
+    try {
+      if (temp.size > limit) throw new Error(`File exceeds ${limit / 1024 / 1024} MiB.`);
+      return { name: asset.name, size: temp.size, content: kind === 'pdf' ? await temp.base64() : await temp.text() };
+    } catch (error) {
+      // TEMP-DEBUG (device diagnosis) — annotate the post-copy step; REVERT after.
+      throw new Error(
+        `post-copy (size=${temp.exists ? temp.size : 'missing'}) failed — ${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
   } finally {
     if (temp.exists) temp.delete();
   }
