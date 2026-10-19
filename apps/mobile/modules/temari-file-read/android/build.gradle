@@ -1,0 +1,16 @@
+apply plugin: 'com.android.library'
+
+group = 'expo.modules.temarifileread'
+version = '1.0.0'
+
+def expoModulesCorePlugin = new File(project(":expo-modules-core").projectDir.absolutePath, "expo-modules-core.gradle")
+apply from: expoModulesCorePlugin
+applyNativeModulesAndroidModulesProject(project)
+
+android {
+  namespace 'expo.modules.temarifileread'
+  compileSdkVersion safeExtGet('compileSdkVersion', 36)
+  defaultConfig {
+    minSdkVersion safeExtGet('minSdkVersion', 24)
+  }
+}
