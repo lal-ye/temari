@@ -91,6 +91,10 @@
       "name": "@temari/core",
       "version": "0.0.0",
     },
+    "packages/file-read": {
+      "name": "@temari/file-read",
+      "version": "0.0.0",
+    },
     "packages/reader-core": {
       "name": "@temari/reader-core",
       "version": "0.0.0",
@@ -896,6 +900,8 @@
     "@tailwindcss/vite": ["@tailwindcss/vite@4.3.3", "", { "dependencies": { "@tailwindcss/node": "4.3.3", "@tailwindcss/oxide": "4.3.3", "tailwindcss": "4.3.3" }, "peerDependencies": { "vite": "^5.2.0 || ^6 || ^7 || ^8" } }, "sha512-yYU8cogLeSh/ms2jh8Fj7jaba/EWa7Ja6GoUqYZaraEuCI5YS6ms6ObZgjjedm+jm6XZjdNRWBpPP6Z86oOxcw=="],
 
     "@temari/core": ["@temari/core@workspace:packages/core"],
+
+    "@temari/file-read": ["@temari/file-read@workspace:packages/file-read"],
 
     "@temari/mobile": ["@temari/mobile@workspace:apps/mobile"],
 

@@ -3,24 +3,31 @@ import { Directory, File, Paths } from 'expo-file-system';
 import { isAvailableAsync, shareAsync } from 'expo-sharing';
 import { randomUUID } from 'expo-crypto';
 import { PORTABLE_LIMITS, PDF_MAX_BYTES } from '@temari/core';
+import { temariFileRead } from '@temari/file-read';
 
 export async function pickStudyFile(kind: 'json' | 'pdf') {
-  // copyToCacheDirectory:true makes the native DocumentPicker copy the picked
-  // document to our cache dir via ContentResolver.openInputStream — the one
-  // read path with no ability gate. The legacy copyAsync we previously used
-  // instead probes androidx DocumentFile.canRead() first, which returns false
-  // for downloads-provider URIs (e.g. Samsung Download folder); the copy then
-  // throws "Location ... isn't readable" before the file is ever touched.
-  // The picker returns the cache file's file:// URI in its place.
-  const result = await getDocumentAsync({ type: kind === 'pdf' ? 'application/pdf' : '*/*', copyToCacheDirectory: true, multiple: false });
+  // copyToCacheDirectory:false keeps the picker's original SAF document URI.
+  // Asking the picker to copy instead (copyToCacheDirectory:true, tried in
+  // PR #52) routes through Samsung's media layer, whose cache copy throws
+  // SecurityException("com.samsung.android.providers.media has no access to
+  // content://media/...") for Download-folder files regardless of MIME type.
+  // Reading goes through our own native module: every expo-file-system JS
+  // API refuses content:// URIs (readAsStringAsync: "Unsupported scheme";
+  // copyAsync: a DocumentFile.canRead() probe Samsung's downloads provider
+  // fails), while contentResolver.openInputStream inside our own process
+  // honours the SAF grant the picker just returned.
+  const docType = kind === 'json' ? 'application/json' : 'application/pdf';
+  const result = await getDocumentAsync({ type: docType, copyToCacheDirectory: false, multiple: false });
   if (result.canceled) return null;
   const asset = result.assets[0];
+  if (!asset) return null;
   const limit = kind === 'pdf' ? PDF_MAX_BYTES : PORTABLE_LIMITS.maxBytes;
   if (asset.size !== undefined && asset.size > limit) throw new Error(`File exceeds ${limit / 1024 / 1024} MiB.`);
-  const cache = new File(asset.uri);
-  if (cache.size > limit) throw new Error(`File exceeds ${limit / 1024 / 1024} MiB.`);
   try {
-    return { name: asset.name, size: cache.size, content: kind === 'pdf' ? await cache.base64() : await cache.text() };
+    const content = kind === 'pdf' ? await temariFileRead().readBase64(asset.uri) : await temariFileRead().readText(asset.uri);
+    const rawLength = kind === 'pdf' ? Math.floor(content.length * 3 / 4) : content.length;
+    if (rawLength > limit) throw new Error(`File exceeds ${limit / 1024 / 1024} MiB.`);
+    return { name: asset.name, size: rawLength, content };
   } catch (error) {
     throw new Error(`read from ${asset.uri} (name=${asset.name}, size=${asset.size ?? 'hidden'}) failed — ${error}`);
   }
