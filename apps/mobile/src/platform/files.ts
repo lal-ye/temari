@@ -1,42 +1,64 @@
 import { getDocumentAsync } from 'expo-document-picker';
 import { Directory, File, Paths } from 'expo-file-system';
+import { readAsStringAsync, EncodingType } from 'expo-file-system/legacy';
 import { isAvailableAsync, shareAsync } from 'expo-sharing';
 import { randomUUID } from 'expo-crypto';
 import { PORTABLE_LIMITS, PDF_MAX_BYTES } from '@temari/core';
 
+// TEMP-DIAGNOSTIC v2: probe the Samsung-Download read paths in one install;
+// revert before any non-diagnostic merge. Device ground truth (2026-10-17):
+// Samsung's picker serves Download-folder files as MediaProvider URIs
+// (content://media/external_primary/file/…), NOT SAF downloads-provider URIs,
+// and the picker's own cache copy throws SecurityException("…has no access to
+// content://media/…") INSIDE getDocumentAsync when copyToCacheDirectory:true.
+// Probes in this build:
+//   1. docType 'application/json' instead of '*/*' (JSON only): a different
+//      intent filter may route the pick away from Samsung's My Files picker
+//      to DocumentsUI, whose downloads-provider SAF URLs work gate-free.
+//   2. If that pick still fails: re-pick with copyToCacheDirectory:false and
+//      read the content URI via legacy readAsStringAsync — non-SAF content
+//      URIs are auto-granted READ in FileSystemLegacyModule.permissionsForUri
+//      (no canRead() gate), so this tests whether our own process can read
+//      the granted URI at all.
+//   3. The final error names what both attempts returned.
 export async function pickStudyFile(kind: 'json' | 'pdf') {
-  // copyToCacheDirectory:true makes the native DocumentPicker copy the picked
-  // document to our cache dir via ContentResolver.openInputStream — the one
-  // read path with no ability gate. The legacy copyAsync we previously used
-  // instead probes androidx DocumentFile.canRead() first, which returns false
-  // for downloads-provider URIs (e.g. Samsung Download folder); the copy then
-  // throws "Location ... isn't readable" before the file is ever touched.
-  // The picker returns the cache file's file:// URI in its place.
-  // TEMP-DIAGNOSTIC: this file carries temporary instrumentation naming the
-  // failing phase; revert before any non-diagnostic merge.
-  let result;
-  try {
-    result = await getDocumentAsync({ type: kind === 'pdf' ? 'application/pdf' : '*/*', copyToCacheDirectory: true, multiple: false });
-  } catch (error) {
-    throw new Error(`pick failed — ${error}`);
-  }
-  if (result.canceled) return null;
-  const asset = result.assets[0];
-  if (!asset) throw new Error('pick resolved with no asset');
+  const docType = kind === 'json' ? 'application/json' : 'application/pdf';
   const limit = kind === 'pdf' ? PDF_MAX_BYTES : PORTABLE_LIMITS.maxBytes;
-  if (asset.size !== undefined && asset.size > limit) throw new Error(`File exceeds ${limit / 1024 / 1024} MiB.`);
-  let cacheSize: number;
+  let firstFailure: string;
   try {
-    cacheSize = new File(asset.uri).size;
-  } catch (error) {
-    throw new Error(`stat of ${asset.uri} (name=${asset.name}, size=${asset.size ?? 'hidden'}) failed — ${error}`);
-  }
-  if (cacheSize > limit) throw new Error(`File exceeds ${limit / 1024 / 1024} MiB.`);
-  try {
+    const result = await getDocumentAsync({ type: docType, copyToCacheDirectory: true, multiple: false });
+    if (result.canceled) return null;
+    const asset = result.assets[0];
+    if (!asset) return null;
+    if (asset.size !== undefined && asset.size > limit) throw new Error(`File exceeds ${limit / 1024 / 1024} MiB.`);
     const cache = new File(asset.uri);
+    if (cache.size > limit) throw new Error(`File exceeds ${limit / 1024 / 1024} MiB.`);
     return { name: asset.name, size: cache.size, content: kind === 'pdf' ? await cache.base64() : await cache.text() };
   } catch (error) {
-    throw new Error(`read from ${asset.uri} (name=${asset.name}, size=${asset.size ?? 'hidden'}) failed — ${error}`);
+    const message = String(error instanceof Error ? error.message : error);
+    if (message.includes('File exceeds')) throw error;
+    firstFailure = `attempt1(type=${docType}, copyToCacheDir=true) → ${message}`;
+  }
+  // Attempt 2: same docType, no native cache copy, read the content URI in JS.
+  try {
+    const result = await getDocumentAsync({ type: docType, copyToCacheDirectory: false, multiple: false });
+    if (result.canceled) return null;
+    const asset = result.assets[0];
+    if (!asset) return null;
+    if (asset.size !== undefined && asset.size > limit) throw new Error(`File exceeds ${limit / 1024 / 1024} MiB.`);
+    let content: string;
+    try {
+      content = await readAsStringAsync(asset.uri, { encoding: kind === 'pdf' ? EncodingType.Base64 : EncodingType.UTF8 });
+    } catch (error) {
+      throw new Error(`readAsStringAsync ${asset.uri} (name=${asset.name}, size=${asset.size ?? 'hidden'}) failed — ${error}`);
+    }
+    // The readString already allocated; reject before anything consumes the content.
+    const rawLength = kind === 'pdf' ? Math.floor(content.length * 3 / 4) : content.length;
+    if (rawLength > limit) throw new Error(`File exceeds ${limit / 1024 / 1024} MiB.`);
+    return { name: asset.name, size: rawLength, content };
+  } catch (error) {
+    const secondFailure = `attempt2(copyToCacheDir=false → readAsStringAsync) → ${String(error instanceof Error ? error.message : error)}`;
+    throw new Error(`diagnostic: ${firstFailure} | ${secondFailure}`);
   }
 }
 
