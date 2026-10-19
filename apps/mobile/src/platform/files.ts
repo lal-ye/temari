@@ -3,7 +3,7 @@ import { Directory, File, Paths } from 'expo-file-system';
 import { isAvailableAsync, shareAsync } from 'expo-sharing';
 import { randomUUID } from 'expo-crypto';
 import { PORTABLE_LIMITS, PDF_MAX_BYTES } from '@temari/core';
-import { temariFileRead } from '../../modules/temari-file-read';
+import { temariFileRead } from '@temari/file-read';
 
 export async function pickStudyFile(kind: 'json' | 'pdf') {
   // copyToCacheDirectory:false keeps the picker's original SAF document URI.

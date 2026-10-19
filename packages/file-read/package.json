@@ -1,0 +1,13 @@
+{
+  "name": "@temari/file-read",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./index.ts",
+      "default": "./index.ts"
+    }
+  },
+  "types": "./index.ts"
+}

@@ -29,7 +29,7 @@ vi.mock('expo-document-picker', () => ({ getDocumentAsync: mocks.pick }));
 vi.mock('expo-file-system', () => ({ File: mocks.File, Directory: mocks.Directory, Paths: { cache: 'file:///cache' } }));
 vi.mock('expo-sharing', () => ({ shareAsync: mocks.share, isAvailableAsync: mocks.available }));
 vi.mock('expo-crypto', () => ({ randomUUID: mocks.uuid }));
-vi.mock('../../modules/temari-file-read', () => ({ temariFileRead: () => ({ readText: mocks.nativeRead, readBase64: mocks.nativeRead }) }));
+vi.mock('@temari/file-read', () => ({ temariFileRead: () => ({ readText: mocks.nativeRead, readBase64: mocks.nativeRead }) }));
 import { pickStudyFile, shareText } from './files';
 beforeEach(() => {
   mocks.files.clear(); mocks.directories.clear(); vi.clearAllMocks();
