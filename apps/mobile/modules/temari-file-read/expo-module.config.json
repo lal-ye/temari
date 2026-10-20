@@ -1,6 +1,6 @@
 {
   "platforms": ["android"],
   "android": {
-    "modules": ["TemariFileReadModule"]
+    "modules": ["expo.modules.temarifileread.TemariFileReadModule"]
   }
 }
