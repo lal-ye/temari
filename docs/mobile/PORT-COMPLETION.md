@@ -1,10 +1,13 @@
 # Android + Expo web completion record
 
-Updated 2026-10-15. Publication note: application changes are in PR #48, and the
+Updated 2026-10-20. Publication note: application changes are in PR #48, and the
 improved `.github/workflows` are now applied (they could not be pushed during that
 session because the Arena GitHub App lacked the Workflows permission). CI runs the
-adapter, web-export and browser-test gates, and gates both APK profiles. No new
-signed APK has been produced since PR #48.
+adapter, web-export and browser-test gates, and gates both APK profiles. Signed
+preview APKs are built by the `Android APK` workflow — see
+[`EAS-BUILD.md`](./EAS-BUILD.md) — and the latest one was installed on the
+baseline device; the import bug those builds caught and fixed is recorded at the
+end of this document.
 
 This records **implementation and automated evidence**, not a
 physical-device sign-off. Scope is the included features in Android plan §4,
@@ -48,8 +51,13 @@ bunx playwright install --with-deps chromium
 bun run test:web
 ```
 
-Recorded locally: 202 package tests, 19 app adapter tests, five Chromium end-to-end
+Recorded locally: 202 package tests, 29 app adapter tests, five Chromium end-to-end
 flows in both desktop and mobile viewports (10 browser tests); typechecks, boundary checks, Android Hermes/DOM export and web export pass.
+The adapter suite now also covers the native SQLite backend through a fake
+`expo-sqlite`: full-snapshot restart round-trip, one-transaction writes with
+rollback on failure, unknown-schema and corrupt-collection failures, and retry
+after a failed open. Android's own fsync/transaction behaviour still needs the
+device, but the adapter contract no longer relies on inspection alone.
 Browser tests exercise offline reload + reader + Drill, restart, credential-free
 export, invalid/cancelled imports, memory-only keys, actual iframe Explain bridge
 with a mocked Provider, explicit PDF send and redacted diagnostics. They do not
