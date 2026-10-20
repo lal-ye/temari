@@ -89,12 +89,12 @@ export default function ImportScreen() {
       if (!aliveRef.current) return;
       setPhase(file ? { kind: 'preview', preview: buildImportPreview(file.content), fileName: file.name } : { kind: 'idle' });
     } catch (error) {
-      // TEMP-DIAGNOSTIC: pickStudyFile throws a human message per failure
-      // stage; the code + native detail suffix stays until the device test
-      // passes, then reverts to `${message}` alone.
-      const staged = error as { code?: string; detail?: string };
-      const message = error instanceof Error ? error.message : String(error);
-      if (aliveRef.current) setPhase({ kind: 'failed', message: `${message} [debug: ${staged.code ?? 'unknown'} · ${staged.detail ?? 'no detail'}]` });
+      // pickStudyFile throws staged errors whose message already names the
+      // class of failure (refused, too large, unreadable) and what to do; the
+      // code/detail used during the device diagnosis is deliberately not shown
+      // on the learner-facing screen.
+      const message = error instanceof Error ? error.message : 'Could not read the file. Try again.';
+      if (aliveRef.current) setPhase({ kind: 'failed', message });
     } finally { busy.current = false; }
   }, []);
 

@@ -98,6 +98,20 @@ Do **not** uninstall as a routine upgrade: uninstall deletes data and keys.
 - [ ] Record local startup / Note display / actual connection latency and large-Note
       memory/scroll observations. No fabricated timing or go/no-go decision.
 
+### Recorded device evidence
+
+**2026-10-20 — Samsung A32, Android 13: Download-folder import.** Preview build
+`262d78d` (`temari-preview-apk`, 108 024 642 bytes, run
+[39473477443](https://github.com/lal-ye/temari/actions/runs/39473477443)),
+installed over the existing app — signature continuity held. Picked
+`portable-valid-en (1).json` from the system **Download** folder through the
+single `ACTION_OPEN_DOCUMENT` picker: the preview reported "2 Subjects · 2
+Notes · 2 Quizzes · 2 Flashcards · 1 Attempts · 1 Study Tasks", "Replace and
+import" completed, and the Library afterwards showed the imported Subjects
+replacing the previous one. First device evidence for the picker read path;
+the remaining picker checks in the box above (cancel, invalid/legacy file,
+kill/relaunch, full Drill) are still outstanding, as is the rest of the list.
+
 Automatic checks cover injected storage/network/malformed-response failures, but
 cannot establish low-end-device performance, actual provider quota or signing
 continuity. Final M5 go/no-go remains the owner's decision after this checklist.
