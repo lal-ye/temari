@@ -1,7 +1,13 @@
 # M3 — native Library and one complete Drill (v1)
 
+> **Archived 2026-10-21.** M3 is implementation-complete and its physical gate is
+> recorded in [PORT-COMPLETION.md](../mobile/PORT-COMPLETION.md); the durable
+> decisions live in [ADR-0015](../adr/0015-local-first-byok-and-web-parity.md)
+> and [ADR-0016](../adr/0016-continue-expo-after-m5.md). This plan describes code
+> that has since moved on — keep it for rationale, not as current state.
+
 > 2026-10-14: implementation status and verification now live in
-> [the completion record](./PORT-COMPLETION.md). M3 re-export, M4 BYOK/PDF/diagnostics and
+> [the completion record](../mobile/PORT-COMPLETION.md). M3 re-export, M4 BYOK/PDF/diagnostics and
 > Expo web parity are implemented. Physical-device acceptance is still pending.
 > ADR-0015 replaces the retired Render transport/PDF assumptions below; older
 > restrictions on milestone ordering describe earlier checkpoints, not this task.
@@ -10,7 +16,7 @@
 Status: **draft for review**, written 2026-10-01; implementation has not started.
 The load-bearing decisions D1–D4 and D12 were confirmed with the user on
 2026-10-01; D5–D11 are this plan's proposals, open to the same review. This
-plan follows the [checkpoint-B plan](./M2-CHECKPOINT-B-PLAN.md) pattern (v3)
+plan follows the [checkpoint-B plan](../mobile/M2-CHECKPOINT-B-PLAN.md) pattern (v3)
 and resolves that plan's D4 carry-over as D2 below.
 
 Authoritative scope, unchanged: [`ANDROID-PROTOTYPE-PLAN.md` §M3](../ANDROID-PROTOTYPE-PLAN.md)
