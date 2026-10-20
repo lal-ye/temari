@@ -59,7 +59,7 @@ class TemariFileReadModule : Module() {
         val sizeColumn = cursor.getColumnIndex(OpenableColumns.SIZE)
         if (cursor.moveToFirst() && sizeColumn >= 0 && !cursor.isNull(sizeColumn)) {
           val reported = cursor.getLong(sizeColumn)
-          if (reported > maxBytes) throw TooLargeException(reported)
+          if (reported > maxBytes) throw TemariTooLargeException(reported)
         }
       }
     } catch (tooLarge: TemariTooLargeException) {
