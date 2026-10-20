@@ -89,10 +89,12 @@ export default function ImportScreen() {
       if (!aliveRef.current) return;
       setPhase(file ? { kind: 'preview', preview: buildImportPreview(file.content), fileName: file.name } : { kind: 'idle' });
     } catch (error) {
-      // TEMP-DIAGNOSTIC: surface the real error while the Download-folder fix
-      // is being device-verified; revert to the plain message after.
-      const detail = error instanceof Error ? error.message : String(error);
-      if (aliveRef.current) setPhase({ kind: 'failed', message: `Could not read the file. Choose a JSON backup smaller than 4 MiB and try again. [debug: ${detail}]` });
+      // TEMP-DIAGNOSTIC: pickStudyFile throws a human message per failure
+      // stage; the code + native detail suffix stays until the device test
+      // passes, then reverts to `${message}` alone.
+      const staged = error as { code?: string; detail?: string };
+      const message = error instanceof Error ? error.message : String(error);
+      if (aliveRef.current) setPhase({ kind: 'failed', message: `${message} [debug: ${staged.code ?? 'unknown'} · ${staged.detail ?? 'no detail'}]` });
     } finally { busy.current = false; }
   }, []);
 

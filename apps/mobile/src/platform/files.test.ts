@@ -23,46 +23,70 @@ const mocks = vi.hoisted(() => {
     list() { return [...directories].filter(path => path.startsWith(this.uri + '/')).map(path => new Directory(path)); }
     delete() { directories.delete(this.uri); for (const path of files.keys()) if (path.startsWith(this.uri + '/')) files.delete(path); }
   }
-  return { files, directories, File, Directory, pick: vi.fn(), nativeRead: vi.fn(), share: vi.fn(), available: vi.fn(), uuid: () => String(++serial) };
+  return { files, directories, File, Directory, pick: vi.fn(), pickFile: vi.fn(), nativeRead: vi.fn(), share: vi.fn(), available: vi.fn(), uuid: () => String(++serial) };
 });
 vi.mock('expo-document-picker', () => ({ getDocumentAsync: mocks.pick }));
-vi.mock('expo-file-system', () => ({ File: mocks.File, Directory: mocks.Directory, Paths: { cache: 'file:///cache' } }));
+vi.mock('expo-file-system', () => ({ File: Object.assign(mocks.File, { pickFileAsync: mocks.pickFile }), Directory: mocks.Directory, Paths: { cache: 'file:///cache' } }));
 vi.mock('expo-sharing', () => ({ shareAsync: mocks.share, isAvailableAsync: mocks.available }));
 vi.mock('expo-crypto', () => ({ randomUUID: mocks.uuid }));
-vi.mock('@temari/file-read', () => ({ temariFileRead: () => ({ readText: mocks.nativeRead, readBase64: mocks.nativeRead }) }));
+vi.mock('@temari/file-read', () => ({ hasNativeReader: () => true, readTextNative: mocks.nativeRead, readBase64Native: mocks.nativeRead }));
 import { pickStudyFile, shareText } from './files';
 beforeEach(() => {
   mocks.files.clear(); mocks.directories.clear(); vi.clearAllMocks();
   mocks.available.mockResolvedValue(true); mocks.share.mockResolvedValue(undefined);
 });
-it('reads the SAF document URI through the native reader and never allocates a cache copy', async () => {
-  const saf = 'content://com.android.providers.downloads.documents/document/raw%3A%2Fstorage%2Femulated%2F0%2FDownload%2Fsample.json';
+const SAF = (file: string) => `content://com.android.providers.downloads.documents/document/raw%3A%2Fstorage%2Femulated%2F0%2FDownload%2F${file}`;
+const SAF_PICK = { canceled: false, result: { uri: SAF('sample.json'), name: 'sample.json', size: 11 } } as const;
+
+it('picks through the SAF picker, landing in Download, and reads via the native reader', async () => {
+  mocks.pickFile.mockResolvedValue(SAF_PICK);
   mocks.nativeRead.mockResolvedValue('{"data":[]}');
-  mocks.pick.mockResolvedValue({ canceled: false, assets: [{ uri: saf, name: 'sample.json', size: 11 }] });
   expect((await pickStudyFile('json'))?.content).toBe('{"data":[]}');
-  expect(mocks.pick).toHaveBeenCalledWith(expect.objectContaining({ copyToCacheDirectory: false }));
-  expect(mocks.nativeRead).toHaveBeenCalledWith(saf);
-  expect(mocks.files.size).toBe(0);
+  expect(mocks.pickFile).toHaveBeenCalledWith(expect.objectContaining({
+    initialUri: expect.stringContaining('primary%3ADownload'),
+    multipleFiles: false,
+  }));
+  expect(mocks.nativeRead).toHaveBeenCalledWith(SAF('sample.json'), expect.any(Number));
+  expect(mocks.pick).not.toHaveBeenCalled();
 });
-it('checks known file size before the native read and unknown size after it', async () => {
-  mocks.pick.mockResolvedValue({ canceled: false, assets: [{ uri: 'content://large/document', name: 'large.pdf', size: 2_000_000 }] });
-  await expect(pickStudyFile('pdf')).rejects.toThrow('MiB');
+it('falls back to the document picker when the SAF picker is unavailable', async () => {
+  mocks.pickFile.mockRejectedValue(new Error('picker unavailable'));
+  mocks.pick.mockResolvedValue({ canceled: false, assets: [{ uri: SAF('sample.json'), name: 'sample.json', size: 11 }] });
+  mocks.nativeRead.mockResolvedValue('{"data":[]}');
+  expect((await pickStudyFile('json'))?.content).toBe('{"data":[]}');
+  expect(mocks.pick).toHaveBeenCalledWith(expect.objectContaining({ type: '*/*', copyToCacheDirectory: false }));
+  expect(mocks.nativeRead).toHaveBeenCalledWith(SAF('sample.json'), expect.any(Number));
+});
+it('a cancelled pick on either surface performs no read', async () => {
+  mocks.pickFile.mockResolvedValue({ canceled: true, result: null });
+  expect(await pickStudyFile('json')).toBeNull();
   expect(mocks.nativeRead).not.toHaveBeenCalled();
-  const base64 = 'A'.repeat(3_000_000); // decodes to 2.25 MB, over PDF_MAX_BYTES (1 MiB)
-  mocks.nativeRead.mockResolvedValue(base64);
-  mocks.pick.mockResolvedValue({ canceled: false, assets: [{ uri: 'content://large/document', name: 'large.pdf' }] });
-  await expect(pickStudyFile('pdf')).rejects.toThrow('MiB');
-  expect(mocks.nativeRead).toHaveBeenCalledTimes(1);
-});
-it('names the failed read source when the native reader is refused', async () => {
-  const saf = 'content://com.android.providers.downloads.documents/document/refused';
-  mocks.nativeRead.mockRejectedValue(new Error('SecurityException: no access'));
-  mocks.pick.mockResolvedValue({ canceled: false, assets: [{ uri: saf, name: 'broken.json', size: 4 }] });
-  await expect(pickStudyFile('json')).rejects.toThrow(`read from ${saf} (name=broken.json, size=4) failed — Error: SecurityException: no access`);
-});
-it('cancelled picking performs no read', async () => {
+  mocks.pickFile.mockRejectedValue(new Error('unavailable'));
   mocks.pick.mockResolvedValue({ canceled: true });
-  expect(await pickStudyFile('json')).toBeNull(); expect(mocks.files.size).toBe(0);
+  expect(await pickStudyFile('json')).toBeNull();
+  expect(mocks.nativeRead).not.toHaveBeenCalled();
+});
+it('rejects oversized reported sizes before reading and oversized reads halt the chain', async () => {
+  mocks.pickFile.mockResolvedValue({ canceled: false, result: { uri: SAF('large.pdf'), name: 'large.pdf', size: 2_000_000 } });
+  await expect(pickStudyFile('pdf')).rejects.toThrow('larger than');
+  expect(mocks.nativeRead).not.toHaveBeenCalled();
+  mocks.pickFile.mockResolvedValue({ canceled: false, result: { uri: SAF('big.json'), name: 'big.json' } });
+  mocks.nativeRead.mockRejectedValue(Object.assign(new Error('too large'), { code: 'ERR_TEMARI_TOO_LARGE' }));
+  await expect(pickStudyFile('json')).rejects.toThrow('larger than');
+  expect(mocks.pick).not.toHaveBeenCalled();
+});
+it('falls back to the File API when the native reader is refused by Android', async () => {
+  const denied = SAF('denied.json');
+  mocks.pickFile.mockResolvedValue({ canceled: false, result: { uri: denied, name: 'denied.json', size: 11 } });
+  mocks.nativeRead.mockRejectedValue(Object.assign(new Error('SecurityException: no access'), { code: 'ERR_TEMARI_READ_DENIED' }));
+  mocks.files.set(denied, { text: '{"data":[]}', size: 11 });
+  expect((await pickStudyFile('json'))?.content).toBe('{"data":[]}');
+});
+it('stages a human failure when every reader fails', async () => {
+  const gone = SAF('gone.json');
+  mocks.pickFile.mockResolvedValue({ canceled: false, result: { uri: gone, name: 'gone.json', size: 11 } });
+  mocks.nativeRead.mockRejectedValue(Object.assign(new Error('FileNotFoundException'), { code: 'ERR_TEMARI_READ_FAILED' }));
+  await expect(pickStudyFile('json')).rejects.toThrow('no longer accessible');
 });
 it('keeps shared bytes available after Android chooser resolves, then prunes expired shares', async () => {
   await shareText('temari-portable.json', 'first');
