@@ -48,6 +48,7 @@ them in order.
 | [0014](./adr/0014-expo-web-and-android.md) | one Expo app for web and Android; the standalone web app retires |
 
 | [0015](./adr/0015-local-first-byok-and-web-parity.md) | direct Gemini BYOK, SQLite/IndexedDB parity and sandboxed web reader |
+| [0016](./adr/0016-continue-expo-after-m5.md) | continue Expo after the M5 device gate; phase two scoped by a plan |
 
 ## In-flight plans
 
@@ -57,7 +58,7 @@ amendment to one) and the document moves to [`archive/`](./archive/).
 
 | Document | Status | Leaves this table when |
 |---|---|---|
-| [`mobile/M3-LIBRARY-DRILL-PLAN.md`](./mobile/M3-LIBRARY-DRILL-PLAN.md) | M3 implementation including re-export complete; physical gate pending (see completion record) | M3 gate recorded; durable parts absorbed into ADRs; the plan moves to `archive/` with a dated banner |
+| [`mobile/PHASE-TWO-PLAN.md`](./mobile/PHASE-TWO-PLAN.md) | open, written 2026-10-21 after checkpoint D | P0–P5 ship or are retired; durable parts absorbed into ADRs; the plan moves to `archive/` with a dated banner |
 
 ## Archived
 
@@ -67,6 +68,7 @@ describe code that has since moved on. Each carries a dated banner at the top.
 
 | Document | Outcome |
 |---|---|
+| [`M3-LIBRARY-DRILL-PLAN.md`](./archive/M3-LIBRARY-DRILL-PLAN.md) | Shipped; durable parts in [ADR-0015](./adr/0015-local-first-byok-and-web-parity.md) and [ADR-0016](./adr/0016-continue-expo-after-m5.md). Device gate recorded in the completion record. |
 | [`ui-audit-ascii-hero-and-design-tooling.md`](./archive/ui-audit-ascii-hero-and-design-tooling.md) | Produced [ADR-0011](./adr/0011-landing-display-variant.md). Work complete; only the real-device touch test is owed. |
 | [`ui-audit-taste-skill.md`](./archive/ui-audit-taste-skill.md) | Findings all fixed. Its remaining backlog is listed in the banner at the top. |
 | [`ui-plan-landing-page.md`](./archive/ui-plan-landing-page.md) | Superseded by [ADR-0009](./adr/0009-landing-page-route-split.md) and [ADR-0011](./adr/0011-landing-display-variant.md). |
@@ -95,6 +97,6 @@ describe code that has since moved on. Each carries a dated banner at the top.
 
 ## Mobile prototype planning
 
-- [Android feasibility prototype](./ANDROID-PROTOTYPE-PLAN.md) — M0 device startup/navigation passed; M1 export implemented; [M2 checkpoint B](./mobile/M2-READER-SPIKE.md) complete (2026-09-30): asset checkpoint passed its installed offline device test (2026-09-24), the reader-spike checklist passed on-device with one bug found, fixed in PR #31 and re-verified. Section 0 is historical. M3 and M4 implementation plus web parity now have [a completion record](./mobile/PORT-COMPLETION.md); physical acceptance and the M5 decision remain pending.
+- [Android feasibility prototype](./ANDROID-PROTOTYPE-PLAN.md) — M0 device startup/navigation passed; M1 export implemented; [M2 checkpoint B](./mobile/M2-READER-SPIKE.md) complete (2026-09-30): asset checkpoint passed its installed offline device test (2026-09-24), the reader-spike checklist passed on-device with one bug found, fixed in PR #31 and re-verified. Section 0 is historical. M3 and M4 implementation plus web parity now have [a completion record](./mobile/PORT-COMPLETION.md). Checkpoint D was taken on 2026-10-21 ([ADR-0016](./adr/0016-continue-expo-after-m5.md)): continue Expo, with phase two scoped by [PHASE-TWO-PLAN.md](./mobile/PHASE-TWO-PLAN.md). The physical acceptance record is still being completed.
 - [Expo web](./mobile/WEB.md) — run/deploy/offline and storage/security expectations.
 - [APK builds](./mobile/EAS-BUILD.md) — profiles, gated workflow and install instructions.

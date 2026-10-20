@@ -11,7 +11,7 @@ Status update (2026-10-01): M0 startup/navigation passed on the user's phone;
 M1 portable export/validation is implemented. M2 checkpoints A and B passed on
 the user's phone; B completed 2026-09-30 and the standalone web app is retired
 (ADR-0014). M3 — native library and one complete Drill — is underway per the
-[M3 plan](./mobile/M3-LIBRARY-DRILL-PLAN.md). See [M0 record](./mobile/M0-SETUP.md),
+[M3 plan](./archive/M3-LIBRARY-DRILL-PLAN.md). See [M0 record](./mobile/M0-SETUP.md),
 the [M2 checkpoint](./mobile/M2-READER-SPIKE.md) and the
 [checkpoint B plan](./mobile/M2-CHECKPOINT-B-PLAN.md) for earlier evidence.
 
@@ -581,6 +581,10 @@ Approval checkpoints:
   integration, CSS/assets, security or touch selection is poor.
 - C: after M4, test one complete native study flow and real AI request on device.
 - D: after M5, decide: continue Expo, keep it as an experiment, or switch to PWA.
+  **Taken 2026-10-21: continue Expo** — see
+  [ADR-0016](./adr/0016-continue-expo-after-m5.md) and the
+  [phase-two plan](./mobile/PHASE-TWO-PLAN.md). The device acceptance record
+  continues in [PORT-COMPLETION.md](./mobile/PORT-COMPLETION.md).
 
 Continue only if offline reader fidelity, data correctness and the async bridge
 pass, and the owner finds the native study flow meaningfully useful. Reject any
